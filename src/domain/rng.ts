@@ -72,6 +72,7 @@ export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
   const result = items.slice();
   for (let i = result.length - 1; i > 0; i -= 1) {
     const j = nextIndex(rng, i + 1);
+    // Safe: 0 <= j <= i < result.length, so both elements exist.
     const a = result[i] as T;
     result[i] = result[j] as T;
     result[j] = a;

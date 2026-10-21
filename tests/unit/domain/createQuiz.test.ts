@@ -4,13 +4,12 @@
  * spread), T-US1-5 (exact seeded order), T-US2-2 (option shuffle rules).
  */
 import { describe, expect, it } from "vitest";
-import type { Bank } from "../../../src/content/types.ts";
+import { isBank, type Bank } from "../../../src/content/types.ts";
 import {
   createQuiz,
   DEFAULT_QUIZ_LENGTH,
   eligibleTopics,
 } from "../../../src/domain/createQuiz.ts";
-import { createSeededRng } from "../../../src/domain/rng.ts";
 import type {
   CreateQuizResult,
   Quiz,
@@ -29,7 +28,7 @@ function create(
   seed: number,
   length?: number,
 ): Quiz {
-  return quizOf(createQuiz(bank, scope, createSeededRng(seed), length));
+  return quizOf(createQuiz(bank, scope, seed, length));
 }
 
 const topic = (topicId: string): QuizScope => ({ kind: "topic", topicId });
@@ -44,7 +43,7 @@ function distinctTopics(quiz: Quiz): number {
 }
 
 describe("eligibleTopics", () => {
-  it("T-US1-1 lists topics in curated order with counts", () => {
+  it("eligibleTopics: curated order with counts", () => {
     const bank = makeBank({ "topic-a": 12, "topic-b": 5, "topic-c": 3 });
     expect(eligibleTopics(bank)).toEqual([
       { id: "topic-a", name: "Topic topic-a", count: 12 },
@@ -53,7 +52,7 @@ describe("eligibleTopics", () => {
     ]);
   });
 
-  it("T-US1-2 omits topics with 0 questions", () => {
+  it("eligibleTopics: hides empty topics", () => {
     const bank = makeBank({ z: 2, empty: 0, a: 1 });
     expect(eligibleTopics(bank).map((t) => t.id)).toEqual(["z", "a"]);
     expect(eligibleTopics(makeBank({}))).toEqual([]);
@@ -200,6 +199,19 @@ describe("createQuiz: seeded order (T-US1-5)", () => {
     expect(mixedOrders.size).toBeGreaterThanOrEqual(2);
   });
 
+  it("T-US1-5 createQuiz(bank, scope, quiz.seed) reproduces the quiz", () => {
+    const bank5 = makeBank({ a: 8, b: 5, c: 2, d: 1 });
+    for (const seed of [...SEEDS.slice(0, 50), -1, 2 ** 32 + 7, 3.9]) {
+      for (const scope of [MIXED, topic("a")]) {
+        const quiz = create(bank5, scope, seed);
+        expect(create(bank5, scope, quiz.seed)).toEqual(quiz);
+        expect(create(bank5, scope, quiz.seed, 4)).toEqual(
+          create(bank5, scope, seed, 4),
+        );
+      }
+    }
+  });
+
   it("does not mutate the bank", () => {
     const frozen = makeBank({ a: 5, b: 5 });
     const snapshot = structuredClone(frozen);
@@ -290,25 +302,62 @@ describe("createQuiz: options (T-US2-2)", () => {
   });
 });
 
+describe("createQuiz: true/false fallback order", () => {
+  it("T-US2-2 keeps a stable, unshuffled order for unexpected true/false option IDs", () => {
+    // isBank accepts any unique option IDs; the content validator would reject these.
+    const odd: Bank = {
+      schemaVersion: 1,
+      contentVersion: "test",
+      topics: [{ id: "t", name: "T" }],
+      questions: [
+        {
+          ...trueFalse("tf-odd", "t"),
+          options: [
+            { id: "no", text: "No" },
+            { id: "false", text: "False" },
+            { id: "yes", text: "Yes" },
+            { id: "true", text: "True" },
+          ],
+          correct: "yes",
+        },
+      ],
+    };
+    expect(isBank(odd)).toBe(true);
+    for (const seed of SEEDS.slice(0, 50)) {
+      const [q] = create(odd, topic("t"), seed).questions;
+      // Known IDs first ("true", "false"), unknown IDs after in bank order.
+      expect(q?.options.map((o) => o.id)).toEqual([
+        "true",
+        "false",
+        "no",
+        "yes",
+      ]);
+      expect(q?.correctOptionId).toBe("yes");
+    }
+  });
+});
+
 describe("createQuiz: errors (never throws)", () => {
   it("returns unknown-topic for a topic not in the bank", () => {
-    expect(
-      createQuiz(makeBank({ a: 3 }), topic("nope"), createSeededRng(1)),
-    ).toEqual({ ok: false, error: "unknown-topic" });
+    expect(createQuiz(makeBank({ a: 3 }), topic("nope"), 1)).toEqual({
+      ok: false,
+      error: "unknown-topic",
+    });
   });
 
   it("returns empty-topic for a curated topic with 0 questions", () => {
-    expect(
-      createQuiz(makeBank({ a: 3, b: 0 }), topic("b"), createSeededRng(1)),
-    ).toEqual({ ok: false, error: "empty-topic" });
+    expect(createQuiz(makeBank({ a: 3, b: 0 }), topic("b"), 1)).toEqual({
+      ok: false,
+      error: "empty-topic",
+    });
   });
 
   it("returns empty-bank for Mixed with no questions", () => {
-    expect(createQuiz(makeBank({}), MIXED, createSeededRng(1))).toEqual({
+    expect(createQuiz(makeBank({}), MIXED, 1)).toEqual({
       ok: false,
       error: "empty-bank",
     });
-    expect(createQuiz(makeBank({ a: 0 }), MIXED, createSeededRng(1))).toEqual({
+    expect(createQuiz(makeBank({ a: 0 }), MIXED, 1)).toEqual({
       ok: false,
       error: "empty-bank",
     });
