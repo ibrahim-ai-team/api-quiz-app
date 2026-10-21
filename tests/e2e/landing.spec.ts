@@ -174,6 +174,8 @@ test.describe("T-09 Landing", () => {
       await expect(r).not.toBeChecked();
     }
     await expect(page.locator("body")).not.toContainText("evil-slug");
+    expect(await page.content()).not.toContain("evil-slug");
+    expect(await page.title()).not.toContain("evil-slug");
     await expectNoAxeSeriousOrCritical(page, heading);
   });
 });

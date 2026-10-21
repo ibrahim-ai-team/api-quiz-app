@@ -53,7 +53,7 @@ export const strings = {
     /** Not in copy.md (T-09-D01): production bank with 0 questions. */
     noTopics: "No questions are available yet.",
     /** Not in copy.md (T-09-D01): createQuiz returned an error. */
-    startError: "The quiz could not be started. Choose a topic and try again.",
+    startError: "The quiz could not be started. Try again.",
     aboutHeading: "About the questions",
     accuracyNote:
       "Every question is written for ApiQuiz and checked against a primary source, such as an RFC or an official specification. Each answer links to its source.",

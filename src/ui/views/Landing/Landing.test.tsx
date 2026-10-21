@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Bank, BankQuestion } from "../../../content/types";
@@ -158,6 +164,37 @@ describe("T-US1-6/7 Start", () => {
       strings.landing.startError,
     );
     await user.click(startButton());
+    expect(onStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets the guard and shows the alert when onStart throws, then rethrows", () => {
+    const error = new Error("boom");
+    const onStart = vi
+      .fn<(scope: QuizScope) => boolean>()
+      .mockImplementationOnce(() => {
+        throw error;
+      })
+      .mockReturnValue(true);
+    renderLanding({ onStart });
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic B/ }));
+    // React reports a handler error to window "error"; capture it there.
+    let reported: unknown = null;
+    const onError = (event: ErrorEvent) => {
+      reported = event.error;
+      event.preventDefault();
+    };
+    window.addEventListener("error", onError);
+    try {
+      fireEvent.click(startButton());
+    } finally {
+      window.removeEventListener("error", onError);
+    }
+    expect(reported).toBe(error);
+    expect(screen.getByRole("alert").textContent).toBe(
+      strings.landing.startError,
+    );
+    expect(startButton().getAttribute("aria-disabled")).toBe(null);
+    fireEvent.click(startButton());
     expect(onStart).toHaveBeenCalledTimes(2);
   });
 

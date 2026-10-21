@@ -93,10 +93,16 @@ export function Landing({
     startingRef.current = true;
     setStarting(true);
     setFailed(false);
-    if (!onStart(selection)) {
-      startingRef.current = false;
-      setStarting(false);
-      setFailed(true);
+    let ok = false;
+    try {
+      ok = onStart(selection);
+    } finally {
+      // A false result or a throw resets the guard; a throw is rethrown.
+      if (!ok) {
+        startingRef.current = false;
+        setStarting(false);
+        setFailed(true);
+      }
     }
   };
 

@@ -32,9 +32,16 @@ export async function expectNoAxeSeriousOrCritical(
   // A colour transition in flight (for example Start becoming available)
   // would be sampled half-way by color-contrast; wait for transitions only,
   // since infinite animations such as the spinner never finish.
-  await page.waitForFunction(() =>
-    document.getAnimations().every((a) => !(a instanceof CSSTransition)),
-  );
+  await page
+    .waitForFunction(
+      () =>
+        document.getAnimations().every((a) => !(a instanceof CSSTransition)),
+      undefined,
+      { timeout: 5_000 },
+    )
+    .catch(() => {
+      throw new Error("CSS transitions still running before axe scan");
+    });
   const results = await new AxeBuilder({ page })
     .withTags(AXE_WCAG_TAGS)
     .analyze();
