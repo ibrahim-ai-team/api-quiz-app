@@ -23,6 +23,10 @@
     "size:selftest": "node tests/size-fixtures/run-size-selftest.mjs",
     "csp:check": "node scripts/check-dist-csp.mjs",
     "csp:selftest": "node tests/csp-fixtures/run-csp-selftest.mjs",
+    "e2e": "playwright test",
+    "e2e:chromium": "playwright test --project=\"chromium-*\"",
+    "e2e:install": "playwright install --with-deps chromium webkit",
+    "e2e:fixtures": "node tests/e2e/fixtures/validate-fixtures.ts",
     "check": "npm run lint && npm run lint:fixtures && npm run typecheck && npm run content:validate && npm run test"
   },
   "dependencies": {
@@ -30,7 +34,9 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "9.39.5",
+    "@playwright/test": "1.56.1",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
@@ -46,5 +52,8 @@
     "vite": "8.3.4",
     "vitest": "5.0.5",
     "zod": "4.6.7"
+  },
+  "overrides": {
+    "playwright-core": "1.56.1"
   }
 }

@@ -14,9 +14,9 @@ Planning and status live in [`api-quiz-app`](https://github.com/ibrahim-ai-team/
 
 Stack: TypeScript (strict), React 19, Vite, CSS Modules with CSS custom-property design tokens, built-in hash router, Zod for build-time content validation only; static SPA deployed to GitHub Pages; Node.js active LTS for build and CI only.
 
-Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm run check` runs lint, typecheck, content validation and unit tests, and `npm run e2e` (added in T-03) runs Playwright against `npm run build && npm run preview`.
+Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm run check` runs lint, typecheck, content validation and unit tests, and `npm run e2e` runs Playwright against `npm run build && npm run preview` at `http://localhost:4173/api-quiz-app/`.
 
-CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size` (gzip budgets: JS at most 200 kB, data at most 60 kB), plus dependency review on PRs and an informational, non-required Node 24 job.
+CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size` (gzip budgets: JS at most 200 kB, data at most 60 kB), plus dependency review on PRs and an informational, non-required Node 24 job. A separate `e2e` job validates the E2E fixture bank and runs Playwright: the PR set (Chromium at 320, 375, 768, 1280, 1920 and 640x360, plus WebKit iPhone) on pull requests, and additionally Firefox and the full device set (`E2E_FULL=1`) on pushes to `main`.
 
 Commands (Node 22, see `.nvmrc`):
 
@@ -32,7 +32,11 @@ Commands (Node 22, see `.nvmrc`):
 | `npm run typecheck`                       | `tsc -b` over the app, tooling and test projects                                   |
 | `npm run test`                            | Vitest unit tests                                                                  |
 | `npm run format` / `npm run format:check` | Prettier write / check                                                             |
-| `npm run content:validate`                | Placeholder until T-05                                                             |
+| `npm run content:validate`                | Validates the question bank; `content:validate:release` adds US-8.1 thresholds     |
+| `npm run e2e`                             | Playwright PR set on the production build; `E2E_FULL=1` adds Firefox and devices   |
+| `npm run e2e:chromium`                    | Only the Chromium projects (for machines without WebKit)                           |
+| `npm run e2e:install`                     | Install the Playwright Chromium and WebKit browsers with system dependencies       |
+| `npm run e2e:fixtures`                    | Validate E2E fixture banks with the content validator (drift guard)                |
 
 ## Testing
 
