@@ -2,7 +2,8 @@
  * Quiz creation (T-07; US-1.3, US-1.4, US-1.5, US-2.2; FR-2..FR-5).
  *
  * Pure and deterministic: the same bank, scope, seed and length always give
- * a deep-equal quiz. All randomness comes from the injected `SeededRng`.
+ * a deep-equal quiz. All randomness comes from a mulberry32 `Rng` built from
+ * the seed, and `quiz.seed` reproduces the quiz.
  * Never throws; invalid requests return an error result.
  *
  * The bank is assumed to have passed `isBank` (every question names a known
@@ -10,7 +11,7 @@
  * so every question in it is eligible.
  */
 import type { Bank, BankOption, BankQuestion } from "../content/types";
-import { shuffle, type SeededRng } from "./rng";
+import { createSeededRng, shuffle, type Rng } from "./rng";
 import type {
   CreateQuizResult,
   EligibleTopic,
@@ -19,7 +20,10 @@ import type {
   QuizScope,
 } from "./types";
 
-/** Default and maximum number of questions per quiz (FR-2, FR-3). */
+/**
+ * Default number of questions per quiz (FR-2, FR-3); callers may pass another
+ * positive integer.
+ */
 export const DEFAULT_QUIZ_LENGTH = 10;
 
 /** Mixed quizzes span at least this many topics where possible (US-1.4). */
@@ -59,7 +63,7 @@ function trueFalseRank(option: BankOption): number {
  * never shuffled and are put in the canonical "true", "false" order without
  * consuming randomness.
  */
-function toQuizQuestion(question: BankQuestion, rng: SeededRng): QuizQuestion {
+function toQuizQuestion(question: BankQuestion, rng: Rng): QuizQuestion {
   const options =
     question.type === "true-false"
       ? question.options
@@ -84,12 +88,17 @@ function toQuizQuestion(question: BankQuestion, rng: SeededRng): QuizQuestion {
  * min(MIXED_MIN_TOPICS, shown topics, n) topics: one random question from
  * each of k randomly chosen topics, then the rest from the remaining pool.
  * The caller shuffles the final list.
+ *
+ * By design the spread topics are chosen with equal weight, not in
+ * proportion to their size, so small topics are over-represented compared
+ * with a uniform draw from the whole pool. This is what guarantees the
+ * topic spread (US-1.4).
  */
 function drawMixed(
   questions: readonly BankQuestion[],
   topicIds: readonly string[],
   n: number,
-  rng: SeededRng,
+  rng: Rng,
 ): BankQuestion[] {
   const k = Math.min(MIXED_MIN_TOPICS, topicIds.length, n);
   const spreadTopics = shuffle(topicIds, rng).slice(0, k);
@@ -122,16 +131,19 @@ function normaliseLength(length: number): number {
  * - Mixed: N = min(length, total count) distinct questions from at least
  *   min(3, shown topics) topics when N allows it (otherwise N topics).
  *
- * Question order and single-choice option order come from `rng` and are
- * fixed in the returned quiz. A `length` that is not a positive integer falls
+ * Question order and single-choice option order come from a seeded `Rng`
+ * built with `createSeededRng(seed)` and are fixed in the returned quiz.
+ * `quiz.seed` is the normalised (unsigned 32-bit) seed, so
+ * `createQuiz(bank, scope, quiz.seed, length)` reproduces the quiz. A `length` that is not a positive integer falls
  * back to `DEFAULT_QUIZ_LENGTH`.
  */
 export function createQuiz(
   bank: Bank,
   scope: QuizScope,
-  rng: SeededRng,
+  seed: number,
   length: number = DEFAULT_QUIZ_LENGTH,
 ): CreateQuizResult {
+  const rng = createSeededRng(seed);
   const cap = normaliseLength(length);
   const shown = eligibleTopics(bank);
   const shownIds = new Set(shown.map((topic) => topic.id));
