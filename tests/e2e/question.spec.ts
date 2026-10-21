@@ -295,14 +295,17 @@ test.describe("T-12 Question view", () => {
     });
     await expect(longOption).toBeVisible();
     await expectNoHorizontalScroll(page);
-    // h1 -> code box -> radio group (one tab stop); ArrowUp from the first
-    // radio wraps to the last one (native radio behaviour).
+    // h1 -> code box -> radio group (one tab stop); ArrowDown steps to the
+    // last radio. WebKit does not wrap at the ends, so no ArrowUp wrap.
     const radios = options(page).getByRole("radio");
     await page.getByRole("heading", { level: 1 }).focus();
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await expect(radios.first()).toBeFocused();
-    await page.keyboard.press("ArrowUp");
+    const count = await radios.count();
+    for (let i = 1; i < count; i += 1) {
+      await page.keyboard.press("ArrowDown");
+    }
     await expect(radios.last()).toBeFocused();
     await expect(radios.last()).toBeChecked();
     await expect(radios.last()).toBeInViewport();
