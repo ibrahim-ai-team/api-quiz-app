@@ -8,6 +8,7 @@ import {
   cpSync,
   existsSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -57,40 +58,60 @@ function readBank(file: string): Bank {
   return data;
 }
 
-function seedQuestionIds(): string[] {
-  return (
-    JSON.parse(
-      readFileSync(path.join(CONTENT, "questions/status-codes.json"), "utf8"),
-    ) as { questions: { id: string }[] }
-  ).questions.map((q) => q.id);
+/** Committed content questions, split by review state. */
+function contentQuestions(): { reviewed: string[]; drafts: string[] } {
+  const dir = path.join(CONTENT, "questions");
+  const all = readdirSync(dir)
+    .filter((name) => name.endsWith(".json"))
+    .flatMap(
+      (name) =>
+        (
+          JSON.parse(readFileSync(path.join(dir, name), "utf8")) as {
+            questions: { id: string; reviewStatus: string }[];
+          }
+        ).questions,
+    );
+  return {
+    reviewed: all.filter((q) => q.reviewStatus === "reviewed").map((q) => q.id),
+    drafts: all.filter((q) => q.reviewStatus === "draft").map((q) => q.id),
+  };
 }
 
 describe("scripts/build-content.ts", () => {
-  it("production: emits no draft question (all seeds are drafts -> 0 questions)", () => {
+  it("production: emits exactly the reviewed questions and no draft", () => {
+    const { reviewed, drafts } = contentQuestions();
     const { result, out } = build(CONTENT, "production");
     expect(result.status, result.stderr).toBe(0);
     const bank = readBank(out);
-    expect(bank.questions).toEqual([]);
+    expect(bank.questions.map((q) => q.id).sort()).toEqual(
+      [...reviewed].sort(),
+    );
     expect(bank.topics.length).toBeGreaterThan(0);
     const raw = readFileSync(out, "utf8");
-    for (const id of seedQuestionIds()) expect(raw).not.toContain(id);
+    for (const id of drafts) expect(raw).not.toContain(`"${id}"`);
     expect(result.stdout).toMatch(
-      /content:build \(production\).*6 drafts excluded/,
+      new RegExp(
+        `content:build \\(production\\).*${String(drafts.length)} drafts excluded`,
+      ),
     );
   });
 
   it("defaults to production mode when --mode is omitted", () => {
+    const { reviewed } = contentQuestions();
     const { result, out } = build(CONTENT);
     expect(result.status, result.stderr).toBe(0);
-    expect(readBank(out).questions).toEqual([]);
+    expect(readBank(out).questions).toHaveLength(reviewed.length);
   });
 
   it("development: includes drafts", () => {
+    const { reviewed, drafts } = contentQuestions();
     const { result, out } = build(CONTENT, "development");
     expect(result.status, result.stderr).toBe(0);
     const bank = readBank(out);
-    expect(bank.questions).toHaveLength(6);
-    expect(bank.questions.every((q) => q.reviewStatus === "draft")).toBe(true);
+    expect(bank.questions).toHaveLength(reviewed.length + drafts.length);
+    expect(bank.questions.some((q) => q.reviewStatus === "draft")).toBe(
+      drafts.length > 0,
+    );
   });
 
   it("is byte-identical across runs for unchanged content", () => {

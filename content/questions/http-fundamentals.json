@@ -8,15 +8,28 @@
       "type": "single-choice",
       "prompt": "Which header field must a client send in every HTTP/1.1 request message?",
       "options": [
-        { "id": "a", "text": "Host" },
-        { "id": "b", "text": "User-Agent" },
-        { "id": "c", "text": "Accept" },
-        { "id": "d", "text": "Referer" }
+        {
+          "id": "a",
+          "text": "Host"
+        },
+        {
+          "id": "b",
+          "text": "User-Agent"
+        },
+        {
+          "id": "c",
+          "text": "Accept"
+        },
+        {
+          "id": "d",
+          "text": "Referer"
+        }
       ],
       "correct": "a",
       "explanation": "RFC 9112 requires a client to send a `Host` header field in all HTTP/1.1 request messages so the server can identify the target authority. User-Agent, Accept and Referer are useful but not required.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9112.html#section-3.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "http-content-type-media-type",
@@ -25,13 +38,20 @@
       "type": "true-false",
       "prompt": "The `Content-Type` header field indicates the media type of the associated representation, for example `application/json`.",
       "options": [
-        { "id": "true", "text": "True" },
-        { "id": "false", "text": "False" }
+        {
+          "id": "true",
+          "text": "True"
+        },
+        {
+          "id": "false",
+          "text": "False"
+        }
       ],
       "correct": "true",
       "explanation": "RFC 9110 defines `Content-Type` as the field that indicates the media type of the associated representation, which tells the recipient how to interpret the content. Compression is described separately by `Content-Encoding`.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.3",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "cache-control-no-cache-means-revalidate",
@@ -60,7 +80,8 @@
       "correct": "a",
       "explanation": "The unqualified `no-cache` response directive allows storing but forbids reuse without forwarding the request for validation and getting a successful response. Forbidding storage is what `no-store` does, and limiting caching to private caches is what `private` does.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.4",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "if-none-match-matching-etag-get",
@@ -73,14 +94,24 @@
           "id": "a",
           "text": "304 Not Modified, without sending the representation again"
         },
-        { "id": "b", "text": "412 Precondition Failed" },
-        { "id": "c", "text": "200 OK with the full representation" },
-        { "id": "d", "text": "409 Conflict" }
+        {
+          "id": "b",
+          "text": "412 Precondition Failed"
+        },
+        {
+          "id": "c",
+          "text": "200 OK with the full representation"
+        },
+        {
+          "id": "d",
+          "text": "409 Conflict"
+        }
       ],
       "correct": "a",
       "explanation": "The entity tag matches, so the `If-None-Match` condition is false. For GET or HEAD, the origin server must not perform the method and responds with 304 Not Modified. A 412 response is for other methods, for example a PUT with `If-None-Match: *` when the resource already exists.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "vary-header-extends-cache-key",
@@ -109,7 +140,8 @@
       "correct": "a",
       "explanation": "Vary names request fields that may have influenced the selected response, and RFC 9111 forbids reusing the stored response without revalidation unless those fields match the original request. In effect, Vary adds those fields to the cache key; it does not make the response uncacheable.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9111.html#section-4.1",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "transfer-encoding-vs-content-encoding",
@@ -136,9 +168,10 @@
         }
       ],
       "correct": "a",
-      "explanation": "RFC 9112 states that, unlike Content-Encoding, Transfer-Encoding is a property of the message, not of the representation. Any recipient along the chain may decode or add transfer codings, while a content coding such as gzip stays part of the representation from end to end.",
+      "explanation": "RFC 9112 states that, unlike Content-Encoding, Transfer-Encoding is a property of the message, not of the representation. Any recipient along the request/response chain may decode the received transfer codings or apply additional ones, as long as it updates the Transfer-Encoding field. A content coding such as gzip is instead a characteristic of the representation itself, and RFC 9110 notes that the representation is typically decoded only just before it is rendered or used.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9112.html#section-6.1",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "http11-connections-persistent-by-default",
@@ -147,13 +180,20 @@
       "type": "true-false",
       "prompt": "In HTTP/1.1, a connection persists after the current response by default, unless the `close` connection option is present, for example `Connection: close`.",
       "options": [
-        { "id": "true", "text": "True" },
-        { "id": "false", "text": "False" }
+        {
+          "id": "true",
+          "text": "True"
+        },
+        {
+          "id": "false",
+          "text": "False"
+        }
       ],
       "correct": "true",
       "explanation": "RFC 9112 says HTTP/1.1 defaults to persistent connections, so several requests and responses can share one connection. Persistence ends when the most recently received message carries the `close` connection option.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9112.html#section-9.3",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     },
     {
       "id": "cookie-max-age-overrides-expires",
@@ -162,8 +202,14 @@
       "type": "single-choice",
       "prompt": "A server sends `Set-Cookie: sid=abc; Expires=Thu, 21 Oct 2027 07:00:00 GMT; Max-Age=60` about a year before that date. Under RFC 6265, when does the cookie expire?",
       "options": [
-        { "id": "a", "text": "About 60 seconds after it is received" },
-        { "id": "b", "text": "On 21 October 2027, as given by Expires" },
+        {
+          "id": "a",
+          "text": "About 60 seconds after it is received"
+        },
+        {
+          "id": "b",
+          "text": "On 21 October 2027, as given by Expires"
+        },
         {
           "id": "c",
           "text": "When the browser session ends, because the two attributes conflict"
@@ -176,7 +222,8 @@
       "correct": "a",
       "explanation": "RFC 6265 states that when a cookie has both Max-Age and Expires, Max-Age has precedence and controls the expiration date. Expires is effectively ignored, so the cookie expires about 60 seconds after it is received.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc6265.html#section-4.1.2.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-23-R01)"
     }
   ]
 }
