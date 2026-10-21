@@ -92,12 +92,17 @@ const CONTENT_SELECTOR = [
 
 /**
  * US-9.1 "no content clipped or overlapped", as bounding boxes:
- * - every visible content element lies inside the page horizontally;
+ * - page edge: EVERY visible element (not only the content selector) lies
+ *   inside the page horizontally, except content inside a code box (`pre`),
+ *   which scrolls by design. This does not rely on `scrollWidth`, so a
+ *   `body { overflow-x: hidden }` that hides the page scroll bar cannot hide
+ *   an element that runs past the edge (T-16-R01 M2);
  * - no two visible content elements overlap, ignoring ancestor/descendant
  *   pairs (a link inside a paragraph);
- * - no element that hides overflow has more content than its box shows
- *   (code boxes scroll by design and are excluded; visually hidden elements,
- *   the skip link and the live region, are ignored).
+ * - no element that hides overflow, `html` and `body` included, has more
+ *   content than its box shows (code boxes scroll by design and are
+ *   excluded; visually hidden elements, the skip link and the live region,
+ *   are ignored).
  */
 export async function expectNoClippingOrOverlap(page: Page): Promise<void> {
   const problems = await page.evaluate((selector: string) => {
@@ -117,8 +122,8 @@ export async function expectNoClippingOrOverlap(page: Page): Promise<void> {
       );
     };
     const out: string[] = [];
-    const items = Array.from(document.querySelectorAll(selector)).filter(shown);
-    for (const el of items) {
+    for (const el of Array.from(document.querySelectorAll("body *"))) {
+      if (!shown(el) || el.closest("pre") !== null) continue;
       const r = el.getBoundingClientRect();
       if (r.left < -0.5 || r.right > vw + 0.5) {
         out.push(
@@ -126,6 +131,7 @@ export async function expectNoClippingOrOverlap(page: Page): Promise<void> {
         );
       }
     }
+    const items = Array.from(document.querySelectorAll(selector)).filter(shown);
     for (let i = 0; i < items.length; i += 1) {
       const a = items[i];
       if (a === undefined) continue;
@@ -143,7 +149,9 @@ export async function expectNoClippingOrOverlap(page: Page): Promise<void> {
         }
       }
     }
-    for (const el of Array.from(document.querySelectorAll("body *"))) {
+    for (const el of Array.from(
+      document.querySelectorAll("html, body, body *"),
+    )) {
       if (!shown(el) || el.tagName === "PRE") continue;
       const s = getComputedStyle(el);
       const hidesX = s.overflowX === "hidden" || s.overflowX === "clip";

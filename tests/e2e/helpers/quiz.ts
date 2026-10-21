@@ -146,15 +146,18 @@ export async function playQuizByMouse(
   return played;
 }
 
-/** Starts a topic-c quiz and advances with the mouse until `id` is shown. */
+/**
+ * Starts a topic-c quiz and advances with the mouse until `id` is shown.
+ * Returns the 1-based position k of that question in the quiz (of 3).
+ */
 export async function openTopicCQuestion(
   page: Page,
   id: string,
-): Promise<void> {
+): Promise<number> {
   await startQuizByMouse(page, /^Fixture topic C/, 3);
   for (let k = 1; k <= 3; k += 1) {
     await expect(h1(page, strings.question.heading(k, 3))).toBeFocused();
-    if ((await currentQuestion(page)).id === id) return;
+    if ((await currentQuestion(page)).id === id) return k;
     await answerByMouse(page, true);
     await nextButton(page).click();
   }

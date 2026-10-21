@@ -27,7 +27,6 @@ import {
   answerByMouse,
   button,
   currentQuestion,
-  anyH1,
   h1,
   nextButton,
   openLanding,
@@ -53,6 +52,13 @@ const OWN_VIEWPORT_PROJECTS = new Set([
   "webkit-iphone",
 ]);
 function ownViewportProjects(testInfo: TestInfo): void {
+  // Guard (T-16-R01 L1): if the projects are renamed in playwright.config.ts,
+  // these tests would silently skip everywhere. Fail instead.
+  const configured = testInfo.config.projects.map((p) => p.name);
+  expect(
+    configured.some((name) => OWN_VIEWPORT_PROJECTS.has(name)),
+    `none of ${[...OWN_VIEWPORT_PROJECTS].join(", ")} is a configured project (${configured.join(", ")})`,
+  ).toBe(true);
   test.skip(
     !OWN_VIEWPORT_PROJECTS.has(testInfo.project.name),
     "sets its own viewport; runs once per engine (chromium-1280, firefox-1280, webkit-iphone)",
@@ -174,17 +180,15 @@ test.describe("T-16 responsive: rotation, reflow, text spacing, short landscape"
     await page.setViewportSize({ width: 640, height: 360 });
     await openLanding(page);
     expect(await stickyOrFixedElements(page)).toEqual([]);
-    await openTopicCQuestion(page, CODE_QUESTION_ID);
+    // k: position of the code question in this run (order is random).
+    const k = await openTopicCQuestion(page, CODE_QUESTION_ID);
     expect(await stickyOrFixedElements(page)).toEqual([]);
 
     // Question: Exit (before the h1), code box, radio group, Submit.
     await page.keyboard.press("Shift+Tab");
     await expect(button(page, strings.question.exit)).toBeFocused();
     await expectFocusNotObscured(page);
-    const k = Number(
-      /Question (\d+) of 3/.exec((await anyH1(page).textContent()) ?? "")?.[1],
-    );
-    await anyH1(page).focus();
+    await h1(page, strings.question.heading(k, 3)).focus();
     await tabUntil(page, "Tab", /^region "/);
     await expectVisibleFocusIndicator(page);
     await expectFocusNotObscured(page);
@@ -223,17 +227,25 @@ test.describe("T-16 responsive: rotation, reflow, text spacing, short landscape"
 });
 
 /**
- * 200% text plus text spacing, at explicit viewports. 320x800 and 375x812 are
- * NOT in this list: they fail on defect D-T16-01 (feedback option tags
- * "Correct answer" / "Your answer" use `white-space: nowrap` and push the page
- * to scrollWidth 426 px). They go back in when T-17 fixes it. Reported in
- * docs/qa/ac-test-matrix.md (T-US9-4) and the T-16 QA report.
+ * 200% text plus text spacing, at explicit viewports. 320x800 and 375x812
+ * carry `knownDefect: "D-T16-01"`: the feedback option tags ("Correct
+ * answer" / "Your answer") use `white-space: nowrap` and push the page to
+ * scrollWidth 426 px. Those cases are marked `test.fail`, so they report as
+ * expected failures now, and T-17's fix shows up as an unexpected pass: the
+ * signal to remove `knownDefect`. Recorded in docs/qa/ac-test-matrix.md
+ * (section 7, D-T16-01) and the manual checklist (section E).
  */
-const TEXT_SPACING_VIEWPORTS = [
+const TEXT_SPACING_VIEWPORTS: readonly {
+  width: number;
+  height: number;
+  knownDefect?: string;
+}[] = [
+  { width: 320, height: 800, knownDefect: "D-T16-01" },
+  { width: 375, height: 812, knownDefect: "D-T16-01" },
   { width: 1280, height: 800 },
   { width: 768, height: 1024 },
   { width: 640, height: 360 },
-] as const;
+];
 
 test.describe("T-16 responsive: 200% text and WCAG 1.4.12 text spacing", () => {
   test.beforeEach(async ({ page }, testInfo) => {
@@ -247,7 +259,11 @@ test.describe("T-16 responsive: 200% text and WCAG 1.4.12 text spacing", () => {
       page,
       browserName,
     }) => {
-      await page.setViewportSize(viewport);
+      test.fail(viewport.knownDefect !== undefined, "D-T16-01, fixed by T-17");
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      });
       await applyTextResizeAndSpacing(page, browserName);
       await openLanding(page);
       await expectTextResizeAndSpacingApplied(page);

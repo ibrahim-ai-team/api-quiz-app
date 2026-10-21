@@ -91,4 +91,4 @@ Run on one desktop browser with the keyboard and on the iPhone with taps.
 
 | ID | Finding | Where |
 | --- | --- | --- |
-| D-T16-01 | With 200% text and WCAG 1.4.12 text spacing at 320 and 375 px wide, the feedback option tags ("Correct answer", "Your answer") do not wrap and make the page scroll sideways (scrollWidth 426 px). | T-16 QA report; owner T-17 (frontend-developer) |
+| D-T16-01 | With 200% text and WCAG 1.4.12 text spacing at 320 and 375 px wide, the feedback option tags ("Correct answer", "Your answer") do not wrap and make the page scroll sideways (scrollWidth 426 px). Automated as an expected failure (`test.fail`) in `responsive.spec.ts` until T-17 fixes it. | matrix section 7; owner T-17 (frontend-developer) |
