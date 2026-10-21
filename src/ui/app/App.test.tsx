@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoadBankResult } from "../../content/loader";
 import { strings } from "../strings";
 import { App } from "./App";
-import { LOADING_DELAY_MS, STILL_LOADING_MS } from "./views/BankStatus";
+import { LOADING_DELAY_MS, STILL_LOADING_MS } from "../components/BankStatus";
 import { deferred, FAILED, OK, TEST_BANK } from "./testBank";
 
 function setHash(hash: string): void {
@@ -212,20 +212,74 @@ describe("T-US12-2 404 and topic not found", () => {
       expect(document.activeElement).toBe(h1());
       expect(document.title).toBe(strings.title.topicNotFound);
       expect(main().textContent).not.toContain(hash.slice("#/topic/".length));
-      expect(
-        screen
-          .getByRole("link", { name: strings.common.home })
-          .getAttribute("href"),
-      ).toBe("#/");
+      // views.md §7b: the Landing topic list follows, nothing preselected.
+      const radio = screen.getByRole<HTMLInputElement>("radio");
+      expect(radio.checked).toBe(false);
     },
   );
 
-  it("renders the Landing placeholder for a valid topic deep link", async () => {
+  it("renders Landing with the topic preselected for a valid deep link", async () => {
     setHash("#/topic/topic-a");
     renderApp(Promise.resolve(OK));
     await flush();
     expect(h1().textContent).toContain(strings.landing.heading);
     expect(document.title).toBe(strings.title.landing);
+    expect(screen.getByRole<HTMLInputElement>("radio").checked).toBe(true);
+    expect(window.location.hash).toBe("#/topic/topic-a");
+  });
+});
+
+describe("T-US1-8 deep-link preselection follows the route (T-09-R01 L2)", () => {
+  it("resets the selection when the topic route changes and on #/", async () => {
+    const bank = {
+      ...TEST_BANK,
+      topics: [...TEST_BANK.topics, { id: "topic-b", name: "Topic B" }],
+      questions: TEST_BANK.questions.flatMap((q) => [
+        q,
+        { ...q, id: "q-2", topic: "topic-b" },
+      ]),
+    };
+    setHash("#/topic/topic-a");
+    renderApp(Promise.resolve({ ok: true, bank }));
+    await flush();
+    const radio = (name: RegExp) =>
+      screen.getByRole<HTMLInputElement>("radio", { name });
+    expect(radio(/^Topic A/).checked).toBe(true);
+    fireEvent.click(radio(/^Mixed/));
+    expect(radio(/^Mixed/).checked).toBe(true);
+    // Landing is keyed by route: a remount while loading would also restart
+    // the BankStatus timers (accepted, T-09-R01 L2).
+    navigate("#/topic/topic-b");
+    expect(radio(/^Topic B/).checked).toBe(true);
+    expect(radio(/^Mixed/).checked).toBe(false);
+    navigate("#/");
+    expect(
+      screen.getAllByRole<HTMLInputElement>("radio").some((r) => r.checked),
+    ).toBe(false);
+  });
+});
+
+describe("T-US1-3/6 Start creates one quiz and opens #/quiz", () => {
+  it("creates the quiz once on a double click and shows question 1 of N", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    const hashChanges = vi.fn();
+    window.addEventListener("hashchange", hashChanges);
+    try {
+      fireEvent.click(screen.getByRole("radio"));
+      const start = screen.getByRole("button", { name: strings.landing.start });
+      fireEvent.click(start);
+      fireEvent.click(start);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(window.location.hash).toBe("#/quiz");
+      expect(hashChanges).toHaveBeenCalledTimes(1);
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+      expect(document.activeElement).toBe(h1());
+    } finally {
+      window.removeEventListener("hashchange", hashChanges);
+    }
   });
 });
 

@@ -76,8 +76,9 @@ test.describe("T-03 shell smoke", () => {
     ).toHaveCount(1);
     // The page loaded the fixture bank, not the real content (standard 12):
     // the request was answered by the route and the app adopted the fixture's
-    // contentVersion. Fixture topic names become visible with T-09 (Landing).
+    // contentVersion, and its topic names are shown (T-09).
     await expectBankReady(page);
+    await expect(page.locator("main")).toContainText("Fixture topic A");
     await expect(page.locator("main")).toHaveAttribute(
       "data-content-version",
       fixtureContentVersion,

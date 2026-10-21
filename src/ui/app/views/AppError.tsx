@@ -6,8 +6,8 @@ import { useEffect, useRef, type MouseEvent } from "react";
 import { strings } from "../../strings";
 import { routeHref } from "../router";
 import { useDocumentTitle } from "../useDocumentTitle";
-import { ErrorIcon } from "./BankStatus";
-import styles from "./views.module.css";
+import { ErrorIcon } from "../../components/BankStatus";
+import styles from "../../components/common.module.css";
 
 const HOME = routeHref({ name: "landing" });
 

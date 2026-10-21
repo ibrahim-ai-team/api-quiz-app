@@ -4,9 +4,9 @@
  * Retry button stays the same DOM node across a retry and keeps focus.
  */
 import { useEffect, useId, useState } from "react";
-import { strings } from "../../strings";
-import type { BankState } from "../bankState";
-import styles from "./views.module.css";
+import { strings } from "../strings";
+import type { BankState } from "../app/bankState";
+import styles from "./common.module.css";
 
 /** No indicator for fast loads (J1). */
 export const LOADING_DELAY_MS = 300;

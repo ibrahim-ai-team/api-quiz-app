@@ -42,6 +42,26 @@ export const strings = {
     heading: "Practise API interview questions",
     description:
       "Answer short quizzes on HTTP, REST, authentication and other API topics, and learn from an explanation after every question.",
+    topicsLegend: "Choose a topic",
+    /** copy:landing.topicCount */
+    topicCount: (n: number): string =>
+      n === 1 ? "1 question" : `${String(n)} questions`,
+    mixedLabel: "Mixed",
+    mixedDescription: "Questions from several topics",
+    start: "Start quiz",
+    startHint: "Choose a topic to start.",
+    /** Not in copy.md (T-09-D01): production bank with 0 questions. */
+    noTopics: "No questions are available yet.",
+    /** Not in copy.md (T-09-D01): createQuiz returned an error. */
+    startError: "The quiz could not be started. Try again.",
+    aboutHeading: "About the questions",
+    accuracyNote:
+      "Every question is written for ApiQuiz and checked against a primary source, such as an RFC or an official specification. Each answer links to its source.",
+  },
+  question: {
+    /** copy:question.heading */
+    heading: (k: number, n: number): string =>
+      `Question ${String(k)} of ${String(n)}`,
   },
   loading: {
     text: "Loading questions...",

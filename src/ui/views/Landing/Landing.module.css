@@ -1,0 +1,134 @@
+/* Landing topic group and Start (T-09; views.md §1; tokens.md §1-§7). */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The whole row is the tap target (--option-min). */
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--option-min);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.option:hover {
+  background: var(--color-surface);
+}
+
+.option:has(.radio:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-selected-bg);
+}
+
+/* Ring on the whole row; the input's own outline is the fallback. */
+@supports selector(:has(*)) {
+  .option:has(.radio:focus-visible) {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .option .radio:focus-visible {
+    outline: none;
+  }
+}
+
+.radio {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.125rem 0 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.optionLabel {
+  display: flex;
+  flex-direction: column;
+}
+
+.optionName {
+  font-size: var(--font-size-lg);
+  overflow-wrap: anywhere;
+}
+
+.optionCount,
+.optionDescription,
+.hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+
+.hint {
+  margin: 0;
+}
+
+.aboutHeading {
+  margin-block: var(--space-6) var(--space-2);
+  font-size: var(--font-size-xl);
+}
+
+/* sm: counts right-aligned; Start inline with its hint. */
+@media (min-width: 40em) {
+  .optionLabel {
+    flex-flow: row wrap;
+    align-items: baseline;
+    column-gap: var(--space-3);
+  }
+
+  .optionCount {
+    margin-inline-start: auto;
+  }
+
+  .start {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+}
+
+@media (forced-colors: active) {
+  .option,
+  .option:has(.radio:checked) {
+    border-color: CanvasText;
+  }
+
+  @supports selector(:has(*)) {
+    .option:has(.radio:focus-visible) {
+      outline-color: Highlight;
+    }
+  }
+}

@@ -1,4 +1,4 @@
-/* Shell views: Landing placeholder, loading, errors, 404 (views.md §5-§7). */
+/* Shared view primitives: headings, text, buttons, links, bank status (views.md §0, §5-§7). */
 
 .heading {
   display: flex;
