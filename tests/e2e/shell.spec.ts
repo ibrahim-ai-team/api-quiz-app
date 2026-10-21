@@ -147,10 +147,10 @@ test.describe("T-08 app shell and routes", () => {
     await page.goto("./");
     await expectBankStatus(page, "ready");
     await page.evaluate(() => {
-      window.location.hash = "#/results";
+      window.location.hash = "#/nope";
     });
-    await expect(h1(page, strings.placeholder.resultsHeading)).toBeFocused();
-    await expect(page).toHaveTitle(strings.title.resultsPlaceholder);
+    await expect(h1(page, strings.notFound.heading)).toBeFocused();
+    await expect(page).toHaveTitle(strings.title.notFound);
     await page.goBack();
     await expect(h1(page, strings.landing.heading)).toBeFocused();
     await expect(page).toHaveTitle(strings.title.landing);
@@ -160,18 +160,19 @@ test.describe("T-08 app shell and routes", () => {
     page,
   }) => {
     await useFixtureBank(page);
-    await page.goto("./#/results");
-    await expect(h1(page, strings.placeholder.resultsHeading)).toBeFocused();
-    await page.evaluate(() => {
-      (document.activeElement as HTMLElement | null)?.blur();
-    });
+    // First load of Landing does not move focus (views.md §0), so Tab
+    // starts at the top of the document. (#/results, used before T-15, now
+    // redirects without a quiz.)
+    await page.goto("./#/");
+    await expectBankStatus(page, "ready");
+    await expect(page.locator("body")).toBeFocused();
     await page.keyboard.press("Tab");
     const skip = page.getByRole("link", { name: strings.shell.skipLink });
     await expect(skip).toBeFocused();
     await expect(skip).toBeVisible();
     await page.keyboard.press("Enter");
     await expect(page.locator("main")).toBeFocused();
-    await expect(page).toHaveURL(/#\/results$/);
+    await expect(page).toHaveURL(/#\/$/);
   });
 });
 

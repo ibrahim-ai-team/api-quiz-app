@@ -47,8 +47,12 @@ export const strings = {
       const heading = `Question ${String(k)} of ${String(n)}`;
       return topic === null ? pageTitle(heading) : pageTitle(heading, topic);
     },
-    /** Placeholder until T-15 sets copy:title.results. */
-    resultsPlaceholder: pageTitle("Results"),
+    /**
+     * copy:title.results; `scope` is the topic name or "Mixed". A `null`
+     * scope (unknown topic id) omits that segment, as for the question title.
+     */
+    results: (scope: string | null): string =>
+      scope === null ? pageTitle("Results") : pageTitle("Results", scope),
   },
   landing: {
     heading: "Practise API interview questions",
@@ -129,9 +133,25 @@ export const strings = {
     topicBody:
       "That topic does not exist or has been renamed. Choose a topic from the list below.",
   },
-  /** Interim view; replaced by T-15 (Results). */
-  placeholder: {
-    resultsHeading: "Your results",
-    body: "This view is not available yet.",
+  results: {
+    heading: "Your results",
+    /** copy:results.score (US-4.1) */
+    score: (x: number, n: number): string => `${String(x)} / ${String(n)}`,
+    /** copy:results.percent; the value is rounded half-up by T-14. */
+    percent: (pct: number): string => `${String(pct)}%`,
+    /** copy:results.band.* (US-4.2), keyed by the domain `ScoreBand`. */
+    band: {
+      zero: "No correct answers this time. Read the explanations and try again.",
+      low: "A start. Review the explanations and try again to build on it.",
+      mid: "Good progress. A bit more practice will make it solid.",
+      high: "Strong result. You are close to mastering this.",
+      perfect: "Perfect score. Every answer was correct.",
+    },
+    breakdownHeading: "Score by topic",
+    /** copy:results.breakdownItem */
+    breakdownItem: (topic: string, x: number, n: number): string =>
+      `${topic}: ${String(x)} / ${String(n)}`,
+    tryAgain: "Try again",
+    chooseAnother: "Choose another topic",
   },
 } as const;

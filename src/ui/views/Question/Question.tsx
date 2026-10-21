@@ -28,6 +28,7 @@ import {
   type QuizSession,
 } from "../../../domain";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
+import { useEntryClickGuard } from "../../components/useEntryClickGuard";
 import common from "../../components/common.module.css";
 import { CheckIcon, CrossIcon, Feedback } from "./Feedback";
 import { strings } from "../../strings";
@@ -97,6 +98,9 @@ export function Question({
   // pointer sequence that hit Submit (Next keeps its own `detail` guard).
   // Any key press or new question ends the sequence (TL N1, SEC I-2).
   const submitSequence = useRef(false);
+  // TL F2: the 2nd click of a double click on Start, Try again or Next must
+  // not check a radio or move focus on the new question (armed per question).
+  useEntryClickGuard(questionId);
   useEffect(() => {
     const view = viewRef.current;
     if (view === null) return;
