@@ -1,0 +1,13 @@
+dist/
+coverage/
+node_modules/
+package-lock.json
+src/content/generated/
+playwright-report/
+test-results/
+.lighthouseci/
+
+# Coordination docs and GitHub templates are maintained outside the code formatter.
+docs/
+.github/pull_request_template.md
+.github/CODEOWNERS
