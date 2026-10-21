@@ -38,7 +38,9 @@ test.describe("T-03 shell smoke", () => {
       page.locator('meta[http-equiv="Content-Security-Policy"]'),
     ).toHaveCount(1);
     expect(pageErrors, "uncaught page errors").toEqual([]);
-    // The shell does not load a bank yet (T-06); the route must be harmless.
+    // The shell does not load a bank yet, so the route must be harmless.
+    // T-06 MUST change this to `toBeGreaterThanOrEqual(1)` and assert that
+    // the rendered landing shows fixture-sourced content (fixture topic names).
     expect(bank.hits()).toBe(0);
   });
 
@@ -47,7 +49,10 @@ test.describe("T-03 shell smoke", () => {
   }) => {
     await page.goto("./");
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expectNoAxeSeriousOrCritical(page);
+    await expectNoAxeSeriousOrCritical(
+      page,
+      page.getByRole("heading", { level: 1, name: "ApiQuiz" }),
+    );
   });
 
   test("T-NFR3-1 shell has no horizontal scroll", async ({ page }) => {
@@ -62,7 +67,7 @@ test.describe("T-03 shell smoke", () => {
     baseURL,
   }) => {
     await useFixtureBank(page);
-    const requests = trackRequests(page);
+    const requests = trackRequests(context);
     await page.goto("./");
     await page.waitForLoadState("networkidle");
     expectAllSameOrigin(requests, baseURL ?? "");

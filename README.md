@@ -16,6 +16,8 @@ Stack: TypeScript (strict), React 19, Vite, CSS Modules with CSS custom-property
 
 Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm run check` runs lint, typecheck, content validation and unit tests, and `npm run e2e` runs Playwright against `npm run build && npm run preview` at `http://localhost:4173/api-quiz-app/`.
 
+Local E2E runs reuse a server already listening on port 4173 (`reuseExistingServer` outside CI), so stop any old `npm run preview` first or the run tests a stale build.
+
 CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size` (gzip budgets: JS at most 200 kB, data at most 60 kB), plus dependency review on PRs and an informational, non-required Node 24 job. A separate `e2e` job validates the E2E fixture bank and runs Playwright: the PR set (Chromium at 320, 375, 768, 1280, 1920 and 640x360, plus WebKit iPhone) on pull requests, and additionally Firefox and the full device set (`E2E_FULL=1`) on pushes to `main`.
 
 Commands (Node 22, see `.nvmrc`):

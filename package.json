@@ -54,6 +54,6 @@
     "zod": "4.6.7"
   },
   "overrides": {
-    "playwright-core": "1.56.1"
+    "playwright-core": "$@playwright/test"
   }
 }

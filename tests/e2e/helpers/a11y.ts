@@ -3,7 +3,7 @@
  * axe via @axe-core/playwright is the automated check that counts toward SC-4.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 export const AXE_WCAG_TAGS = [
   "wcag2a",
@@ -19,8 +19,16 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
  * Runs axe with the WCAG 2.2 AA tags and fails when any serious or critical
  * violation is found, listing rule, impact, help URL and target selectors.
  * The full axe result is attached to the test report.
+ *
+ * `ready` is required: it must identify an element of the state under test,
+ * and it is awaited as visible before scanning, so axe never scans a page
+ * that is still loading or rendering.
  */
-export async function expectNoAxeSeriousOrCritical(page: Page): Promise<void> {
+export async function expectNoAxeSeriousOrCritical(
+  page: Page,
+  ready: Locator,
+): Promise<void> {
+  await expect(ready, "axe readiness locator").toBeVisible();
   const results = await new AxeBuilder({ page })
     .withTags(AXE_WCAG_TAGS)
     .analyze();

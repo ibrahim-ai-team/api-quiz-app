@@ -5,6 +5,7 @@
 import { expect, type Page } from "@playwright/test";
 
 const STORE = "__apiquizCspViolations";
+const CSP_CONSOLE_PATTERN = /Content[- ]Security[- ]Policy/i;
 
 interface CspViolationRecord {
   directive: string;
@@ -19,7 +20,7 @@ export interface CspTracker {
 
 /**
  * Registers a `securitypolicyviolation` listener before any page script runs
- * and collects console errors containing "Content Security Policy".
+ * and collects console errors matching /Content[- ]Security[- ]Policy/i.
  * Call it before `page.goto`.
  */
 export async function trackCspViolations(page: Page): Promise<CspTracker> {
@@ -27,7 +28,7 @@ export async function trackCspViolations(page: Page): Promise<CspTracker> {
   page.on("console", (message) => {
     if (
       message.type() === "error" &&
-      message.text().includes("Content Security Policy")
+      CSP_CONSOLE_PATTERN.test(message.text())
     ) {
       tracker.consoleErrors.push(message.text());
     }

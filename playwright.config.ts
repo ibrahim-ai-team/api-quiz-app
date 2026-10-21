@@ -14,7 +14,8 @@
  *
  * Flaky policy (test strategy section 10): CI retries once with a trace on the
  * first retry. A test that passes only on retry is reported as "flaky" by
- * Playwright and must be logged as a defect; it is not treated as a pass.
+ * Playwright; the run is not auto-failed. QA reports every flaky result and
+ * logs it as a defect. Security, axe and offline tests are never quarantined.
  */
 import { defineConfig, devices, type Project } from "@playwright/test";
 
@@ -24,10 +25,23 @@ const fullSet = process.env.E2E_FULL === "1";
 const PORT = 4173;
 export const BASE_URL = `http://localhost:${String(PORT)}/api-quiz-app/`;
 
+/**
+ * Looks up a Playwright device descriptor and throws on an unknown name, so a
+ * typo or a descriptor removed in a Playwright upgrade cannot silently turn a
+ * project into a default desktop browser.
+ */
+export function device(name: string): (typeof devices)[string] {
+  const descriptor = Object.hasOwn(devices, name) ? devices[name] : undefined;
+  if (descriptor === undefined) {
+    throw new Error(`Unknown Playwright device descriptor: "${name}"`);
+  }
+  return descriptor;
+}
+
 function chromiumAt(name: string, width: number, height: number): Project {
   return {
     name: `chromium-${name}`,
-    use: { ...devices["Desktop Chrome"], viewport: { width, height } },
+    use: { ...device("Desktop Chrome"), viewport: { width, height } },
   };
 }
 
@@ -38,34 +52,34 @@ const prProjects: Project[] = [
   chromiumAt("1280", 1280, 800),
   chromiumAt("1920", 1920, 1080),
   chromiumAt("640x360-landscape", 640, 360),
-  { name: "webkit-iphone", use: { ...devices["iPhone 15"] } },
+  { name: "webkit-iphone", use: { ...device("iPhone 15") } },
 ];
 
 const fullOnlyProjects: Project[] = [
   {
     name: "firefox-1280",
     use: {
-      ...devices["Desktop Firefox"],
+      ...device("Desktop Firefox"),
       viewport: { width: 1280, height: 800 },
     },
   },
   {
     name: "firefox-1920",
     use: {
-      ...devices["Desktop Firefox"],
+      ...device("Desktop Firefox"),
       viewport: { width: 1920, height: 1080 },
     },
   },
-  { name: "android-pixel-7", use: { ...devices["Pixel 7"] } },
+  { name: "android-pixel-7", use: { ...device("Pixel 7") } },
   {
     name: "android-pixel-7-landscape",
-    use: { ...devices["Pixel 7 landscape"] },
+    use: { ...device("Pixel 7 landscape") },
   },
   {
     name: "webkit-iphone-landscape",
-    use: { ...devices["iPhone 15 landscape"] },
+    use: { ...device("iPhone 15 landscape") },
   },
-  { name: "webkit-ipad", use: { ...devices["iPad Pro 11"] } },
+  { name: "webkit-ipad", use: { ...device("iPad Pro 11") } },
 ];
 
 export default defineConfig({

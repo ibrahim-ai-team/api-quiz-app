@@ -16,13 +16,17 @@ function isNetworkUrl(url: string): boolean {
 }
 
 /**
- * Records every network request the page makes from now on, including
- * requests answered by `page.route` and requests that fail while offline.
- * Call it before `page.goto` to capture the initial load.
+ * Records every network request made in the browser context from now on
+ * (all pages, popups and workers), including requests answered by
+ * `page.route` and requests that fail while offline. Call it before
+ * `page.goto` to capture the initial load.
+ *
+ * Requests blocked by the CSP never fire a request event, so they cannot be
+ * seen here; `expectNoCspViolations` (helpers/csp.ts) covers them.
  */
-export function trackRequests(page: Page): RequestLog {
+export function trackRequests(context: BrowserContext): RequestLog {
   const log: RequestLog = { urls: [] };
-  page.on("request", (request) => {
+  context.on("request", (request) => {
     const url = request.url();
     if (isNetworkUrl(url)) log.urls.push(url);
   });
