@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "http-host-header-required",
+      "topic": "http-fundamentals",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Which header field must a user agent send in an HTTP/1.1 request to identify the target host?",
+      "options": [
+        { "id": "a", "text": "Host" },
+        { "id": "b", "text": "User-Agent" },
+        { "id": "c", "text": "Accept" },
+        { "id": "d", "text": "Referer" }
+      ],
+      "correct": "a",
+      "explanation": "RFC 9110 requires a user agent to generate a Host header field in a request unless it sends the same information as the :authority pseudo-header (HTTP/2 and HTTP/3). User-Agent, Accept and Referer are optional.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-7.2",
+      "reviewStatus": "draft"
+    },
+    {
+      "id": "http-content-type-media-type",
+      "topic": "http-fundamentals",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "The Content-Type header field indicates the media type of the content in a message, for example application/json.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "true",
+      "explanation": "RFC 9110 defines Content-Type as the header field that indicates the media type of the associated representation, which tells the recipient how to interpret the content.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.3",
+      "reviewStatus": "draft"
+    }
+  ]
+}

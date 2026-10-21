@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "status-201-created",
+      "topic": "status-codes",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Which status code indicates that the request has been fulfilled and has resulted in one or more new resources being created?",
+      "options": [
+        { "id": "a", "text": "200 OK" },
+        { "id": "b", "text": "201 Created" },
+        { "id": "c", "text": "202 Accepted" },
+        { "id": "d", "text": "204 No Content" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 defines 201 Created as meaning the request has been fulfilled and has resulted in one or more new resources being created. 202 means the request was accepted but processing is not complete.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.2",
+      "reviewStatus": "draft"
+    },
+    {
+      "id": "status-401-missing-credentials",
+      "topic": "status-codes",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Which status code does RFC 9110 define for a request that has not been applied because it lacks valid authentication credentials for the target resource?",
+      "options": [
+        { "id": "a", "text": "400 Bad Request" },
+        { "id": "b", "text": "401 Unauthorized" },
+        { "id": "c", "text": "404 Not Found" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 defines 401 Unauthorized for a request that lacks valid authentication credentials for the target resource. The server must also send a WWW-Authenticate header field with at least one challenge.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.2",
+      "reviewStatus": "draft"
+    }
+  ]
+}
