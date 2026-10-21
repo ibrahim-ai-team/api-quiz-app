@@ -1,53 +1,36 @@
-# ApiQuiz (idea-01, provisional) — session handover and daily report
+# ApiQuiz (idea-01) — session handover
 
-Last reconciled: 2026-10-21 (UTC). Coordinator: top-level session following `workflows/orchestration-contract.md` (not started with `--agent agile-orchestrator`).
-Phase: `BACKLOG_READY` → `AWAITING_SPONSOR_DECISION` (Gate 4). Previous transitions this session: `DISCOVERY` → `SPECIFICATION` (D01/D02) → `ARCHITECTURE` (D03/D04) → `BACKLOG_READY` (D05).
+- **Last reconciled:** 2026-10-21 22:57 UTC (S2-PLAN-D01). Canonical state: `docs/project-state.md`.
+- **Phase:** `DELIVERY`. Sprint 1 closed; Sprint 2 planned in `06-sprint1-review-retro-sprint2-plan.md`.
+- **`main`:** `8dd6fef` (merge of PR #72). Nothing deployed; GitHub Pages not enabled.
+- **History:** the Gate 1–4 bootstrap handover (discovery to provisioning) is in git history for this file and in files 01–05. The Sprint 1 delegation ledger is `sprint1-coordinator-state.md`.
 
-## Storage limitation
+## Where things stand
 
-These files live in `.provisioning/api-quiz/` (git-ignored by design: project data belongs in the project's own repository). This cloud container is ephemeral, so they are lost when the session is reclaimed unless the sponsor saves them or provisioning copies them into `api-quiz-app/docs/`. Remote sync: none.
+- **Merged in Sprint 1 (38 points):** committed 32 (T-01–T-12, T-19, T-21), stretch T-13, and T-14/T-15 pulled forward. PRs #49–#52, #54, #59, #61, #62, #64–#72. Every PR had tech-lead and security reviews and green CI; the owner merged each.
+- **Open now:** T-22 in worktree `/home/user/api-quiz-T22`, PR #73 open (not yet reviewed). Stories #7 (US-1) and #8 (US-2) await sponsor/PO acceptance. US-3 waits for T-22; US-4 waits for manual checks.
+- **Content:** 0 reviewed questions, 6 drafts. A deployed app would be empty.
+- **Open PRs besides #73:** Dependabot majors #56, #57, #58 (decision SD-6).
 
-## Delegations (all reconciled against the files on disk)
+## Sprint 2 (13 points committed)
 
-| ID | Agent | Output | Verified |
-| --- | --- | --- | --- |
-| QUIZ-DISC-D01 | product-owner | `01-product-brief.md` (13 stories, D1–D4) | file present, sections 1–6 |
-| QUIZ-DISC-D02 | business-analyst | `02-requirements-analysis.md` (J1–J4, FR-1..27, NFR-1..10, G1–G13) | file present, sections 1–7 |
-| QUIZ-ARCH-D03 | software-architect | `03-architecture-adr.md` (ADR-0001, threat model: low risk, V-1..V-7) | file present, sections 1–8 |
-| QUIZ-ARCH-D04 | tech-lead (read-only) | `04-tech-lead-review.md`, written by the coordinator from the report | written by coordinator |
-| QUIZ-PLAN-D05 | project-manager | `05-backlog-sprint-plan.md` (38 items, Sprint 1 = 32 pts) | JSON re-parsed by coordinator: 38 items, 0 dangling deps |
-| QUIZ-PLAN-D07 | project-manager | `05-backlog-sprint-plan.md` refreshed: 47 items (T-22 issue form, T-23–T-30 US-8 batches, US-6 = 5 pts), AC as `US-n.k`; Sprint 1 still 32 pts | plan regenerated from its JSON block; `plan` valid, 47 issues |
-| QUIZ-DISC-D06 | product-owner | `01-product-brief.md` updated: all 10 flagged amendments accepted, D1–D4 decided, AC numbered `US-n.k`, change log | change log and DECIDED lines present |
+Order: T-22 (now) → lane A in the main worktree: T-16 → T-17 → T-18 → T-20 → release-manager go/no-go. Lane B in a separate worktree: T-23 → T-24 → T-25 (sponsor reviews each PR; at most 2 open). Stretch: T-32, T-31, T-33. The first public deploy waits for SD-8 and SD-9.
 
-Resolved by QUIZ-PLAN-D07. Open for tech-lead before Sprint 2: confirm US-6 = 5 and the T-23–T-30 split. Name availability/trademark check for "ApiQuiz": not done.
+## Sponsor decisions needed
 
-Plan: `api-quiz-plan.json`. `python3 scripts/provision_project.py plan .provisioning/api-quiz/api-quiz-plan.json` → valid; tree = one private repo `api-quiz-app`, board "ApiQuiz (idea-01)", 38 issues, 2 sprint milestones; digest `5f344841b560eb1c`. Not run: `--check-github` (the project ID `idea-01` is provisional until checked), `apply` (needs sponsor approval and a local session with `gh` org-owner auth; cloud sessions cannot create repositories).
+SD-1 accept US-1/US-2 · SD-2 confirm Exit/Back clear the session (T-12-D01, DQ-1) · SD-3 DQ-5 preselect last topic · SD-4 designer confirmation (routine) · SD-5 `reviewedBy` privacy, before T-23 merges · SD-6 Dependabot #56–#58 · SD-7 branch protection on `main` · SD-8 enable Pages ("GitHub Actions" source) · SD-9 first deploy timing · SD-10 capacity/calendar · SD-11 US-13 dark mode. Details and recommendations: file 06 §3.7.
 
-## Evidence states
+## Resume procedure
 
-- Implemented: nothing (no application code).
-- Tested: plan validation only (command above). No application tests exist.
-- Reviewed: no independent review yet (planning artifacts only).
-- Merged / Deployed: nothing.
-
-## Sponsor decisions (Gate 4) — recorded 2026-10-21
-
-Sponsor reply (verbatim): "ApiQuiz, repo publique, MVP sans compte, ma relecture suffit".
-
-- **D1 — Name:** DECIDED: "ApiQuiz", repo `api-quiz-app`.
-- **D2 — Visibility & hosting:** DECIDED: public repository; hosting GitHub Pages (free for public repos). T-20 (deploy) is unblocked for planning; the first production deploy is still a release gate.
-- **D3 — MVP boundary:** DECIDED: no accounts, no backend, browser-only storage.
-- **D4 — Content sign-off:** DECIDED: the sponsor's PR review is the human accuracy check on question content.
-- Still open (non-blocking): Sprint 1 capacity — PM assumption of 5 sessions stands until the sponsor says otherwise.
-- Plan approval: the sponsor authorized repository creation ("I give you the permission to create the repo"). Final plan (public, 1 repo, 47 issues after QUIZ-PLAN-D07) has digest `f88fd0290c67bf54`, recorded in `approval`. Superseded digests: `5f344841b560eb1c` (private draft), `6e49ccf849551680` (before backlog refresh).
-
-## Repository creation attempt (2026-10-21)
-
-Sponsor message: "I give you the permission to create the repo". `gh` in this container: token invalid (`gh auth status`). Attempted once via the session's GitHub integration: `create_repository` org `ibrahim-ai-team`, name `api-quiz-app`, public, description with `[ai-team:idea-01]` → **403 Resource not accessible by integration**. Not retried. Nothing was created. Pre-check: org search showed only `ai-software-team` and `.github` (public); private repos not visible to that search, so `--check-github` must still run locally.
+1. Read `.claude/CLAUDE.md`, `workflows/orchestration-contract.md`, `docs/project-state.md`, this file and file 06.
+2. Reconcile with GitHub: `git fetch` and `git log --oneline origin/main -5`; open PRs and their CI (`gh api repos/ibrahim-ai-team/api-quiz-app/pulls?state=open`); issues #7–#10, #36–#43. GraphQL is not available in cloud sessions; use REST.
+3. Mark any active delegation not reconfirmed this session `NEEDS_REVALIDATION`; inspect `/home/user/api-quiz-T22` and PR #73 before resuming or reassigning T-22.
+4. Record new sponsor answers (SD-n) in `docs/project-state.md` with the date.
+5. Dispatch the next Ready task from the sequence above: one coding delegation per worktree; claim it in the Active delegations table first.
+6. End the session with the PM report (completed work, Issue/PR links, validation results, blockers, next steps) and refresh this file. Record sessions and delegations used (retro action RA-4).
 
 ## Next actions
 
-1. Done: answers recorded, plan set to public, `plan` re-run (digest `6e49ccf849551680`). Remaining: sponsor approves this digest; record it in `approval`.
-2. From a local session with `gh` org-owner auth: `plan --check-github`, `apply --dry-run`, then `apply`.
-3. Product-owner accepts the flagged amendments (list in file 05 §1.1) before US-1/US-2 start.
-4. Sprint 1 starts 2026-10-26 with T-19 (QA test strategy) and T-21 (ADR update), then T-01/T-04.
+1. agile-orchestrator: reviews for T-22 / PR #73, then the "ready to merge" comment.
+2. agile-orchestrator: dispatch T-16 (qa-automation); send SD-5, SD-7, SD-8 to the sponsor in one message.
+3. agile-orchestrator: after SD-5, dispatch T-23 (technical-research, then product-owner review) in a content worktree.
