@@ -91,7 +91,7 @@ describe("startSession and selectors", () => {
     expect(state.phase).toBe("finished");
     expect(currentQuestion(state)).toBeUndefined();
     expect(currentAnswer(state)).toBeUndefined();
-    expect(progress(state)).toEqual({ current: 1, total: 0 });
+    expect(progress(state)).toEqual({ current: 0, total: 0 });
     expect(selectOption(state, "a")).toBe(state);
     expect(submitAnswer(state)).toBe(state);
     expect(next(state)).toBe(state);
@@ -191,7 +191,8 @@ describe("submitAnswer", () => {
     // Index past the end.
     const outOfRange: QuizSession = { ...base, index: 5, selected: "a" };
     expect(submitAnswer(outOfRange)).toBe(outOfRange);
-    expect(selectOption({ ...base, index: 5 }, "a").selected).toBeNull();
+    const pastEnd: QuizSession = { ...base, index: 5 };
+    expect(selectOption(pastEnd, "a")).toBe(pastEnd);
     expect(currentAnswer({ ...alreadyAnswered, index: 1 })).toBeUndefined();
   });
 });

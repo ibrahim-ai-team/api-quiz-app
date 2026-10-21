@@ -45,12 +45,16 @@ export function isLastQuestion(state: QuizSession): boolean {
   return state.index === state.quiz.questions.length - 1;
 }
 
-/** "Question `current` of `total`" (FR-5); `current` is 1-based. */
+/**
+ * "Question `current` of `total`" (FR-5); `current` is 1-based and never
+ * exceeds `total` (so an empty quiz gives 0 of 0).
+ */
 export function progress(state: QuizSession): {
   readonly current: number;
   readonly total: number;
 } {
-  return { current: state.index + 1, total: state.quiz.questions.length };
+  const total = state.quiz.questions.length;
+  return { current: Math.min(state.index + 1, total), total };
 }
 
 /** The locked answer for the current question, if it has been submitted. */
@@ -122,6 +126,14 @@ export function next(state: QuizSession): QuizSession {
 }
 
 /**
+ * Exhaustiveness guard for `quizReducer`: `action` must be `never`, so an
+ * unhandled `QuizAction` variant is a type error.
+ */
+function ignoreUnhandled(_action: never, state: QuizSession): QuizSession {
+  return state;
+}
+
+/**
  * Reducer for the quiz flow's `useReducer` (standard 8), built only from the
  * functions above. An unknown action returns `state` unchanged.
  */
@@ -137,6 +149,8 @@ export function quizReducer(
     case "next":
       return next(state);
     default:
-      return state;
+      // Compile-time exhaustiveness: a new action type fails to type-check
+      // here. At runtime an unknown action returns `state` unchanged.
+      return ignoreUnhandled(action, state);
   }
 }

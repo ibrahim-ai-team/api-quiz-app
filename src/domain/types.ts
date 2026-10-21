@@ -72,7 +72,16 @@ export interface Answer {
  */
 export type QuizPhase = "answering" | "feedback" | "finished";
 
-/** The state of one quiz run. Always replaced, never mutated. */
+/**
+ * The state of one quiz run. Always replaced, never mutated.
+ *
+ * Invariants maintained by `src/domain/answer.ts`, with
+ * N = `quiz.questions.length`:
+ * - `answering`: `answers.length === index`.
+ * - `feedback`: `answers.length === index + 1` and
+ *   `selected === answers[index].optionId`.
+ * - `finished`: `answers.length === N` and `index === max(0, N - 1)`.
+ */
 export interface QuizSession {
   readonly quiz: Quiz;
   /**
