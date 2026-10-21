@@ -5,7 +5,6 @@ export {
   randomSeed,
   shuffle,
   type Rng,
-  type SeededRng,
 } from "./rng";
 export {
   createQuiz,
