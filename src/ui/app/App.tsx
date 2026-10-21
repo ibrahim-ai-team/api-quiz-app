@@ -1,6 +1,7 @@
 /**
  * App shell (T-08, issue #28; views.md §0): skip link, header with the brand,
  * `<main>` focus target, hash routes, bank loading state and error boundary.
+ * T-12 adds the quiz session reducer, the Question view and Exit.
  */
 import {
   useCallback,
@@ -8,18 +9,13 @@ import {
   useLayoutEffect,
   useReducer,
   useRef,
-  useState,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import type { LoadBankResult } from "../../content/loader";
-import {
-  createQuiz,
-  randomSeed,
-  type Quiz,
-  type QuizScope,
-} from "../../domain";
+import { createQuiz, randomSeed, type QuizScope } from "../../domain";
 import { strings } from "../strings";
+import common from "../components/common.module.css";
 import styles from "./App.module.css";
 import {
   bankReducer,
@@ -28,12 +24,14 @@ import {
   type BankState,
 } from "./bankState";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { routeHref, routeKey, type Route } from "./router";
+import { parseRoute, routeHref, routeKey, type Route } from "./router";
+import { sessionReducer, type SessionState } from "./session";
 import { Landing } from "../views/Landing/Landing";
+import { Question } from "../views/Question/Question";
 import { useHashRoute } from "./useHashRoute";
 import { AppError } from "./views/AppError";
 import { NotFound } from "./views/NotFound";
-import { QuizPlaceholder, ResultsPlaceholder } from "./views/Placeholders";
+import { ResultsPlaceholder } from "./views/Placeholders";
 
 export interface AppProps {
   /** Started at module top level in main.tsx; resolves, never rejects. */
@@ -43,9 +41,22 @@ export interface AppProps {
 }
 
 type ViewId =
-  "landing" | "topic" | "topicNotFound" | "quiz" | "results" | "notFound";
+  | "landing"
+  | "topic"
+  | "topicNotFound"
+  | "quiz"
+  | "quizFinished"
+  | "noQuiz"
+  | "results"
+  | "notFound";
 
-function viewFor(route: Route, bank: BankState): ViewId {
+const LANDING_HREF = routeHref({ name: "landing" });
+
+function viewFor(route: Route, bank: BankState, session: SessionState): ViewId {
+  if (route.name === "quiz") {
+    if (session === null) return "noQuiz";
+    return session.phase === "finished" ? "quizFinished" : "quiz";
+  }
   if (route.name !== "topic") return route.name;
   return bank.status === "ready" && !isPlayableTopic(bank.bank, route.topicId)
     ? "topicNotFound"
@@ -54,6 +65,12 @@ function viewFor(route: Route, bank: BankState): ViewId {
 
 function focusHeading(main: HTMLElement | null): void {
   main?.querySelector<HTMLElement>("h1")?.focus();
+}
+
+/** Route of a full URL from a `hashchange` event; never throws. */
+function routeOfUrl(url: string): Route {
+  const hash = url.indexOf("#");
+  return parseRoute(hash === -1 ? "" : url.slice(hash));
 }
 
 export function App({ bankPromise, reloadBank }: AppProps) {
@@ -82,20 +99,42 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     };
   }, [loadingAttempt, bankPromise]);
 
-  // Minimal started-quiz holder (T-09); T-12 replaces it with the quiz
-  // session reducer (standard 8). Landing guards double activation.
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  // Quiz session (standard 8, T-09-R01 N3). `scope` is Landing's
+  // bank-derived selection (SEC-R06 N-2); Landing guards double activation.
+  const [session, dispatchSession] = useReducer(sessionReducer, null);
   const startQuiz = useCallback(
     (scope: QuizScope): boolean => {
       if (bank.status !== "ready") return false;
       const result = createQuiz(bank.bank, scope, randomSeed());
       if (!result.ok) return false;
-      setQuiz(result.quiz);
+      dispatchSession({ type: "started", quiz: result.quiz });
       window.location.hash = routeHref({ name: "quiz" });
       return true;
     },
     [bank],
   );
+
+  // Exit and browser Back both leave the quiz for Landing (US-2.8, views.md
+  // §2) and both clear the session, so `#/quiz` never shows a stale quiz.
+  const exitQuiz = () => {
+    dispatchSession({ type: "exited" });
+    window.location.hash = LANDING_HREF;
+  };
+  useEffect(() => {
+    const onHashChange = (event: HashChangeEvent) => {
+      const to = routeOfUrl(event.newURL).name;
+      if (
+        routeOfUrl(event.oldURL).name === "quiz" &&
+        (to === "landing" || to === "topic")
+      ) {
+        dispatchSession({ type: "exited" });
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+    };
+  }, []);
 
   const retry = useCallback(() => {
     focusAfterRetry.current = true;
@@ -111,7 +150,7 @@ export function App({ bankPromise, reloadBank }: AppProps) {
 
   // Focus rule (US-10.6, G4): every view change focuses the view's h1; the
   // first load focuses it too, except on Landing.
-  const view = viewFor(route, bank);
+  const view = viewFor(route, bank, session);
   const viewKey = `${routeKey(route)}|${view}`;
   const shownViewKey = useRef<string | null>(null);
   useEffect(() => {
@@ -121,6 +160,13 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     if (previous === null && view === "landing") return;
     focusHeading(mainRef.current);
   }, [viewKey, view]);
+
+  // `#/quiz` with no quiz in memory (refresh, or after Exit/Back): replace
+  // the entry with Landing, whose h1 is then focused (views.md §2). Layout
+  // effect: the replace happens before paint, so nothing flashes (TL N3).
+  useLayoutEffect(() => {
+    if (view === "noQuiz") window.location.replace(LANDING_HREF);
+  }, [view]);
 
   const skipToMain = (event: MouseEvent<HTMLAnchorElement>) => {
     // `#main` would be read as a route; move focus instead.
@@ -146,8 +192,21 @@ export function App({ bankPromise, reloadBank }: AppProps) {
       );
       break;
     case "quiz":
-      content = <QuizPlaceholder questionCount={quiz?.questions.length} />;
+      // `session` and a ready bank always exist here: a session is only
+      // created from a ready bank, which never leaves "ready".
+      content =
+        session !== null && bank.status === "ready" ? (
+          <Question
+            session={session}
+            topics={bank.bank.topics}
+            dispatch={dispatchSession}
+          />
+        ) : null;
       break;
+    case "noQuiz":
+      content = null;
+      break;
+    case "quizFinished":
     case "results":
       content = <ResultsPlaceholder />;
       break;
@@ -167,12 +226,18 @@ export function App({ bankPromise, reloadBank }: AppProps) {
             // Plain text on the quiz route: Exit is explicit (views.md §0).
             <span className={styles.brand}>{strings.appName}</span>
           ) : (
-            <a
-              className={styles.brandLink}
-              href={routeHref({ name: "landing" })}
-            >
+            <a className={styles.brandLink} href={LANDING_HREF}>
               {strings.appName}
             </a>
+          )}
+          {route.name === "quiz" && session !== null && (
+            <button
+              type="button"
+              className={[common.buttonSecondary, styles.exit].join(" ")}
+              onClick={exitQuiz}
+            >
+              {strings.question.exit}
+            </button>
           )}
         </div>
       </header>

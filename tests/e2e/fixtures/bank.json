@@ -68,11 +68,288 @@
       "options": [
         { "id": "a", "text": "GET" },
         { "id": "b", "text": "POST" },
-        { "id": "c", "text": "PUT" }
+        {
+          "id": "c",
+          "text": "PUT, a deliberately long option that must wrap at 320 px: /api-quiz-app/fixtures/an-unbroken-path-segment-that-is-much-wider-than-a-small-phone-screen"
+        }
       ],
       "correct": "a",
       "explanation": "Fixture explanation: the request line starts with GET.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q03",
+      "topic": "topic-a",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture A3: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A3 option A" },
+        { "id": "b", "text": "Fixture A3 option B" },
+        { "id": "c", "text": "Fixture A3 option C" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: option A is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q04",
+      "topic": "topic-a",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Fixture A4: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A4 option A" },
+        { "id": "b", "text": "Fixture A4 option B" },
+        { "id": "c", "text": "Fixture A4 option C" }
+      ],
+      "correct": "b",
+      "explanation": "Fixture explanation: option B is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q05",
+      "topic": "topic-a",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture A5: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A5 option A" },
+        { "id": "b", "text": "Fixture A5 option B" },
+        { "id": "c", "text": "Fixture A5 option C" }
+      ],
+      "correct": "c",
+      "explanation": "Fixture explanation: option C is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q06",
+      "topic": "topic-a",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture A6: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A6 option A" },
+        { "id": "b", "text": "Fixture A6 option B" },
+        { "id": "c", "text": "Fixture A6 option C" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: option A is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q07",
+      "topic": "topic-a",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Fixture A7: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A7 option A" },
+        { "id": "b", "text": "Fixture A7 option B" },
+        { "id": "c", "text": "Fixture A7 option C" }
+      ],
+      "correct": "b",
+      "explanation": "Fixture explanation: option B is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q08",
+      "topic": "topic-a",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture A8: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A8 option A" },
+        { "id": "b", "text": "Fixture A8 option B" },
+        { "id": "c", "text": "Fixture A8 option C" }
+      ],
+      "correct": "c",
+      "explanation": "Fixture explanation: option C is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q09",
+      "topic": "topic-a",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture A9: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A9 option A" },
+        { "id": "b", "text": "Fixture A9 option B" },
+        { "id": "c", "text": "Fixture A9 option C" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: option A is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q10",
+      "topic": "topic-a",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Fixture A10: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A10 option A" },
+        { "id": "b", "text": "Fixture A10 option B" },
+        { "id": "c", "text": "Fixture A10 option C" }
+      ],
+      "correct": "b",
+      "explanation": "Fixture explanation: option B is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q11",
+      "topic": "topic-a",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture A11: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A11 option A" },
+        { "id": "b", "text": "Fixture A11 option B" },
+        { "id": "c", "text": "Fixture A11 option C" }
+      ],
+      "correct": "c",
+      "explanation": "Fixture explanation: option C is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-q12",
+      "topic": "topic-a",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture A12: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture A12 option A" },
+        { "id": "b", "text": "Fixture A12 option B" },
+        { "id": "c", "text": "Fixture A12 option C" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: option A is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-b-q02",
+      "topic": "topic-b",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture B2: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture B2 option A" },
+        { "id": "b", "text": "Fixture B2 option B" },
+        { "id": "c", "text": "Fixture B2 option C" }
+      ],
+      "correct": "c",
+      "explanation": "Fixture explanation: option C is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-b-q03",
+      "topic": "topic-b",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture B3: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture B3 option A" },
+        { "id": "b", "text": "Fixture B3 option B" },
+        { "id": "c", "text": "Fixture B3 option C" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: option A is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-b-q04",
+      "topic": "topic-b",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Fixture B4: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture B4 option A" },
+        { "id": "b", "text": "Fixture B4 option B" },
+        { "id": "c", "text": "Fixture B4 option C" }
+      ],
+      "correct": "b",
+      "explanation": "Fixture explanation: option B is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-b-q05",
+      "topic": "topic-b",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture B5: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture B5 option A" },
+        { "id": "b", "text": "Fixture B5 option B" },
+        { "id": "c", "text": "Fixture B5 option C" }
+      ],
+      "correct": "c",
+      "explanation": "Fixture explanation: option C is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-c-xss-payload",
+      "topic": "topic-c",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Fixture C2 (XSS probe): <script>alert('xss-prompt')</script> <img src=\"xss-probe-prompt.png\" onerror=\"alert('xss-img')\"> [click](javascript:alert('xss-link'))",
+      "options": [
+        {
+          "id": "a",
+          "text": "<img src=\"xss-probe-option.png\" onerror=\"alert('xss-option')\">"
+        },
+        { "id": "b", "text": "<script>alert('xss-option-script')</script>" },
+        { "id": "c", "text": "javascript:alert('xss-option-link')" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: <script>alert('xss-explanation')</script> and <img src=\"xss-probe-explanation.png\" onerror=\"alert(1)\"> stay literal text.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-c-true-false",
+      "topic": "topic-c",
+      "difficulty": "hard",
+      "type": "true-false",
+      "prompt": "Fixture C3: this statement is false.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "Fixture explanation: the statement is false by definition.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
       "reviewStatus": "reviewed",
       "reviewedBy": "qa-fixture"
     }
