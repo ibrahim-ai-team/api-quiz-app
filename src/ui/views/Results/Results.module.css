@@ -1,0 +1,35 @@
+/* Results view (T-15; views.md §4; tokens.md §2-§4). */
+
+.scope {
+  margin-block: 0 var(--space-3);
+  color: var(--color-text-muted);
+}
+
+/* "X / N" and the percentage in one paragraph: stacked below 40em, inline above. */
+.score {
+  display: flex;
+  flex-direction: column;
+  margin-block: 0 var(--space-3);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
+
+@media (min-width: 40em) {
+  .score {
+    flex-direction: row;
+    flex-wrap: wrap;
+    column-gap: var(--space-4);
+  }
+}
+
+.breakdownHeading {
+  margin-block: var(--space-5) var(--space-2);
+  font-size: var(--font-size-xl);
+}
+
+.breakdown {
+  margin-block: 0 var(--space-5);
+  padding-inline-start: var(--space-5);
+  overflow-wrap: anywhere;
+}

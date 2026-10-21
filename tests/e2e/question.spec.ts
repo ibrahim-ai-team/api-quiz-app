@@ -74,7 +74,8 @@ async function walkQuiz(page: Page, n: number): Promise<string[]> {
     await expect(view(page)).toContainText(strings.question.topic(topicName));
     await answerAndNext(page);
   }
-  await expect(h1(page, strings.placeholder.resultsHeading)).toBeFocused();
+  await expect(h1(page, strings.results.heading)).toBeFocused();
+  await expect(page).toHaveURL(/#\/results$/);
   return ids;
 }
 

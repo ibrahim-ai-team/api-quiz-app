@@ -52,6 +52,26 @@ async function expectLandingFocused(): Promise<void> {
   });
 }
 
+/** Answers the 1-question quiz correctly and presses See results. */
+function finishQuiz(): void {
+  fireEvent.click(screen.getByRole("radio", { name: "True" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: strings.question.submit }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: strings.feedback.seeResults }),
+  );
+}
+
+/** Waits until Results is shown at `#/results` with its h1 focused. */
+async function expectResultsFocused(): Promise<void> {
+  await waitFor(() => {
+    expect(window.location.hash).toBe("#/results");
+    expect(h1().textContent).toBe(strings.results.heading);
+    expect(document.activeElement).toBe(h1());
+  });
+}
+
 /** Lets resolved loader promises reach the reducer. */
 async function flush(): Promise<void> {
   await act(async () => {
@@ -322,7 +342,7 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
     );
   });
 
-  it("T-US2-1/4 answers the question, locks it and shows the finished placeholder", async () => {
+  it("T-US2-1/4 answers the question, locks it and See results opens #/results", async () => {
     renderApp(Promise.resolve(OK));
     await flush();
     await startQuiz();
@@ -343,9 +363,7 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
       screen.getByRole("radio", { name: /^True\b/ }).matches(":disabled"),
     ).toBe(true);
     fireEvent.click(next);
-    expect(h1().textContent).toBe(strings.placeholder.resultsHeading);
-    expect(document.activeElement).toBe(h1());
-    expect(window.location.hash).toBe("#/quiz");
+    await expectResultsFocused();
   });
 
   it("T-US2-8 Exit clears the quiz and returns to Landing; #/quiz then redirects", async () => {
@@ -373,14 +391,122 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
   });
 });
 
+describe("T-15 results route (US-4, views.md §4)", () => {
+  const topicName = TEST_BANK.topics[0]?.name ?? "";
+
+  it("T-US4-1/5 See results replaces #/quiz with #/results: score, band, title, no Exit", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    const before = window.history.length;
+    finishQuiz();
+    await expectResultsFocused();
+    expect(window.history.length).toBe(before);
+    expect(document.title).toBe(strings.title.results(topicName));
+    expect(main().textContent).toContain(strings.results.score(1, 1));
+    expect(main().textContent).toContain(strings.results.percent(100));
+    expect(main().textContent).toContain(strings.results.band.perfect);
+    // T-12-R01 N5: no Exit on results; the brand is a link again.
+    expect(screen.queryByRole("button", { name: strings.question.exit })).toBe(
+      null,
+    );
+    expect(
+      within(screen.getByRole("banner")).getByRole("link", {
+        name: strings.appName,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("T-US4-4 Try again starts a fresh quiz for the same scope at #/quiz, replacing the entry", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    const before = window.history.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.tryAgain }),
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(window.history.length).toBe(before);
+    expect(document.title).toBe(strings.title.question(1, 1, topicName));
+    // A new session: nothing selected, Submit available again.
+    expect(
+      screen.getAllByRole<HTMLInputElement>("radio").some((r) => r.checked),
+    ).toBe(false);
+    expect(
+      screen.getByRole("button", { name: strings.question.submit }),
+    ).toBeTruthy();
+  });
+
+  it("T-US4-4 Choose another topic clears the session and focuses the Landing h1", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.chooseAnother }),
+    );
+    await expectLandingFocused();
+    navigate("#/results");
+    await expectLandingFocused();
+  });
+
+  it("Back from results to Landing clears the session; Forward redirects home", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    navigate("#/");
+    await expectLandingFocused();
+    navigate("#/results");
+    await expectLandingFocused();
+  });
+
+  it("#/results with no quiz in memory (refresh) replaces the entry with Landing", async () => {
+    setHash("#/results");
+    const before = window.history.length;
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await expectLandingFocused();
+    expect(window.history.length).toBe(before);
+  });
+
+  it("#/quiz with a finished quiz redirects to #/results", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    navigate("#/quiz");
+    await expectResultsFocused();
+  });
+
+  it("#/results with an unfinished quiz redirects to #/quiz and keeps it", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    navigate("#/results");
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+    });
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", { name: "True" }).checked,
+    ).toBe(true);
+  });
+});
+
 describe("T-US10-6 per-view title and focus", () => {
   it.each([
     ["", strings.landing.heading, strings.title.landing],
-    [
-      "#/results",
-      strings.placeholder.resultsHeading,
-      strings.title.resultsPlaceholder,
-    ],
     ["#/x", strings.notFound.heading, strings.title.notFound],
   ])("sets the title for %j", async (hash, heading, title) => {
     setHash(hash);
@@ -394,11 +520,6 @@ describe("T-US10-6 per-view title and focus", () => {
     renderApp(Promise.resolve(OK));
     await flush();
     expect(document.activeElement).toBe(document.body);
-
-    navigate("#/results");
-    expect(h1().textContent).toContain(strings.placeholder.resultsHeading);
-    expect(document.activeElement).toBe(h1());
-    expect(document.title).toBe(strings.title.resultsPlaceholder);
 
     navigate("#/nope");
     expect(document.activeElement).toBe(h1());
@@ -436,12 +557,12 @@ describe("shell", () => {
   });
 
   it("skip link focuses main without changing the route", async () => {
-    setHash("#/results");
+    setHash("#/x");
     renderApp(Promise.resolve(OK));
     await flush();
     fireEvent.click(screen.getByRole("link", { name: strings.shell.skipLink }));
     expect(document.activeElement).toBe(main());
-    expect(window.location.hash).toBe("#/results");
+    expect(window.location.hash).toBe("#/x");
   });
 });
 

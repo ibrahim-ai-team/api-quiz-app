@@ -1,7 +1,8 @@
 /**
  * App shell (T-08, issue #28; views.md §0): skip link, header with the brand,
  * `<main>` focus target, hash routes, bank loading state and error boundary.
- * T-12 adds the quiz session reducer, the Question view and Exit.
+ * T-12 adds the quiz session reducer, the Question view and Exit; T-15 the
+ * Results route.
  */
 import {
   useCallback,
@@ -28,10 +29,10 @@ import { parseRoute, routeHref, routeKey, type Route } from "./router";
 import { sessionReducer, type SessionState } from "./session";
 import { Landing } from "../views/Landing/Landing";
 import { Question } from "../views/Question/Question";
+import { Results } from "../views/Results/Results";
 import { useHashRoute } from "./useHashRoute";
 import { AppError } from "./views/AppError";
 import { NotFound } from "./views/NotFound";
-import { ResultsPlaceholder } from "./views/Placeholders";
 
 export interface AppProps {
   /** Started at module top level in main.tsx; resolves, never rejects. */
@@ -48,14 +49,35 @@ type ViewId =
   | "quizFinished"
   | "noQuiz"
   | "results"
+  | "resultsUnfinished"
+  | "noResults"
   | "notFound";
 
 const LANDING_HREF = routeHref({ name: "landing" });
+const QUIZ_HREF = routeHref({ name: "quiz" });
+const RESULTS_HREF = routeHref({ name: "results" });
+
+/**
+ * Views that only redirect (replacing the history entry, before paint):
+ * `#/quiz` with no quiz goes to Landing and a finished quiz to `#/results`
+ * ("See results", and Forward after Back); `#/results` with no quiz goes to
+ * Landing (refresh, views.md §4) and with an unfinished quiz to `#/quiz`.
+ */
+const REDIRECTS: Partial<Record<ViewId, string>> = {
+  noQuiz: LANDING_HREF,
+  quizFinished: RESULTS_HREF,
+  noResults: LANDING_HREF,
+  resultsUnfinished: QUIZ_HREF,
+};
 
 function viewFor(route: Route, bank: BankState, session: SessionState): ViewId {
   if (route.name === "quiz") {
     if (session === null) return "noQuiz";
     return session.phase === "finished" ? "quizFinished" : "quiz";
+  }
+  if (route.name === "results") {
+    if (session === null) return "noResults";
+    return session.phase === "finished" ? "results" : "resultsUnfinished";
   }
   if (route.name !== "topic") return route.name;
   return bank.status === "ready" && !isPlayableTopic(bank.bank, route.topicId)
@@ -102,29 +124,45 @@ export function App({ bankPromise, reloadBank }: AppProps) {
   // Quiz session (standard 8, T-09-R01 N3). `scope` is Landing's
   // bank-derived selection (SEC-R06 N-2); Landing guards double activation.
   const [session, dispatchSession] = useReducer(sessionReducer, null);
-  const startQuiz = useCallback(
-    (scope: QuizScope): boolean => {
+  // Start pushes `#/quiz`. Try again replaces `#/results` with it, so Back
+  // from the new quiz leaves for Landing as usual (US-2.8) instead of
+  // reaching a results entry for a quiz that is no longer in memory.
+  const beginQuiz = useCallback(
+    (scope: QuizScope, replace: boolean): boolean => {
       if (bank.status !== "ready") return false;
       const result = createQuiz(bank.bank, scope, randomSeed());
       if (!result.ok) return false;
       dispatchSession({ type: "started", quiz: result.quiz });
-      window.location.hash = routeHref({ name: "quiz" });
+      if (replace) window.location.replace(QUIZ_HREF);
+      else window.location.hash = QUIZ_HREF;
       return true;
     },
     [bank],
   );
+  const startQuiz = useCallback(
+    (scope: QuizScope) => beginQuiz(scope, false),
+    [beginQuiz],
+  );
+  // Try again (US-4.4, FR-11): a fresh draw for the finished quiz's scope.
+  // `started` replaces the session synchronously (T-11-R01 input on #35).
+  const tryAgain = () => {
+    if (session !== null) beginQuiz(session.quiz.scope, true);
+  };
 
   // Exit and browser Back both leave the quiz for Landing (US-2.8, views.md
   // §2) and both clear the session, so `#/quiz` never shows a stale quiz.
+  // Leaving the results for Landing (Choose another topic, Back, the brand
+  // link) clears it too; quiz -> results keeps it.
   const exitQuiz = () => {
     dispatchSession({ type: "exited" });
     window.location.hash = LANDING_HREF;
   };
   useEffect(() => {
     const onHashChange = (event: HashChangeEvent) => {
+      const from = routeOfUrl(event.oldURL).name;
       const to = routeOfUrl(event.newURL).name;
       if (
-        routeOfUrl(event.oldURL).name === "quiz" &&
+        (from === "quiz" || from === "results") &&
         (to === "landing" || to === "topic")
       ) {
         dispatchSession({ type: "exited" });
@@ -161,11 +199,13 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     focusHeading(mainRef.current);
   }, [viewKey, view]);
 
-  // `#/quiz` with no quiz in memory (refresh, or after Exit/Back): replace
-  // the entry with Landing, whose h1 is then focused (views.md §2). Layout
-  // effect: the replace happens before paint, so nothing flashes (TL N3).
+  // Redirect views (see REDIRECTS), for example `#/quiz` with no quiz in
+  // memory (refresh, or after Exit/Back) goes to Landing, whose h1 is then
+  // focused (views.md §2). Layout effect: the replace happens before paint,
+  // so nothing flashes (TL N3).
   useLayoutEffect(() => {
-    if (view === "noQuiz") window.location.replace(LANDING_HREF);
+    const target = REDIRECTS[view];
+    if (target !== undefined) window.location.replace(target);
   }, [view]);
 
   const skipToMain = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -204,12 +244,23 @@ export function App({ bankPromise, reloadBank }: AppProps) {
           />
         ) : null;
       break;
-    case "noQuiz":
-      content = null;
-      break;
-    case "quizFinished":
     case "results":
-      content = <ResultsPlaceholder />;
+      // Same guarantee as "quiz": a session implies a ready bank.
+      content =
+        session !== null && bank.status === "ready" ? (
+          <Results
+            session={session}
+            topics={bank.bank.topics}
+            onTryAgain={tryAgain}
+            onChooseAnother={exitQuiz}
+          />
+        ) : null;
+      break;
+    case "noQuiz":
+    case "quizFinished":
+    case "noResults":
+    case "resultsUnfinished":
+      content = null;
       break;
     case "notFound":
       content = <NotFound />;

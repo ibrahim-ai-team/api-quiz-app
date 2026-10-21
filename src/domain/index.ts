@@ -23,6 +23,14 @@ export {
   startSession,
   submitAnswer,
 } from "./answer";
+export {
+  bandFor,
+  percentHalfUp,
+  score,
+  type Score,
+  type ScoreBand,
+  type TopicScore,
+} from "./score";
 export type {
   Answer,
   CreateQuizError,
