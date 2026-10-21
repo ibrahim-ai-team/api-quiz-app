@@ -59,7 +59,7 @@ async function controllableBank(page: Page) {
 }
 
 test.describe("T-08 app shell and routes", () => {
-  test("T-US12-2 landing placeholder renders with the fixture bank, 0 serious/critical axe issues, no horizontal scroll", async ({
+  test("T-US12-2 landing renders with the fixture bank, 0 serious/critical axe issues, no horizontal scroll", async ({
     page,
   }) => {
     const bank = await useFixtureBank(page);
@@ -101,9 +101,10 @@ test.describe("T-08 app shell and routes", () => {
     await expect(heading).toBeFocused();
     await expect(page).toHaveTitle(strings.title.topicNotFound);
     await expect(page.locator("main")).not.toContainText("no-such-topic");
+    // Landing variant (views.md §7b): the topic list follows the heading.
     await expect(
-      page.getByRole("link", { name: strings.common.home }),
-    ).toHaveAttribute("href", "#/");
+      page.getByRole("group", { name: strings.landing.topicsLegend }),
+    ).toBeVisible();
     await expectNoAxeSeriousOrCritical(page, heading);
     await expectNoHorizontalScroll(page);
   });

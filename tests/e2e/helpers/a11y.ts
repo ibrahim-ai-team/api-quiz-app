@@ -22,13 +22,19 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
  *
  * `ready` is required: it must identify an element of the state under test,
  * and it is awaited as visible before scanning, so axe never scans a page
- * that is still loading or rendering.
+ * that is still loading or rendering. Running CSS transitions are awaited too.
  */
 export async function expectNoAxeSeriousOrCritical(
   page: Page,
   ready: Locator,
 ): Promise<void> {
   await expect(ready, "axe readiness locator").toBeVisible();
+  // A colour transition in flight (for example Start becoming available)
+  // would be sampled half-way by color-contrast; wait for transitions only,
+  // since infinite animations such as the spinner never finish.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => !(a instanceof CSSTransition)),
+  );
   const results = await new AxeBuilder({ page })
     .withTags(AXE_WCAG_TAGS)
     .analyze();

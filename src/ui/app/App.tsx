@@ -8,10 +8,17 @@ import {
   useLayoutEffect,
   useReducer,
   useRef,
+  useState,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import type { LoadBankResult } from "../../content/loader";
+import {
+  createQuiz,
+  randomSeed,
+  type Quiz,
+  type QuizScope,
+} from "../../domain";
 import { strings } from "../strings";
 import styles from "./App.module.css";
 import {
@@ -22,10 +29,10 @@ import {
 } from "./bankState";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { routeHref, routeKey, type Route } from "./router";
+import { Landing } from "../views/Landing/Landing";
 import { useHashRoute } from "./useHashRoute";
 import { AppError } from "./views/AppError";
-import { LandingPlaceholder } from "./views/LandingPlaceholder";
-import { NotFound, TopicNotFound } from "./views/NotFound";
+import { NotFound } from "./views/NotFound";
 import { QuizPlaceholder, ResultsPlaceholder } from "./views/Placeholders";
 
 export interface AppProps {
@@ -75,6 +82,21 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     };
   }, [loadingAttempt, bankPromise]);
 
+  // Minimal started-quiz holder (T-09); T-12 replaces it with the quiz
+  // session reducer (standard 8). Landing guards double activation.
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const startQuiz = useCallback(
+    (scope: QuizScope): boolean => {
+      if (bank.status !== "ready") return false;
+      const result = createQuiz(bank.bank, scope, randomSeed());
+      if (!result.ok) return false;
+      setQuiz(result.quiz);
+      window.location.hash = routeHref({ name: "quiz" });
+      return true;
+    },
+    [bank],
+  );
+
   const retry = useCallback(() => {
     focusAfterRetry.current = true;
     dispatch({ type: "retry" });
@@ -110,13 +132,21 @@ export function App({ bankPromise, reloadBank }: AppProps) {
   switch (view) {
     case "landing":
     case "topic":
-      content = <LandingPlaceholder bank={bank} onRetry={retry} />;
-      break;
     case "topicNotFound":
-      content = <TopicNotFound />;
+      // Keyed by route, so a new deep link resets the preselection.
+      content = (
+        <Landing
+          key={routeKey(route)}
+          bank={bank}
+          onRetry={retry}
+          topicId={route.name === "topic" ? route.topicId : null}
+          topicNotFound={view === "topicNotFound"}
+          onStart={startQuiz}
+        />
+      );
       break;
     case "quiz":
-      content = <QuizPlaceholder />;
+      content = <QuizPlaceholder questionCount={quiz?.questions.length} />;
       break;
     case "results":
       content = <ResultsPlaceholder />;

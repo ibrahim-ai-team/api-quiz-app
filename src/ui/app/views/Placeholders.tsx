@@ -1,7 +1,7 @@
 /** Interim views for routes built later: Question (T-12), Results (T-15). */
 import { strings } from "../../strings";
 import { useDocumentTitle } from "../useDocumentTitle";
-import styles from "./views.module.css";
+import styles from "../../components/common.module.css";
 
 interface PlaceholderProps {
   readonly heading: string;
@@ -20,10 +20,19 @@ function Placeholder({ heading, title }: PlaceholderProps) {
   );
 }
 
-export function QuizPlaceholder() {
+export interface QuizPlaceholderProps {
+  /** Questions in the started quiz, if any (T-09; T-12 builds the view). */
+  readonly questionCount?: number | undefined;
+}
+
+export function QuizPlaceholder({ questionCount }: QuizPlaceholderProps) {
   return (
     <Placeholder
-      heading={strings.placeholder.quizHeading}
+      heading={
+        questionCount === undefined
+          ? strings.placeholder.quizHeading
+          : strings.question.heading(1, questionCount)
+      }
       title={strings.title.quizPlaceholder}
     />
   );
