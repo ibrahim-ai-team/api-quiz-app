@@ -6,17 +6,27 @@ import styles from "./RichText.module.css";
  * Safe renderer for the content formatting subset (FR-7, G10, standard 5).
  *
  * Supported, and nothing else:
- * - paragraphs separated by one or more blank lines;
- * - inline code between single backticks;
- * - fenced code blocks opened by a line starting with ``` (an optional
- *   language tag is ignored) and closed by a line that is exactly ```.
+ * - paragraphs separated by one or more blank (empty or whitespace-only)
+ *   lines; single newlines stay inside the paragraph;
+ * - inline code: a single backtick paired with the next single backtick
+ *   (runs of 2 or more backticks are literal, as is an unpaired backtick);
+ * - fenced code blocks: the opener is a line whose first non-whitespace
+ *   characters are ``` (leading whitespace allowed), optionally followed by a
+ *   language tag that contains no backtick and is ignored; the closer is the
+ *   next line that is exactly ``` apart from surrounding whitespace. Block
+ *   content is verbatim (no inline parsing). A fence whose content is empty or
+ *   whitespace-only renders nothing. An opener without a closer stays literal
+ *   paragraph text.
  *
  * Everything else, including HTML tags, markdown links and `javascript:` URLs,
  * stays literal text. Output is React elements (`p`, `code`, `pre`) whose
  * children are plain strings, so React escapes them (V-1, T1). There is no
- * HTML parsing, no markdown library and no raw-HTML injection. Malformed
- * markup (an unterminated fence, an unmatched backtick) renders literally;
- * the function never throws for any string input.
+ * HTML parsing, no markdown library and no raw-HTML injection. Parsing is
+ * linear in the input length, and the functions never throw for any string.
+ *
+ * `renderInlineText` is the inline-only variant for places where block
+ * elements are invalid (for example radio labels): it emits only text and
+ * `code`, and treats fences and blank lines as literal text.
  */
 
 export interface RichTextOptions {
@@ -102,10 +112,21 @@ function parseInline(text: string): Inline[] {
   return out;
 }
 
+function normaliseNewlines(text: string): string {
+  return text.replace(/\r\n?/g, "\n");
+}
+
 /** Splits text into paragraph and fenced code blocks. */
 function parseBlocks(text: string): Block[] {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const lines = normaliseNewlines(text).split("\n");
   const blocks: Block[] = [];
+
+  // nextClose[j] = index of the first closing-fence line at or after j, or -1.
+  // One reverse pass keeps fence matching linear (T-10-R01 M2, SEC L-1).
+  const nextClose = new Array<number>(lines.length + 1).fill(-1);
+  for (let j = lines.length - 1; j >= 0; j -= 1) {
+    nextClose[j] = isFenceClose(lines[j] ?? "") ? j : (nextClose[j + 1] ?? -1);
+  }
   let paragraph: string[] = [];
 
   const flushParagraph = () => {
@@ -123,19 +144,13 @@ function parseBlocks(text: string): Block[] {
     const line = lines[i] ?? "";
 
     if (isFenceOpen(line)) {
-      let close = -1;
-      for (let j = i + 1; j < lines.length; j += 1) {
-        if (isFenceClose(lines[j] ?? "")) {
-          close = j;
-          break;
-        }
-      }
+      const close = nextClose[i + 1] ?? -1;
       if (close !== -1) {
         flushParagraph();
-        blocks.push({
-          kind: "code",
-          text: lines.slice(i + 1, close).join("\n"),
-        });
+        const code = lines.slice(i + 1, close).join("\n");
+        if (code.trim() !== "") {
+          blocks.push({ kind: "code", text: code });
+        }
         i = close + 1;
         continue;
       }
@@ -164,6 +179,14 @@ function renderInlines(inlines: Inline[]): ReactNode[] {
       inline.text
     ),
   );
+}
+
+/**
+ * Inline-only rendering: text and inline `code`, never `p` or `pre`. Safe
+ * inside `label`, `legend` and other phrasing-content contexts.
+ */
+export function renderInlineText(text: string): ReactNode {
+  return renderInlines(parseInline(normaliseNewlines(text)));
 }
 
 /**

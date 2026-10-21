@@ -2,12 +2,24 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { renderRichText } from "./renderRichText";
+import styles from "./RichText.module.css";
+import { renderInlineText, renderRichText } from "./renderRichText";
 
-const ALLOWED_TAGS = new Set(["P", "CODE", "PRE", "SPAN"]);
+const BLOCK_TAGS = new Set(["P", "CODE", "PRE"]);
+const INLINE_TAGS = new Set(["CODE"]);
+// Vitest exposes unprocessed CSS Modules as a proxy, so list the keys.
+const MODULE_CLASSES = new Set([
+  styles.paragraph,
+  styles.inlineCode,
+  styles.codeBlock,
+]);
 
 function renderText(text: string) {
   return render(<div data-testid="host">{renderRichText(text)}</div>);
+}
+
+function renderInline(text: string) {
+  return render(<div data-testid="host">{renderInlineText(text)}</div>);
 }
 
 function host(): HTMLElement {
@@ -19,12 +31,16 @@ function renderedElements(): Element[] {
   return Array.from(host().querySelectorAll("*"));
 }
 
-function expectOnlySafeMarkup() {
+function expectOnlySafeMarkup(allowedTags: Set<string> = BLOCK_TAGS) {
   for (const element of renderedElements()) {
-    expect(ALLOWED_TAGS.has(element.tagName)).toBe(true);
+    expect(allowedTags.has(element.tagName)).toBe(true);
     for (const attribute of Array.from(element.attributes)) {
       expect(attribute.name.toLowerCase().startsWith("on")).toBe(false);
       expect(attribute.name.toLowerCase()).not.toMatch(/^(href|src|srcdoc)$/);
+    }
+    // SEC I-4: classes come only from the CSS Module, never from content.
+    for (const className of Array.from(element.classList)) {
+      expect(MODULE_CLASSES.has(className)).toBe(true);
     }
   }
   expect(host().querySelector("script, img, a, iframe, svg, style")).toBeNull();
@@ -69,6 +85,13 @@ describe("renderRichText paragraphs and inline code (FR-7)", () => {
     expect(host().querySelectorAll("p")).toHaveLength(2);
     expect(host().querySelector("pre code")?.textContent).toBe("x: 1");
   });
+
+  it("preserves whitespace inside inline code", () => {
+    renderText("Header `  Content-Type:  json  ` end");
+    expect(host().querySelector("code")?.textContent).toBe(
+      "  Content-Type:  json  ",
+    );
+  });
 });
 
 describe("T-US2-6 code block box", () => {
@@ -87,7 +110,9 @@ describe("T-US2-6 code block box", () => {
     const code = region.querySelector("code");
     expect(code?.textContent).toBe(snippet);
     // The language tag is ignored, not rendered.
-    expect(host().textContent).not.toContain("http\n");
+    expect(host().textContent).toBe(
+      `Look at this:${snippet}What is the status?`,
+    );
     const paragraphs = host().querySelectorAll("p");
     expect(paragraphs).toHaveLength(2);
     expect(paragraphs[0]?.textContent).toBe("Look at this:");
@@ -129,6 +154,27 @@ describe("T-US2-6 code block box", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("region", { name: "Code example" }),
     );
+  });
+
+  it("renders nothing for an empty or whitespace-only fenced block", () => {
+    renderText("Before\n\n```\n```\n\n```js\n   \n\n```\n\nAfter");
+    expect(host().querySelector("pre")).toBeNull();
+    expect(Array.from(host().children).map((el) => el.tagName)).toEqual([
+      "P",
+      "P",
+    ]);
+    expect(host().textContent).toBe("BeforeAfter");
+    cleanup();
+    // Skipped blocks do not count towards the numbered label.
+    renderText("```\n```\n\n```\nx\n```");
+    expect(
+      screen.getAllByRole("region").map((r) => r.getAttribute("aria-label")),
+    ).toEqual(["Code example"]);
+  });
+
+  it("allows leading whitespace on the opener and surrounding whitespace on the closer", () => {
+    renderText("  ```yaml\na: 1\n \t```  ");
+    expect(host().querySelector("pre > code")?.textContent).toBe("a: 1");
   });
 
   it("closes a paragraph when a fence starts without a blank line", () => {
@@ -236,7 +282,7 @@ describe("V-1 fuzz-style inputs: no throw, only allowed tags", () => {
     "`a\n\nb`",
     "\\`not code\\`",
     "\u0000\u0001\u001f",
-    "‮​﻿",
+    String.fromCharCode(0x202e, 0x200b, 0xfeff),
     "😀`😀`😀",
     "\r",
     "\r\r\n\n\r",
@@ -255,6 +301,9 @@ describe("V-1 fuzz-style inputs: no throw, only allowed tags", () => {
     "`".repeat(5001),
     "```\n".repeat(301),
     "`x` ".repeat(2000),
+    "```x\n".repeat(20000),
+    "```a\n".repeat(5000),
+    "` ``".repeat(10000),
   ];
 
   tricky.forEach((input, index) => {
@@ -262,6 +311,24 @@ describe("V-1 fuzz-style inputs: no throw, only allowed tags", () => {
       expect(() => renderText(input)).not.toThrow();
       expectOnlySafeMarkup();
     });
+
+    it(`input #${String(index)} renders safely inline (CODE only)`, () => {
+      expect(() => renderInline(input)).not.toThrow();
+      expectOnlySafeMarkup(INLINE_TAGS);
+    });
+  });
+
+  // T-10-R01 M2 / SEC L-1: many unterminated openers must not rescan the input.
+  it.each([
+    ["```x\n".repeat(20000)],
+    ["```a\n".repeat(5000)],
+    ["` ``".repeat(10000)],
+  ])("parses pathological input in linear time (%#)", (input) => {
+    const start = performance.now();
+    const blocks = renderRichText(input);
+    const inline = renderInlineText(input);
+    expect(performance.now() - start).toBeLessThan(1000);
+    expect(Array.isArray(blocks) && Array.isArray(inline)).toBe(true);
   });
 
   it("does not lose non-whitespace characters outside code fences", () => {
@@ -273,4 +340,55 @@ describe("V-1 fuzz-style inputs: no throw, only allowed tags", () => {
       cleanup();
     }
   });
+});
+
+describe("renderInlineText (inline-only, for labels)", () => {
+  it("renders text and inline code without block elements", () => {
+    renderInline("Returns `201 Created` with a\n\nLocation header");
+    expect(host().querySelector("p, pre")).toBeNull();
+    expect(host().querySelector("code")?.textContent).toBe("201 Created");
+    expect(host().textContent).toBe(
+      "Returns 201 Created with a\n\nLocation header",
+    );
+    expectOnlySafeMarkup(INLINE_TAGS);
+  });
+
+  it("keeps fences literal", () => {
+    renderInline("```js\nx\n```");
+    expect(host().querySelector("pre, code")).toBeNull();
+    expect(host().textContent).toBe("```js\nx\n```");
+  });
+
+  it("normalises CRLF and preserves whitespace inside inline code", () => {
+    renderInline("a\r\nb ` x  y `");
+    expect(host().textContent).toBe("a\nb  x  y ");
+    expect(host().querySelector("code")?.textContent).toBe(" x  y ");
+  });
+});
+
+describe("T-US2-7 / V-1 payloads render literally via renderInlineText", () => {
+  const payloads = [
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "[x](javascript:alert(1))",
+    "javascript:alert(1)",
+    '<a href="javascript:alert(1)">click</a>',
+    "<svg onload=alert(1)>",
+    '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+    "<style>body{display:none}</style>",
+  ];
+
+  for (const payload of payloads) {
+    it(`text: ${payload}`, () => {
+      renderInline(payload);
+      expect(host().textContent).toBe(payload);
+      expect(renderedElements()).toHaveLength(0);
+    });
+
+    it(`inline code: ${payload}`, () => {
+      renderInline(`See \`${payload}\` here`);
+      expect(host().querySelector("code")?.textContent).toBe(payload);
+      expectOnlySafeMarkup(INLINE_TAGS);
+    });
+  }
 });

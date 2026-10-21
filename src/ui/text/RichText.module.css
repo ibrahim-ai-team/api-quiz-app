@@ -50,6 +50,11 @@
   scroll-margin-block: var(--space-4, 1rem);
 }
 
+/* Browsers reset <code> to their own monospace size; use the box's stack. */
+.codeBlock code {
+  font: inherit;
+}
+
 .codeBlock:focus-visible {
   outline: var(--focus-ring-width, 3px) solid
     var(--focus-ring-color, var(--color-focus, #1d4ed8));
