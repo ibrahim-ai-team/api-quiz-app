@@ -1,0 +1,67 @@
+/*
+ * Rich-text styles (T-10, US-2.6). Token names follow docs/design/tokens.md;
+ * the fallbacks keep the box usable until src/ui/styles/tokens.css lands (T-08).
+ */
+
+.paragraph {
+  margin-block: 0 var(--space-4, 1rem);
+  overflow-wrap: anywhere;
+}
+
+.inlineCode {
+  font-family: var(
+    --font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace
+  );
+  font-size: 0.95em;
+  padding-inline: 0.2em;
+  border-radius: var(--radius-sm, 0.25rem);
+  background: var(--color-surface, #f3f4f6);
+  overflow-wrap: anywhere;
+}
+
+/* Only this box scrolls horizontally, never the page. */
+.codeBlock {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-block: 0 var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(
+    --font-mono,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace
+  );
+  line-height: var(--line-height-code, 1.45);
+  color: var(--color-text, #1f2937);
+  background: var(--color-surface, #f3f4f6);
+  border: 1px solid var(--color-border, #6b7280);
+  border-radius: var(--radius-sm, 0.25rem);
+  scroll-margin-block: var(--space-4, 1rem);
+}
+
+.codeBlock:focus-visible {
+  outline: var(--focus-ring-width, 3px) solid
+    var(--focus-ring-color, var(--color-focus, #1d4ed8));
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+@media (forced-colors: active) {
+  .codeBlock {
+    border-color: CanvasText;
+  }
+
+  .codeBlock:focus-visible {
+    outline-color: Highlight;
+  }
+}
