@@ -51,5 +51,6 @@ export default defineConfig({
   test: {
     include: ["tests/unit/**/*.test.ts", "src/**/*.test.{ts,tsx}"],
     environment: "node",
+    setupFiles: ["tests/unit/setup/dom-stubs.ts"],
   },
 });

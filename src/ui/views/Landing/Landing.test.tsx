@@ -282,5 +282,14 @@ describe("states and structure", () => {
         name: strings.landing.aboutHeading,
       }),
     ).toBeTruthy();
+    // US-12.1: the general report link is there even when the bank failed.
+    const report = screen.getByRole("link", {
+      name: `${strings.landing.report} ${strings.common.newTabCue}`,
+    });
+    expect(report.getAttribute("target")).toBe("_blank");
+    expect(report.getAttribute("rel")).toBe("noopener noreferrer");
+    expect([
+      ...new URL(report.getAttribute("href") ?? "").searchParams.keys(),
+    ]).toEqual(["template"]);
   });
 });

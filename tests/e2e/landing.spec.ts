@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { REPORT_BASE_URL } from "../../src/ui/report/reportLink.ts";
 import { strings } from "../../src/ui/strings.ts";
 import { expectNoAxeSeriousOrCritical } from "./helpers/a11y.ts";
 import {
@@ -124,6 +125,26 @@ test.describe("T-09 Landing", () => {
     await expect(start(page)).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(questionHeading(page, 10)).toBeFocused();
+  });
+
+  test("T-US12-1 About the questions has a general Report a problem link: new tab, cue, template only", async ({
+    page,
+  }) => {
+    await openLanding(page);
+    const report = page.getByRole("link", {
+      name: `${strings.landing.report} ${strings.common.newTabCue}`,
+      exact: true,
+    });
+    await expect(report).toBeVisible();
+    await expect(report).toHaveAttribute("target", "_blank");
+    await expect(report).toHaveAttribute("rel", "noopener noreferrer");
+    const url = new URL((await report.getAttribute("href")) ?? "");
+    expect(`${url.origin}${url.pathname}`).toBe(REPORT_BASE_URL);
+    expect([...url.searchParams.entries()]).toEqual([
+      ["template", "question-report.yml"],
+    ]);
+    await expectNoAxeSeriousOrCritical(page, report);
+    await expectNoHorizontalScroll(page);
   });
 
   test("T-US1-8 topic deep link preselects and does not auto-start, also after a reload", async ({

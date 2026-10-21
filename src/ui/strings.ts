@@ -24,6 +24,8 @@ export const strings = {
   /** Default label for `renderRichText` code boxes (copy:question.codeLabel). */
   codeLabel,
   common: {
+    /** Visible and part of the link's accessible name. */
+    newTabCue: "(opens in new tab)",
     retry: "Retry",
     home: "Go to the home page",
   },
@@ -67,6 +69,8 @@ export const strings = {
     aboutHeading: "About the questions",
     accuracyNote:
       "Every question is written for ApiQuiz and checked against a primary source, such as an RFC or an official specification. Each answer links to its source.",
+    /** Followed by copy:common.newTabCue (US-12.1). */
+    report: "Report a problem",
   },
   question: {
     /** copy:question.heading */
@@ -81,10 +85,31 @@ export const strings = {
     submitHint: "Choose an answer to submit.",
     exit: "Exit quiz",
   },
-  /** Only the controls T-12 needs; T-13 adds the rest of copy:feedback.*. */
   feedback: {
+    correct: "Correct",
+    incorrect: "Incorrect",
+    /** Only shown when the answer was wrong. */
+    correctAnswer: (option: string): string => `Correct answer: ${option}`,
+    tagCorrect: "Correct answer",
+    tagChosen: "Your answer",
+    explanationHeading: "Explanation",
+    /**
+     * copy:feedback.explanationCodeLabel (added by T-13): distinct from the
+     * prompt's label so two code regions never share a name (landmark-unique).
+     */
+    explanationCodeLabel: (index: number, count: number): string =>
+      count > 1
+        ? `Explanation code example ${String(index)} of ${String(count)}`
+        : "Explanation code example",
+    sourcePrefix: "Source:",
+    /** Non-https source, plain text. */
+    sourceUnlinked: (url: string): string => `Source: ${url}`,
+    report: "Report a problem with this question",
     next: "Next",
     seeResults: "See results",
+    liveCorrect: (option: string): string => `Correct: ${option}.`,
+    liveIncorrect: (option: string): string =>
+      `Incorrect. Correct answer: ${option}.`,
   },
   loading: {
     text: "Loading questions...",

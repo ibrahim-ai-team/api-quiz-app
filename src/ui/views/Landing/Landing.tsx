@@ -1,6 +1,7 @@
 /**
  * Landing view (T-09, issue #29; views.md §1, §7b; US-1, US-12.1, US-12.2).
  * Topic radio group in curated order with counts, Mixed last, and Start.
+ * T-13 adds the general "Report a problem" link to "About the questions".
  * Displayed names come from the bank topic objects; `topicId` from the route
  * is only compared against bank ids and never rendered (security I-3).
  */
@@ -9,7 +10,9 @@ import { eligibleTopics, type QuizScope } from "../../../domain";
 import type { BankState } from "../../app/bankState";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
 import { BankStatus } from "../../components/BankStatus";
+import { ExternalLink } from "../../components/ExternalLink";
 import common from "../../components/common.module.css";
+import { generalReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import styles from "./Landing.module.css";
 
@@ -193,6 +196,12 @@ export function Landing({
       {topicArea}
       <h2 className={styles.aboutHeading}>{strings.landing.aboutHeading}</h2>
       <p className={common.text}>{strings.landing.accuracyNote}</p>
+      {/* General report (US-12.1): same form, no question ID (T-13). */}
+      <p className={common.text}>
+        <ExternalLink href={generalReportHref()}>
+          {strings.landing.report}
+        </ExternalLink>
+      </p>
     </>
   );
 }
