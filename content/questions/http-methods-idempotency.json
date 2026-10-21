@@ -8,37 +8,57 @@
       "type": "single-choice",
       "prompt": "Which of these request methods is NOT defined as idempotent by RFC 9110?",
       "options": [
-        { "id": "a", "text": "PUT" },
-        { "id": "b", "text": "DELETE" },
-        { "id": "c", "text": "POST" },
-        { "id": "d", "text": "GET" }
+        {
+          "id": "a",
+          "text": "PUT"
+        },
+        {
+          "id": "b",
+          "text": "DELETE"
+        },
+        {
+          "id": "c",
+          "text": "POST"
+        },
+        {
+          "id": "d",
+          "text": "GET"
+        }
       ],
       "correct": "c",
       "explanation": "RFC 9110 defines PUT, DELETE and the safe methods (GET, HEAD, OPTIONS, TRACE) as idempotent. POST is not in that list, so repeating a POST is not guaranteed to have the same intended effect as sending it once; for example, it might create a second resource.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "http-delete-is-not-safe",
       "topic": "http-methods-idempotency",
-      "difficulty": "medium",
+      "difficulty": "easy",
       "type": "true-false",
       "prompt": "DELETE is defined as a safe method by RFC 9110.",
       "options": [
-        { "id": "true", "text": "True" },
-        { "id": "false", "text": "False" }
+        {
+          "id": "true",
+          "text": "True"
+        },
+        {
+          "id": "false",
+          "text": "False"
+        }
       ],
       "correct": "false",
       "explanation": "RFC 9110 defines only GET, HEAD, OPTIONS and TRACE as safe among its methods. DELETE is idempotent, but it is not safe because it requests a state change on the server.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.1",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "idempotency-intended-effect-definition",
       "topic": "http-methods-idempotency",
       "difficulty": "medium",
       "type": "single-choice",
-      "prompt": "According to RFC 9110, what makes a request method idempotent?",
+      "prompt": "According to RFC 9110, which statement is the definition of an idempotent request method?",
       "options": [
         {
           "id": "a",
@@ -60,7 +80,8 @@
       "correct": "b",
       "explanation": "RFC 9110 defines idempotency by the intended effect on the server of multiple identical requests, not by the response, which might differ when a request is repeated. A server is still free to log each request separately or keep other per-request side effects, and \"no requested state change\" is the definition of a safe method, not an idempotent one.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "retry-idempotent-put-after-connection-loss",
@@ -89,7 +110,8 @@
       "correct": "d",
       "explanation": "RFC 9110 uses this PUT case as its example: the client can open a new connection and retry the idempotent request, although the response might differ. In contrast, a proxy MUST NOT automatically retry non-idempotent requests such as POST, and a client SHOULD NOT automatically retry them unless it knows the request is actually idempotent or was never applied.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "put-replaces-state-post-processes",
@@ -110,12 +132,16 @@
           "id": "c",
           "text": "PUT responses are cacheable, while POST responses are never cacheable"
         },
-        { "id": "d", "text": "PUT is a safe method, while POST is not" }
+        {
+          "id": "d",
+          "text": "PUT is a safe method, while POST is not"
+        }
       ],
       "correct": "a",
       "explanation": "RFC 9110 says the representation enclosed in a PUT is defined as replacing the state of the target resource, whereas the target of a POST handles it according to the resource's own semantics. This is why the intent of PUT is idempotent, and a PUT can also create the target resource when it has no current representation.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.4",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "patch-not-idempotent-by-definition",
@@ -124,13 +150,20 @@
       "type": "true-false",
       "prompt": "RFC 5789 defines the PATCH method as idempotent, just like PUT.",
       "options": [
-        { "id": "true", "text": "True" },
-        { "id": "false", "text": "False" }
+        {
+          "id": "true",
+          "text": "True"
+        },
+        {
+          "id": "false",
+          "text": "False"
+        }
       ],
       "correct": "false",
-      "explanation": "RFC 5789 states that PATCH is neither safe nor idempotent. Unlike a PUT, which carries a modified version of the resource to replace the stored one, a PATCH carries a set of instructions describing how to modify the current resource. A PATCH request can still be issued in an idempotent way, and RFC 5789 says clients whose patch format needs a known base point SHOULD use a conditional request, for example `If-Match` with a strong ETag.",
+      "explanation": "RFC 5789 states that PATCH is neither safe nor idempotent (as defined by RFC 2616). A PUT carries a modified version of the resource to replace the stored one, whereas a PATCH carries a set of instructions describing how to modify the current resource. A PATCH request can still be issued in an idempotent way; when the patch format needs a known base point, RFC 5789 says clients SHOULD use a conditional request, for example `If-Match` with a strong ETag.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc5789.html#section-2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "head-identical-to-get-without-content",
@@ -159,24 +192,38 @@
       "correct": "c",
       "explanation": "RFC 9110 defines HEAD as identical to GET except that the server MUST NOT send content in the response, so it is used to obtain metadata without transferring the representation data. The server SHOULD send the same header fields it would send for GET, HEAD is a safe method, and responses to HEAD are cacheable.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     },
     {
       "id": "post-response-cacheable-conditions",
       "topic": "http-methods-idempotency",
       "difficulty": "hard",
       "type": "single-choice",
-      "prompt": "Besides GET and HEAD, which method does RFC 9110 define caching semantics for, with responses cacheable only when they include explicit freshness information and a `Content-Location` equal to the request's target URI?",
+      "prompt": "Apart from GET and HEAD, RFC 9110 defines caching semantics for one other method. Its responses are cacheable only when they include explicit freshness information and a `Content-Location` equal to the request's target URI. Which method is it?",
       "options": [
-        { "id": "a", "text": "PUT" },
-        { "id": "b", "text": "POST" },
-        { "id": "c", "text": "DELETE" },
-        { "id": "d", "text": "OPTIONS" }
+        {
+          "id": "a",
+          "text": "PUT"
+        },
+        {
+          "id": "b",
+          "text": "POST"
+        },
+        {
+          "id": "c",
+          "text": "DELETE"
+        },
+        {
+          "id": "d",
+          "text": "OPTIONS"
+        }
       ],
       "correct": "b",
-      "explanation": "RFC 9110 defines caching semantics for GET, HEAD and POST, and a POST response is cacheable only with explicit freshness information and a `Content-Location` that has the same value as the POST's target URI. Even then, a cached POST response can satisfy only a later GET or HEAD, never another POST, and RFC 9110 defines responses to PUT, DELETE and OPTIONS as not cacheable.",
+      "explanation": "RFC 9110 defines caching semantics for GET, HEAD and POST. A POST response is cacheable only when it includes explicit freshness information and a `Content-Location` with the same value as the POST's target URI; it can then be reused for a later GET or HEAD request, but not for a later POST. Responses to PUT, DELETE and OPTIONS are not cacheable.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.3",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-24-R01)"
     }
   ]
 }
