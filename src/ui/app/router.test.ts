@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseRoute, routeHref, routeKey, type Route } from "./router";
+import {
+  parseRoute,
+  routeHref,
+  routeKey,
+  type LinkableRoute,
+  type Route,
+} from "./router";
 
 describe("parseRoute", () => {
   it.each<[string, Route]>([
@@ -35,7 +41,7 @@ describe("parseRoute", () => {
 
 describe("routeHref and routeKey", () => {
   it("round-trips every route through parseRoute", () => {
-    const routes: Route[] = [
+    const routes: LinkableRoute[] = [
       { name: "landing" },
       { name: "quiz" },
       { name: "results" },

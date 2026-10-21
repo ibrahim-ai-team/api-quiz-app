@@ -45,11 +45,13 @@ export function parseRoute(hash: string): Route {
   return NOT_FOUND;
 }
 
+/** A route that can be linked to (the 404 view has no address of its own). */
+export type LinkableRoute = Exclude<Route, { name: "notFound" }>;
+
 /** Hash href for a route, for links (`href={routeHref(...)}`). */
-export function routeHref(route: Route): string {
+export function routeHref(route: LinkableRoute): string {
   switch (route.name) {
     case "landing":
-    case "notFound":
       return "#/";
     case "topic":
       return `#/topic/${encodeURIComponent(route.topicId)}`;

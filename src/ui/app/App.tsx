@@ -5,6 +5,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   type MouseEvent,
@@ -30,7 +31,7 @@ import { QuizPlaceholder, ResultsPlaceholder } from "./views/Placeholders";
 export interface AppProps {
   /** Started at module top level in main.tsx; resolves, never rejects. */
   readonly bankPromise: Promise<LoadBankResult>;
-  /** Starts a new bank request for Retry (FR-25). Keep the identity stable. */
+  /** Starts a new bank request for Retry (FR-25). */
   readonly reloadBank: () => Promise<LoadBankResult>;
 }
 
@@ -53,13 +54,18 @@ export function App({ bankPromise, reloadBank }: AppProps) {
   const [bank, dispatch] = useReducer(bankReducer, initialBankState);
   const mainRef = useRef<HTMLElement>(null);
   const focusAfterRetry = useRef(false);
+  // Latest loader in a ref, so a new function identity never refetches.
+  const reloadRef = useRef(reloadBank);
+  useLayoutEffect(() => {
+    reloadRef.current = reloadBank;
+  }, [reloadBank]);
 
   // Consume the startup request (attempt 0) or start a Retry request.
   const loadingAttempt = bank.status === "loading" ? bank.attempt : null;
   useEffect(() => {
     if (loadingAttempt === null) return;
     let active = true;
-    const request = loadingAttempt === 0 ? bankPromise : reloadBank();
+    const request = loadingAttempt === 0 ? bankPromise : reloadRef.current();
     void request.then((result) => {
       if (active)
         dispatch({ type: "settled", attempt: loadingAttempt, result });
@@ -67,7 +73,7 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     return () => {
       active = false;
     };
-  }, [loadingAttempt, bankPromise, reloadBank]);
+  }, [loadingAttempt, bankPromise]);
 
   const retry = useCallback(() => {
     focusAfterRetry.current = true;
@@ -155,6 +161,9 @@ export function App({ bankPromise, reloadBank }: AppProps) {
         <ErrorBoundary
           resetKey={routeKey(route)}
           fallback={(reset) => <AppError onReset={reset} />}
+          onReset={() => {
+            focusHeading(mainRef.current);
+          }}
         >
           {content}
         </ErrorBoundary>

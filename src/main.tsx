@@ -19,7 +19,16 @@ if (container === null) {
   throw new Error("Root element #root not found");
 }
 
-createRoot(container).render(
+// Standard 10 / SEC-R05 L-1: React's default handlers log errors to the
+// console. Caught errors already show the app error view, and nothing about
+// the user or the failure is logged in production.
+const silent = (): void => undefined;
+
+createRoot(container, {
+  onCaughtError: silent,
+  onUncaughtError: silent,
+  onRecoverableError: silent,
+}).render(
   <StrictMode>
     <App bankPromise={bankPromise} reloadBank={reloadBank} />
   </StrictMode>,

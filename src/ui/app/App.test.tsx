@@ -300,3 +300,70 @@ describe("shell", () => {
     expect(window.location.hash).toBe("#/results");
   });
 });
+
+/**
+ * Makes the next `document.title` assignment throw once, so the view's
+ * title effect fails inside the error boundary (a real render-phase error
+ * path without test-only code in the app). Returns a restore function.
+ */
+function failNextTitleWrite(): () => void {
+  const proto = Object.getOwnPropertyDescriptor(Document.prototype, "title");
+  let failed = false;
+  Object.defineProperty(document, "title", {
+    configurable: true,
+    get: () => proto?.get?.call(document) as string,
+    set: (value: string) => {
+      if (!failed) {
+        failed = true;
+        throw new Error("forced title failure");
+      }
+      proto?.set?.call(document, value);
+    },
+  });
+  return () => {
+    Reflect.deleteProperty(document, "title");
+  };
+}
+
+describe("T-US12-5 error boundary inside the app (T-08-R01 L1)", () => {
+  it("focuses the landing h1 after the boundary is reset from the home link at #/", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const restore = failNextTitleWrite();
+    try {
+      setHash("#/");
+      renderApp(Promise.resolve(OK));
+      await flush();
+      const errorHeading = h1();
+      expect(errorHeading.textContent).toContain(strings.error.appHeading);
+      expect(document.activeElement).toBe(errorHeading);
+
+      fireEvent.click(screen.getByRole("link", { name: strings.common.home }));
+      expect(h1().textContent).toContain(strings.landing.heading);
+      expect(document.activeElement).toBe(h1());
+      expect(document.title).toBe(strings.title.landing);
+      expect(window.location.hash).toBe("#/");
+    } finally {
+      restore();
+      vi.restoreAllMocks();
+    }
+  });
+});
+
+describe("reloadBank prop (T-08-R01 L4)", () => {
+  it("does not refetch when the loader identity changes; Retry uses the latest loader", async () => {
+    const first = vi.fn(() => Promise.resolve(OK));
+    const second = vi.fn(() => Promise.resolve(OK));
+    const failed = Promise.resolve(FAILED);
+    const view = render(<App bankPromise={failed} reloadBank={first} />);
+    await flush();
+    view.rerender(<App bankPromise={failed} reloadBank={second} />);
+    await flush();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: strings.common.retry }));
+    await flush();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(main().getAttribute("data-bank-status")).toBe("ready");
+  });
+});

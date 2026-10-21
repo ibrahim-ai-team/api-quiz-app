@@ -9,6 +9,8 @@ export interface ErrorBoundaryProps {
   /** A change of this value clears a caught error (the route key). */
   readonly resetKey: string;
   readonly fallback: (reset: () => void) => ReactNode;
+  /** Called after a manual reset has re-rendered the children (focus). */
+  readonly onReset?: () => void;
   readonly children: ReactNode;
 }
 
@@ -41,7 +43,8 @@ export class ErrorBoundary extends Component<
   }
 
   private readonly reset = (): void => {
-    this.setState({ hasError: false });
+    // The callback runs after the commit, when the restored view is mounted.
+    this.setState({ hasError: false }, this.props.onReset);
   };
 
   override render(): ReactNode {

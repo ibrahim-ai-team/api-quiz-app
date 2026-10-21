@@ -178,6 +178,56 @@ test.describe("T-08 app shell and routes", () => {
   });
 });
 
+test.describe("T-08 error boundary in the production build", () => {
+  test("T-US12-5 a forced view error shows the app error view and logs nothing to the console (standard 10, SEC-R05 L-1)", async ({
+    page,
+  }) => {
+    await useFixtureBank(page);
+    const consoleMessages: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error" || message.type() === "warning") {
+        consoleMessages.push(`${message.type()}: ${message.text()}`);
+      }
+    });
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await page.goto("./");
+    await expectBankStatus(page, "ready");
+    // Force an error inside a routed view: the next document.title write
+    // (the 404 view's title effect) throws once. No app code is changed.
+    await page.evaluate(() => {
+      const proto = Object.getOwnPropertyDescriptor(
+        Document.prototype,
+        "title",
+      );
+      let failed = false;
+      Object.defineProperty(document, "title", {
+        configurable: true,
+        get: () => proto?.get?.call(document) as string,
+        set: (value: string) => {
+          if (!failed) {
+            failed = true;
+            throw new Error("forced view error");
+          }
+          proto?.set?.call(document, value);
+        },
+      });
+      window.location.hash = "#/no-such-page";
+    });
+    const heading = h1(page, strings.error.appHeading);
+    await expect(heading).toBeFocused();
+    await expect(page).toHaveTitle(strings.title.appError);
+
+    // Home link recovers and focuses the landing h1 (T-08-R01 L1).
+    await page.getByRole("link", { name: strings.common.home }).click();
+    await expect(h1(page, strings.landing.heading)).toBeFocused();
+
+    expect(consoleMessages, "console errors/warnings").toEqual([]);
+    expect(pageErrors, "uncaught page errors").toEqual([]);
+  });
+});
+
 test.describe("T-08 loading and data error states", () => {
   test("T-US12-5 data failure shows a readable error with Retry; Retry loads the fixed data (FR-25)", async ({
     page,
