@@ -5,6 +5,13 @@
 
 const APP_NAME = "ApiQuiz";
 
+/** copy:question.codeLabel; numbered only when count > 1 (docs/design/copy.md). */
+function codeLabel(index: number, count: number): string {
+  return count > 1
+    ? `Code example ${String(index)} of ${String(count)}`
+    : "Code example";
+}
+
 /** copy title rule (FR-27): parts joined with " - ", app name last. */
 function pageTitle(...parts: readonly string[]): string {
   return [...parts, APP_NAME].join(" - ");
@@ -14,11 +21,8 @@ export const strings = {
   /** copy:app.name */
   appName: APP_NAME,
   pageTitle,
-  /** copy:question.codeLabel; numbered only when count > 1 (docs/design/copy.md). */
-  codeLabel: (index: number, count: number): string =>
-    count > 1
-      ? `Code example ${String(index)} of ${String(count)}`
-      : "Code example",
+  /** Default label for `renderRichText` code boxes (copy:question.codeLabel). */
+  codeLabel,
   common: {
     retry: "Retry",
     home: "Go to the home page",
@@ -33,8 +37,9 @@ export const strings = {
     appError: pageTitle("Something went wrong"),
     notFound: pageTitle("Page not found"),
     topicNotFound: pageTitle("Topic not found"),
-    /** Placeholder until T-12 sets copy:title.question. */
-    quizPlaceholder: pageTitle("Quiz"),
+    /** copy:title.question; `topic` is "Mixed" for a Mixed quiz. */
+    question: (k: number, n: number, topic: string): string =>
+      pageTitle(`Question ${String(k)} of ${String(n)}`, topic),
     /** Placeholder until T-15 sets copy:title.results. */
     resultsPlaceholder: pageTitle("Results"),
   },
@@ -62,6 +67,19 @@ export const strings = {
     /** copy:question.heading */
     heading: (k: number, n: number): string =>
       `Question ${String(k)} of ${String(n)}`,
+    /** copy:question.topic */
+    topic: (topic: string): string => `Topic: ${topic}`,
+    optionsLegend: "Choose one answer",
+    /** copy:question.codeLabel, passed explicitly for the prompt (T-12). */
+    codeLabel,
+    submit: "Submit",
+    submitHint: "Choose an answer to submit.",
+    exit: "Exit quiz",
+  },
+  /** Only the controls T-12 needs; T-13 adds the rest of copy:feedback.*. */
+  feedback: {
+    next: "Next",
+    seeResults: "See results",
   },
   loading: {
     text: "Loading questions...",
@@ -81,9 +99,8 @@ export const strings = {
     topicBody:
       "That topic does not exist or has been renamed. Choose a topic from the list below.",
   },
-  /** Interim views; replaced by T-12 (Question) and T-15 (Results). */
+  /** Interim view; replaced by T-15 (Results). */
   placeholder: {
-    quizHeading: "Quiz",
     resultsHeading: "Your results",
     body: "This view is not available yet.",
   },

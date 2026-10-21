@@ -21,9 +21,29 @@ function setHash(hash: string): void {
 /** Navigates like a link click: new hash plus the hashchange event. */
 function navigate(hash: string): void {
   act(() => {
+    const oldURL = window.location.href;
     setHash(hash);
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    window.dispatchEvent(
+      new HashChangeEvent("hashchange", {
+        oldURL,
+        newURL: window.location.href,
+      }),
+    );
   });
+}
+
+/** Lets a queued `hashchange` (from `location.hash =`/`replace`) run. */
+async function settle(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+/** Selects the only topic in TEST_BANK and starts a 1-question quiz. */
+async function startQuiz(): Promise<void> {
+  fireEvent.click(screen.getByRole("radio"));
+  fireEvent.click(screen.getByRole("button", { name: strings.landing.start }));
+  await settle();
 }
 
 /** Lets resolved loader promises reach the reducer. */
@@ -283,10 +303,81 @@ describe("T-US1-3/6 Start creates one quiz and opens #/quiz", () => {
   });
 });
 
+describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
+  it("#/quiz with no quiz in memory replaces the entry with Landing and focuses its h1", async () => {
+    setHash("#/quiz");
+    const before = window.history.length;
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await settle();
+    expect(window.location.hash).toBe("#/");
+    expect(window.history.length).toBe(before);
+    expect(h1().textContent).toContain(strings.landing.heading);
+    expect(document.activeElement).toBe(h1());
+    expect(screen.queryByRole("button", { name: strings.question.exit })).toBe(
+      null,
+    );
+  });
+
+  it("T-US2-1/4 answers the question, locks it and shows the finished placeholder", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    expect(document.title).toBe(
+      strings.title.question(1, 1, TEST_BANK.topics[0]?.name ?? ""),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.submit }),
+    );
+    const next = screen.getByRole("button", {
+      name: strings.feedback.seeResults,
+    });
+    expect(document.activeElement).toBe(next);
+    // Locked through `fieldset disabled` (views.md §2).
+    expect(
+      screen.getByRole("radio", { name: "True" }).matches(":disabled"),
+    ).toBe(true);
+    fireEvent.click(next);
+    expect(h1().textContent).toBe(strings.placeholder.resultsHeading);
+    expect(document.activeElement).toBe(h1());
+    expect(window.location.hash).toBe("#/quiz");
+  });
+
+  it("T-US2-8 Exit clears the quiz and returns to Landing; #/quiz then redirects", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await settle();
+    expect(window.location.hash).toBe("#/");
+    expect(h1().textContent).toContain(strings.landing.heading);
+    expect(document.activeElement).toBe(h1());
+    navigate("#/quiz");
+    await settle();
+    expect(window.location.hash).toBe("#/");
+    expect(h1().textContent).toContain(strings.landing.heading);
+  });
+
+  it("T-US2-8 Back to Landing clears the quiz, so Forward cannot show it again", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    navigate("#/");
+    expect(document.activeElement).toBe(h1());
+    expect(h1().textContent).toContain(strings.landing.heading);
+    navigate("#/quiz");
+    await settle();
+    expect(window.location.hash).toBe("#/");
+  });
+});
+
 describe("T-US10-6 per-view title and focus", () => {
   it.each([
     ["", strings.landing.heading, strings.title.landing],
-    ["#/quiz", strings.placeholder.quizHeading, strings.title.quizPlaceholder],
     [
       "#/results",
       strings.placeholder.resultsHeading,
@@ -306,10 +397,10 @@ describe("T-US10-6 per-view title and focus", () => {
     await flush();
     expect(document.activeElement).toBe(document.body);
 
-    navigate("#/quiz");
-    expect(h1().textContent).toContain(strings.placeholder.quizHeading);
+    navigate("#/results");
+    expect(h1().textContent).toContain(strings.placeholder.resultsHeading);
     expect(document.activeElement).toBe(h1());
-    expect(document.title).toBe(strings.title.quizPlaceholder);
+    expect(document.title).toBe(strings.title.resultsPlaceholder);
 
     navigate("#/nope");
     expect(document.activeElement).toBe(h1());
@@ -340,7 +431,8 @@ describe("shell", () => {
         .getByRole("link", { name: strings.appName })
         .getAttribute("href"),
     ).toBe("#/");
-    navigate("#/quiz");
+    await startQuiz();
+    expect(window.location.hash).toBe("#/quiz");
     expect(within(banner).queryByRole("link")).toBe(null);
     expect(banner.textContent).toContain(strings.appName);
   });

@@ -1,6 +1,7 @@
 /**
- * Landing view (T-09, issue #29; US-1, US-12.2). Fixture bank: topic-a 2,
- * topic-b 1, topic-c 1, topic-d 0 questions, so Mixed shows 4.
+ * Landing view (T-09, issue #29; US-1, US-12.2). Fixture bank (enlarged in
+ * T-12): topic-a 12, topic-b 5, topic-c 3, topic-d 0 questions, so Mixed
+ * shows 20. Quiz content checks live in question.spec.ts.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -45,10 +46,10 @@ test.describe("T-09 Landing", () => {
     });
     await expect(group.getByRole("radio")).toHaveCount(4);
     for (const [index, name] of [
-      "Fixture topic A, 2 questions",
-      "Fixture topic B, 1 question",
-      "Fixture topic C, 1 question",
-      "Mixed, 4 questions",
+      "Fixture topic A, 12 questions",
+      "Fixture topic B, 5 questions",
+      "Fixture topic C, 3 questions",
+      "Mixed, 20 questions",
     ].entries()) {
       await expect(group.getByRole("radio").nth(index)).toHaveAccessibleName(
         name,
@@ -80,9 +81,9 @@ test.describe("T-09 Landing", () => {
   });
 
   for (const [label, n] of [
-    [/^Fixture topic A/, 2],
-    [/^Fixture topic B/, 1],
-    [/^Mixed/, 4],
+    [/^Fixture topic A/, 10],
+    [/^Fixture topic B/, 5],
+    [/^Mixed/, 10],
   ] as const) {
     test(`T-US1-3/4/7 ${label.source.slice(1)}: select + Start (2 interactions) opens question 1 of ${String(n)}`, async ({
       page,
@@ -102,7 +103,7 @@ test.describe("T-09 Landing", () => {
     await radio(page, /^Mixed/).click();
     const historyBefore = await page.evaluate(() => history.length);
     await start(page).dblclick();
-    await expect(questionHeading(page, 4)).toBeVisible();
+    await expect(questionHeading(page, 10)).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
     expect(await page.evaluate(() => history.length)).toBe(historyBefore + 1);
   });
@@ -122,7 +123,7 @@ test.describe("T-09 Landing", () => {
     await page.keyboard.press("Tab");
     await expect(start(page)).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(questionHeading(page, 2)).toBeFocused();
+    await expect(questionHeading(page, 10)).toBeFocused();
   });
 
   test("T-US1-8 topic deep link preselects and does not auto-start, also after a reload", async ({

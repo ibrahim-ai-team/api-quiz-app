@@ -109,18 +109,14 @@ test.describe("T-08 app shell and routes", () => {
     await expectNoHorizontalScroll(page);
   });
 
-  test("T-US12-3 deep link refresh keeps the #/quiz view, and an unknown hash survives a refresh as 404", async ({
+  test("T-US12-3 #/quiz without a quiz in memory redirects to Landing (views.md §2), and an unknown hash survives a refresh as 404", async ({
     page,
   }) => {
     await useFixtureBank(page);
     await page.goto("./#/quiz");
-    await expect(h1(page, strings.placeholder.quizHeading)).toBeFocused();
-    await expect(page).toHaveTitle(strings.title.quizPlaceholder);
-    // On the quiz route the brand is plain text, not a link (views.md §0).
-    await expect(page.getByRole("banner").getByRole("link")).toHaveCount(0);
-    await page.reload();
-    await expect(page).toHaveURL(/#\/quiz$/);
-    await expect(h1(page, strings.placeholder.quizHeading)).toBeVisible();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(h1(page, strings.landing.heading)).toBeFocused();
+    await expect(page).toHaveTitle(strings.title.landing);
 
     await page.goto("./#/definitely/not/a/route");
     await page.reload();

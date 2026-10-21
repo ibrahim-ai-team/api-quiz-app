@@ -1,4 +1,7 @@
-/** Interim views for routes built later: Question (T-12), Results (T-15). */
+/**
+ * Interim view for a route built later: Results (T-15). It is also shown on
+ * `#/quiz` once the last question is answered, until T-15 replaces it.
+ */
 import { strings } from "../../strings";
 import { useDocumentTitle } from "../useDocumentTitle";
 import styles from "../../components/common.module.css";
@@ -17,24 +20,6 @@ function Placeholder({ heading, title }: PlaceholderProps) {
       </h1>
       <p className={styles.text}>{strings.placeholder.body}</p>
     </>
-  );
-}
-
-export interface QuizPlaceholderProps {
-  /** Questions in the started quiz, if any (T-09; T-12 builds the view). */
-  readonly questionCount?: number | undefined;
-}
-
-export function QuizPlaceholder({ questionCount }: QuizPlaceholderProps) {
-  return (
-    <Placeholder
-      heading={
-        questionCount === undefined
-          ? strings.placeholder.quizHeading
-          : strings.question.heading(1, questionCount)
-      }
-      title={strings.title.quizPlaceholder}
-    />
   );
 }
 
