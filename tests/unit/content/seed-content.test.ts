@@ -26,29 +26,26 @@ function runCli(args: string[]) {
 }
 
 describe("seed content", () => {
-  it("validates in dev mode: about 6 draft questions over 3 topics", async () => {
+  // The bank grows batch by batch (US-8, T-23..T-30), so these checks stay
+  // independent of the exact counts and review states.
+  it("validates in dev mode with no errors over the 8 curated topics", async () => {
     const result = validateContent(await loadContentSources(CONTENT, REPO), {
       release: false,
     });
     expect(result.errors).toEqual([]);
     expect(result.questions.length).toBeGreaterThanOrEqual(6);
-    expect(new Set(result.questions.map((q) => q.topic)).size).toBe(3);
-    expect(result.questions.every((q) => q.reviewStatus === "draft")).toBe(
-      true,
-    );
     expect(result.topics).toHaveLength(8);
     expect(result.warnings.map((w) => w.field)).toContain("reviewed.total");
   });
 
-  it("fails in release mode with threshold errors", async () => {
+  it("fails in release mode while the bank is below the US-8.1 thresholds", async () => {
     const result = validateContent(await loadContentSources(CONTENT, REPO), {
       release: true,
     });
-    expect(result.errors.map((e) => e.field)).toEqual([
-      "reviewed.total",
-      "reviewed.topics",
-      "reviewed.difficulty",
-    ]);
+    expect(result.errors.map((e) => e.field)).toContain("reviewed.total");
+    expect(result.errors.every((e) => e.field.startsWith("reviewed."))).toBe(
+      true,
+    );
   });
 });
 
