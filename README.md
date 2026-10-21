@@ -16,6 +16,22 @@ Stack: TypeScript (strict), React 19, Vite, CSS Modules with CSS custom-property
 
 Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm run check` runs lint, typecheck, content validation and unit tests, and `npm run e2e` runs Playwright against `npm run build && npm run preview`.
 
+Commands (Node 22, see `.nvmrc`):
+
+| Command | Purpose |
+|---|---|
+| `npm ci` | Install the exact dependency versions from `package-lock.json` |
+| `npm run dev` | Vite dev server at `http://localhost:5173/api-quiz-app/` (no CSP in dev) |
+| `npm run build` | Type-check (`tsc -b`) and build to `dist/`; the CSP `<meta>` is injected only here |
+| `npm run preview` | Serve the build at `http://localhost:4173/api-quiz-app/` |
+| `npm run check` | `lint`, `lint:fixtures`, `typecheck`, `content:validate` and `test` |
+| `npm run lint` | ESLint with `--max-warnings 0` |
+| `npm run lint:fixtures` | Asserts that the negative fixtures in `tests/lint-fixtures/` fail lint |
+| `npm run typecheck` | `tsc -b` over the app, tooling and test projects |
+| `npm run test` | Vitest unit tests |
+| `npm run format` / `npm run format:check` | Prettier write / check |
+| `npm run content:validate` | Placeholder until T-05 |
+
 ## Testing
 
 Vitest unit tests (domain engine, safe text renderer, storage guards) and Vitest + Testing Library component tests; content schema validation script in CI; Playwright E2E against the production build (Chromium + WebKit mobile on PRs, Firefox and full device set before release) with @axe-core/playwright, viewport, offline and same-origin request checks; Lighthouse CI (mobile) and gzip size budgets in CI
