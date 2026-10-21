@@ -12,13 +12,14 @@ body:
       value: |
         **This issue will be public.** Issues and GitHub usernames on this repository can be seen by anyone.
         Please do not include personal data, such as your name, email address, employer or location, or any other information about you or other people.
+        The question ID and content version below are filled in automatically and do not identify you.
         Only describe the problem with the question.
   - type: input
     id: question-id
     attributes:
       label: Question ID
       description: Filled in automatically when you use the "Report a problem with this question" link in the app. Leave it empty for a general report.
-      placeholder: e.g. http-001
+      placeholder: e.g. http-host-header-required
     validations:
       required: false
   - type: input
