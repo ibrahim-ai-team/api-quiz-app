@@ -20,6 +20,8 @@
     "content:validate": "node -e \"console.log('no content validator yet (T-05)')\"",
     "size": "node scripts/check-size.mjs",
     "size:selftest": "node tests/size-fixtures/run-size-selftest.mjs",
+    "csp:check": "node scripts/check-dist-csp.mjs",
+    "csp:selftest": "node tests/csp-fixtures/run-csp-selftest.mjs",
     "check": "npm run lint && npm run lint:fixtures && npm run typecheck && npm run content:validate && npm run test"
   },
   "dependencies": {

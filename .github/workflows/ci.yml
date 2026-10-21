@@ -47,6 +47,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: CSP check self-test (missing meta and inline script must fail)
+        run: npm run csp:selftest
+
+      - name: CSP check on dist/index.html (meta present, no inline script or style)
+        run: npm run csp:check
+
       - name: Size budget self-test (250 kB fixture must fail)
         run: npm run size:selftest
 
