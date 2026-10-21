@@ -28,6 +28,14 @@ const expectations = {
     "no-restricted-imports": 1,
   },
   "tests/lint-fixtures/src/domain/importsUi.ts": { "no-restricted-imports": 1 },
+  // zod, zod/v4, scripts/content/schema.ts (T-05-R01 M3)
+  "tests/lint-fixtures/src/content/importsBuildTools.ts": {
+    "no-restricted-imports": 3,
+  },
+  // zod, scripts/ path: the domain block must keep the src-wide bans
+  "tests/lint-fixtures/src/domain/importsBuildTools.ts": {
+    "no-restricted-imports": 2,
+  },
   "tests/lint-fixtures/src/domain/usesDom.ts": {
     // window, document, localStorage, sessionStorage, navigator, fetch
     "no-restricted-globals": 6,

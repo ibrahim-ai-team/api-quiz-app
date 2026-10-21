@@ -61,8 +61,8 @@ jobs:
       - name: Size budget self-test (250 kB fixture must fail)
         run: npm run size:selftest
 
-      - name: Size budget (JS <= 200 kB gzip, data <= 60 kB gzip)
-        run: npm run size
+      - name: Size budget (JS <= 200 kB gzip, data <= 60 kB gzip; bank asset required)
+        run: npm run size -- --require-data
 
   dependency-review:
     name: Dependency review

@@ -2,8 +2,8 @@
  * Fixture bank route (tech-lead standard 12, test strategy section 4).
  * E2E never depends on the real content: the hashed data asset emitted by
  * T-06 (`assets/bank-<hash>.json`) is answered from `tests/e2e/fixtures/`.
- * Until T-06 lands the shell requests no bank, so the route is registered
- * harmlessly and `hits()` stays 0.
+ * The app fetches the bank at startup, so specs that use the route should
+ * expect `hits()` to be at least 1.
  */
 import path from "node:path";
 import type { Page } from "@playwright/test";
