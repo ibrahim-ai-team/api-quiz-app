@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "http-method-not-idempotent",
+      "topic": "http-methods-idempotency",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Which of these request methods is NOT defined as idempotent by RFC 9110?",
+      "options": [
+        { "id": "a", "text": "PUT" },
+        { "id": "b", "text": "DELETE" },
+        { "id": "c", "text": "POST" },
+        { "id": "d", "text": "GET" }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 defines PUT, DELETE and the safe methods (GET, HEAD, OPTIONS, TRACE) as idempotent. POST is not idempotent: repeating a POST can have additional effects, such as creating a second resource.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.2",
+      "reviewStatus": "draft"
+    },
+    {
+      "id": "http-delete-is-not-safe",
+      "topic": "http-methods-idempotency",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "DELETE is defined as a safe method by RFC 9110.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "RFC 9110 defines only GET, HEAD, OPTIONS and TRACE as safe among its methods. DELETE is idempotent, but it is not safe because it requests a state change on the server.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.2.1",
+      "reviewStatus": "draft"
+    }
+  ]
+}

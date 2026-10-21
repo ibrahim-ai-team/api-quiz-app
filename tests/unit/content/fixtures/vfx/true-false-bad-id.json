@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "valid-question",
+      "topic": "http-fundamentals",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "Which header field carries the target host in an HTTP/1.1 request?",
+      "options": [
+        { "id": "yes", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "A user agent must send Host in HTTP/1.1 requests (fixture text).",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-7.2",
+      "reviewStatus": "draft"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "topics": [
+    { "id": "http-fundamentals", "name": "HTTP fundamentals" },
+    { "id": "status-codes", "name": "Status codes" }
+  ]
+}

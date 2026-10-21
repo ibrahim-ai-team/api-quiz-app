@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "topics": [
+    { "id": "http-fundamentals", "name": "HTTP fundamentals" },
+    {
+      "id": "http-methods-idempotency",
+      "name": "HTTP methods and idempotency"
+    },
+    { "id": "status-codes", "name": "Status codes" },
+    { "id": "rest-design", "name": "REST design" },
+    {
+      "id": "authentication-authorization",
+      "name": "Authentication and authorization"
+    },
+    { "id": "api-versioning", "name": "API versioning" },
+    {
+      "id": "pagination-filtering-rate-limiting",
+      "name": "Pagination, filtering and rate limiting"
+    },
+    { "id": "graphql-basics", "name": "GraphQL basics" }
+  ]
+}
