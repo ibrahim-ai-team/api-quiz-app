@@ -1,0 +1,108 @@
+# CI for ApiQuiz (T-02, issue #22). Gates: docs/qa/test-strategy.md section 5.
+#
+# Every third-party action is pinned by full 40-character commit SHA with the
+# release tag as a comment (tech-lead standard 15). Dependabot (github-actions)
+# proposes SHA updates. The default GITHUB_TOKEN permission is read-only.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Cancel superseded PR runs; never cancel runs on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    name: Lint, typecheck, test, build, budgets, audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (npm ci, engine-strict)
+        run: npm ci
+
+      - name: Audit dependencies (high and critical fail)
+        run: npm audit --audit-level=high
+
+      - name: Check (lint, lint fixtures, typecheck, content:validate, unit tests)
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+
+      - name: CSP check self-test (missing meta and inline script must fail)
+        run: npm run csp:selftest
+
+      - name: CSP check on dist/index.html (meta present, no inline script or style)
+        run: npm run csp:check
+
+      - name: Size budget self-test (250 kB fixture must fail)
+        run: npm run size:selftest
+
+      - name: Size budget (JS <= 200 kB gzip, data <= 60 kB gzip)
+        run: npm run size
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # Read-only: no PR comment, so no pull-requests: write is needed.
+          comment-summary-in-pr: never
+
+  # INFORMATIONAL ONLY - NOT A REQUIRED CHECK. Evaluates Node 24 (ADR-0001
+  # amendment A2) while the project is pinned to Node 22 via .nvmrc and
+  # engines. continue-on-error keeps a failure here from failing the workflow;
+  # do not add this job to branch protection or rulesets.
+  node24-compat:
+    name: Node 24 compatibility (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (engine check relaxed for this evaluation only)
+        run: npm ci --engine-strict=false
+
+      - name: Check
+        run: npm run check
+
+      - name: Build
+        run: npm run build
