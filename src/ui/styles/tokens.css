@@ -1,0 +1,107 @@
+/*
+ * Design tokens (T-08) transcribed from docs/design/tokens.md. Light is the
+ * default; dark applies under prefers-color-scheme: dark (US-13 groundwork).
+ * Every contrast pair in tokens.md §1 was recomputed for both themes in T-08
+ * (WCAG 2.2 formula, script) and meets its threshold; axe re-checks in E2E.
+ */
+:root {
+  color-scheme: light dark;
+
+  --color-bg: #ffffff;
+  --color-surface: #f3f4f6;
+  --color-text: #1f2937;
+  --color-text-muted: #4b5563;
+  --color-border: #6b7280;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-on-primary: #ffffff;
+  --color-selected-bg: #eff6ff;
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-focus: #1d4ed8;
+
+  --font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+  --line-height-body: 1.5;
+  --line-height-heading: 1.25;
+  --line-height-code: 1.45;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --content-max: 45rem;
+  --target-min: max(44px, 2.75rem);
+  --option-min: max(48px, 3rem);
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --border-width: 2px;
+  --border-width-state: 3px;
+  --border-width-panel: 4px;
+
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--color-focus);
+
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Inline padding of the content column per breakpoint (tokens.md §7). */
+  --page-padding-inline: var(--space-4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #111827;
+    --color-surface: #1f2937;
+    --color-text: #f9fafb;
+    --color-text-muted: #d1d5db;
+    --color-border: #9ca3af;
+    --color-primary: #93c5fd;
+    --color-primary-hover: #bfdbfe;
+    --color-on-primary: #111827;
+    --color-selected-bg: #1e3a8a;
+    --color-success: #86efac;
+    --color-success-bg: #052e16;
+    --color-danger: #fca5a5;
+    --color-danger-bg: #450a0a;
+    --color-focus: #93c5fd;
+  }
+}
+
+@media (min-width: 48em) {
+  :root {
+    --page-padding-inline: var(--space-5);
+  }
+}
+
+@media (min-width: 64em) {
+  :root {
+    --page-padding-inline: var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

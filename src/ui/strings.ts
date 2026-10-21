@@ -1,14 +1,70 @@
 /**
  * All user-visible UI copy lives here (implementation standard 8, A12).
+ * Keys follow docs/design/copy.md; `copy:<key>` names the source row.
  */
+
+const APP_NAME = "ApiQuiz";
+
+/** copy title rule (FR-27): parts joined with " - ", app name last. */
+function pageTitle(...parts: readonly string[]): string {
+  return [...parts, APP_NAME].join(" - ");
+}
+
 export const strings = {
-  appName: "ApiQuiz",
-  appDescription:
-    "Practise API interview questions and check your understanding.",
-  documentTitle: "ApiQuiz",
+  /** copy:app.name */
+  appName: APP_NAME,
+  pageTitle,
   /** copy:question.codeLabel; numbered only when count > 1 (docs/design/copy.md). */
   codeLabel: (index: number, count: number): string =>
     count > 1
       ? `Code example ${String(index)} of ${String(count)}`
       : "Code example",
+  common: {
+    retry: "Retry",
+    home: "Go to the home page",
+  },
+  shell: {
+    /** Delegation T-08-D01 asks for a skip link (deviates from design A-D3). */
+    skipLink: "Skip to main content",
+  },
+  title: {
+    landing: pageTitle("Choose a topic"),
+    dataError: pageTitle("Questions could not be loaded"),
+    appError: pageTitle("Something went wrong"),
+    notFound: pageTitle("Page not found"),
+    topicNotFound: pageTitle("Topic not found"),
+    /** Placeholder until T-12 sets copy:title.question. */
+    quizPlaceholder: pageTitle("Quiz"),
+    /** Placeholder until T-15 sets copy:title.results. */
+    resultsPlaceholder: pageTitle("Results"),
+  },
+  landing: {
+    heading: "Practise API interview questions",
+    description:
+      "Answer short quizzes on HTTP, REST, authentication and other API topics, and learn from an explanation after every question.",
+  },
+  loading: {
+    text: "Loading questions...",
+    still: "Still loading. Your connection may be slow.",
+  },
+  error: {
+    dataHeading: "Questions could not be loaded",
+    dataBody: "Check your connection, then try again.",
+    appHeading: "Something went wrong",
+    appBody:
+      "The page could not be displayed. Try again, or go back to the home page.",
+  },
+  notFound: {
+    heading: "Page not found",
+    body: "There is no page at this address.",
+    topicHeading: "Topic not found",
+    topicBody:
+      "That topic does not exist or has been renamed. Choose a topic from the list below.",
+  },
+  /** Interim views; replaced by T-12 (Question) and T-15 (Results). */
+  placeholder: {
+    quizHeading: "Quiz",
+    resultsHeading: "Your results",
+    body: "This view is not available yet.",
+  },
 } as const;
