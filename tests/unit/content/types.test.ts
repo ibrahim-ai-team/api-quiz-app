@@ -72,6 +72,15 @@ describe("isBank", () => {
     ["one option", (q) => (q.options = [{ id: "a", text: "A" }])],
     ["option without text", (q) => (q.options = [{ id: "a" }, { id: "b" }])],
     ["correct not an option", (q) => (q.correct = "z")],
+    [
+      "duplicate option ids",
+      (q) =>
+        (q.options = [
+          { id: "a", text: "Fixture option A" },
+          { id: "b", text: "Fixture option B" },
+          { id: "b", text: "Fixture option C" },
+        ]),
+    ],
     ["missing explanation", (q) => delete q.explanation],
     ["http sourceUrl", (q) => (q.sourceUrl = "http://example.com")],
     ["javascript sourceUrl", (q) => (q.sourceUrl = "javascript:alert(1)")],

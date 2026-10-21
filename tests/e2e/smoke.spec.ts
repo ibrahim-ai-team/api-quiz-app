@@ -8,7 +8,11 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeSeriousOrCritical } from "./helpers/a11y.ts";
 import { expectNoCspViolations, trackCspViolations } from "./helpers/csp.ts";
-import { FIXTURES_DIR, useFixtureBank } from "./helpers/fixture-bank.ts";
+import {
+  FIXTURES_DIR,
+  useFixtureBank,
+  type FixtureBankRoute,
+} from "./helpers/fixture-bank.ts";
 import { expectNoHorizontalScroll } from "./helpers/layout.ts";
 import {
   expectAllSameOrigin,
@@ -38,13 +42,23 @@ async function expectBankReady(page: Page): Promise<void> {
   );
 }
 
+/** Tests that deliberately load the real emitted asset (no fixture route). */
+const REAL_ASSET_TESTS = new Set(["T-NFR5-1"]);
+
 test.describe("T-03 shell smoke", () => {
+  // E2E never depends on real content (standard 12): every test except those
+  // in REAL_ASSET_TESTS gets the fixture bank route before navigation.
+  let bank: FixtureBankRoute | null = null;
+  test.beforeEach(async ({ page }, testInfo) => {
+    const id = testInfo.title.split(" ")[0] ?? "";
+    bank = REAL_ASSET_TESTS.has(id) ? null : await useFixtureBank(page);
+  });
+
   test("T-03-smoke shell renders at the base path from the production build", async ({
     page,
   }) => {
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    const bank = await useFixtureBank(page);
 
     const response = await page.goto("./");
     expect(response?.status()).toBe(200);
@@ -67,7 +81,7 @@ test.describe("T-03 shell smoke", () => {
       "data-content-version",
       fixtureContentVersion,
     );
-    expect(bank.hits()).toBeGreaterThanOrEqual(1);
+    expect(bank?.hits()).toBeGreaterThanOrEqual(1);
     expect(pageErrors, "uncaught page errors").toEqual([]);
   });
 
@@ -93,7 +107,6 @@ test.describe("T-03 shell smoke", () => {
     context,
     baseURL,
   }) => {
-    await useFixtureBank(page);
     const requests = trackRequests(context);
     await page.goto("./");
     await expectBankReady(page);
@@ -113,7 +126,6 @@ test.describe("T-03 shell smoke", () => {
     page,
     context,
   }) => {
-    await useFixtureBank(page);
     await page.goto("./");
     await expectBankReady(page);
     await goOfflineAfterLoad(page, context, async (p) => {

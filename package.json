@@ -21,6 +21,8 @@
     "content:validate:release": "node scripts/validate-content.ts --release",
     "content:build": "node scripts/build-content.ts --mode production",
     "content:build:dev": "node scripts/build-content.ts --mode development",
+    "content:check-dist": "node scripts/check-dist-content.mjs",
+    "content:check-dist:selftest": "node tests/content-dist-fixtures/run-content-dist-selftest.mjs",
     "size": "node scripts/check-size.mjs",
     "size:selftest": "node tests/size-fixtures/run-size-selftest.mjs",
     "csp:check": "node scripts/check-dist-csp.mjs",

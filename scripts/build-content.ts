@@ -15,6 +15,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   isBank,
+  type BankOption,
   type BankQuestion,
   type BankTopic,
 } from "../src/content/types.ts";
@@ -43,6 +44,8 @@ export type ContentContractChecks = [
   Expect<Assignable<Topic, BankTopic>>,
   Expect<SameKeys<Question, BankQuestion>>,
   Expect<SameKeys<Topic, BankTopic>>,
+  Expect<Assignable<Question["options"][number], BankOption>>,
+  Expect<SameKeys<Question["options"][number], BankOption>>,
 ];
 
 const USAGE =

@@ -111,6 +111,7 @@ function isQuestion(
     Array.isArray(options) &&
     options.length >= 2 &&
     options.every(isOption) &&
+    new Set(options.map((option) => option.id)).size === options.length &&
     isNonEmptyString(correct) &&
     options.some((option) => option.id === correct) &&
     isNonEmptyString(value.explanation) &&
@@ -123,8 +124,8 @@ function isQuestion(
 
 /**
  * Structural guard for a fetched bank. Checks every field the UI relies on,
- * plus cheap integrity rules (known topic, `correct` names an option, unique
- * question IDs, https source). Unknown extra keys are tolerated. Never throws.
+ * plus cheap integrity rules (known topic, unique option IDs, `correct` names
+ * an option, unique question IDs, https source). Unknown extra keys are tolerated. Never throws.
  */
 export function isBank(value: unknown): value is Bank {
   if (!isRecord(value)) return false;
