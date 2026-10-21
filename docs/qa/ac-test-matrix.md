@@ -1,0 +1,109 @@
+# Acceptance Criteria to Test Matrix: ApiQuiz
+
+- **Delegation:** T-19-D01 (qa-automation), task T-19. Date: 2026-10-21.
+- **Source of AC text:** `docs/planning/01-product-brief.md` section 4 (cross-checked against the file 05 backlog JSON: identical for US-7, US-1, US-2). Criteria are paraphrased here; the brief wins on any wording difference.
+- **Strategy:** `docs/qa/test-strategy.md` (levels, fixtures, gates).
+- **Status of every row: NOT RUN.** No application code or test exists yet. A row becomes PASS only with observed CI output (commit SHA, job link) or a recorded manual check.
+- **Counts mapped:** US-7 = 6 criteria (US-7.1..7.6), US-1 = 9 (US-1.1..1.9), US-2 = 9 (US-2.1..2.9). Total 24, all mapped. Plus 20 NFR / edge-case rows and 10 outline rows (US-3..US-6, US-8..US-13).
+
+Legend. **Level:** U = unit (Vitest), C = component (Vitest + Testing Library, jsdom), CI = CI script/build check, E2E = Playwright on `vite preview`, M = manual recorded check. **Auto:** Y = automated, P = partly automated (manual part named), N = manual only. **Fixtures:** `bank.json` and variants are defined in strategy section 4; `vfx/` = `tests/unit/content/fixtures/`. A test ID may have several test cases; all case names start with the ID (for example `T-US1-3 topic quiz caps N at 10`). Flags `F-n` are listed in section 6.
+
+## 1. US-7: Question bank schema and validation (6/6)
+
+| Test ID | Criterion (short) | Level | Auto | Test data | Task | Evidence expected |
+| --- | --- | --- | --- | --- | --- | --- |
+| T-US7-1 | Schema requires all US-7.1 fields; `correct` refs exactly 1 option ID; explanation >= 20 chars; https `sourceUrl`; `reviewedBy` required iff `reviewed`; `schemaVersion` per file. F-1 | U, CI | Y | `vfx/valid-minimal.json` passes; one `vfx/missing-<field>.json` per field fails | T-05 | Vitest output listing one case per field; error text contains question ID and field |
+| T-US7-2 | True/false = exactly 2 options; single-choice = 3-4 | U | Y | Valid cases with 2 options (true/false), 3 and 4 options (single-choice); failing cases with 1 or 3 options (true/false) and 2 or 5 options (single-choice) | T-05 | Vitest output; boundary values named |
+| T-US7-3 | CI fails and names ID and field on: schema break, duplicate question ID (also across files), duplicate option ID, duplicate option text (trimmed, case-insensitive), missing/ambiguous `correct`, non-https `sourceUrl` (`http:`, `javascript:`, `data:`, empty), reused retired ID. F-2 | U, CI | Y | One `vfx/` failing file per rule; `retired-ids.json` fixture | T-05 (rules), T-02 (wired in PR CI) | Vitest output per rule; a CI run on a PR where `content:validate` fails on a deliberately bad fixture (non-zero exit, message shows ID and field) |
+| T-US7-4 | Production build excludes drafts; emitted asset has a build-generated `contentVersion` (stable for the same content, changes when content changes); asset <= 60 KB gzip. F-3 | U, CI | Y | Mixed draft/reviewed fixture; synthetic 60-question bank for the budget | T-06 (emit, version), T-02 (budget gate) | Unit: no draft IDs in output, same input gives the same version; CI log showing gzip size of `bank.<hash>.json` against the limit |
+| T-US7-5 | `--release` fails when post-exclusion counts are below US-8 thresholds (60 total, 8 topics, 5 per topic, 20% medium/hard); dev run only warns | U, CI | Y | Fixtures just below and at each threshold (59/60 total, 4/5 per topic, 7/8 topics, 19%/20% medium-hard) | T-05 | Vitest output for each boundary; exit code 1 in release mode, 0 with a warning in dev mode |
+| T-US7-6 | Runtime loader returns an error result and never throws on missing or invalid data | U | Y | Fetch rejects, 404, 500, malformed JSON, wrong shape, empty body | T-06 | Vitest output; each case asserts `{ ok: false }` and `not.toThrow` |
+
+## 2. US-1: Choose a topic and start a quiz (9/9)
+
+| Test ID | Criterion (short) | Level | Auto | Test data | Task | Evidence expected |
+| --- | --- | --- | --- | --- | --- | --- |
+| T-US1-1 | Landing lists eligible topics in curated order with counts, plus Mixed with the total | C, E2E | Y | `bank.json` (topic-a 12, topic-b 5, topic-c 3 → Mixed 20) | T-09 | Component and E2E output asserting order a, b, c and the counts 12/5/3/20 |
+| T-US1-2 | Topic with 0 eligible questions hidden; Mixed hidden when only 1 topic is shown | C, E2E | Y | `bank.json` (topic-d has 0); `bank-single-topic.json` | T-09 (draft exclusion itself is T-US7-4) | E2E output: topic-d absent; Mixed absent with the single-topic variant |
+| T-US1-3 | Start topic → "1 of N", N = min(10, count), only that topic | U, E2E | Y | Unit: banks of 3, 10 and 12 for one topic. E2E: topic-a gives N=10, topic-b gives N=5 | T-07 (U), T-09 (E2E) | Vitest output; E2E checks the "1 of 10" / "1 of 5" text and that every shown question ID belongs to the topic (read from a `data-question-id` or the fixture prompt) |
+| T-US1-4 | Mixed: N = min(10, total) distinct questions from >= min(3, shown topics) topics | U, E2E | Y | Unit: 3-topic, 2-topic (relaxed spread) and total-under-10 banks, many seeds. E2E: `bank.json` | T-07 (U), T-09 (E2E) | Vitest property-style loop over >= 100 seeds: distinct, count, topic spread. E2E: N=10 and >= 3 topics seen over the quiz |
+| T-US1-5 | Question order and single-choice option order come from the injected seeded shuffle, fixed at start; exact order asserted for a known seed | U | Y | Fixed seeds (for example 1, 42) on a fixed bank | T-07 | Vitest snapshot of exact ID orders per seed; `createQuiz` called twice with the same seed gives equal state. Not E2E (standard 12, F-0) |
+| T-US1-6 | Double activation of Start creates exactly 1 quiz. F-4 | C, E2E | Y | `bank.json` | T-09 | Component: two `user-event` clicks give 1 create dispatch. E2E: `dblclick` on Start, then "1 of N" shown once, one history entry added, no error |
+| T-US1-7 | First question reached in <= 2 interactions. F-5 | E2E | Y | `bank.json` | T-09 | E2E counting user actions: select topic (1) + Start (2) shows question 1; same with Mixed; also keyboard-only (activation keys counted, Tab moves not counted per F-5) |
+| T-US1-8 | Deep link to a valid topic preselects it and does not auto-start | C, E2E | Y | `#/topic/topic-b`; also a reload on that URL | T-08 (route), T-09 (preselect) | E2E: topic-b selected (`aria-checked` or `aria-pressed`), no question view, URL unchanged after a reload |
+| T-US1-9 | Landing: 0 serious/critical axe; fully keyboard operable; per-view title. F-6 | E2E, M | P | `bank.json`; 6 PR viewports | T-09, T-08 (title) | axe JSON report attached (0 serious/critical); keyboard E2E reaching every control with Tab and starting a quiz; `document.title` asserted; manual keyboard spot-check recorded at story exit |
+
+## 3. US-2: Answer a question (9/9)
+
+| Test ID | Criterion (short) | Level | Auto | Test data | Task | Evidence expected |
+| --- | --- | --- | --- | --- | --- | --- |
+| T-US2-1 | Question shows text, topic, progress "k of N", options as a labelled single-select radio group | C, E2E | Y | `bank.json` | T-12 | Component: `getByRole('radiogroup', { name })` inside `fieldset`/`legend`, native radios. E2E: topic name, "1 of 10" then "2 of 10" |
+| T-US2-2 | Single-choice options shuffled once, stable for the quiz; true/false always "True, False". Resume part: F-7 | U, C, E2E | Y | Unit: seeded quiz; E2E: topic-c true/false question | T-07 (shuffle, true/false fixed), T-12 (render from state) | Unit: option order stored in `QuizState` and not recomputed by `submitAnswer` or `next`. Component: re-render keeps order. E2E: true/false order is "True, False". After-resume case added to T-US6-2 (Sprint 3) |
+| T-US2-3 | No selection → Submit `aria-disabled` (still focusable and announced) with a hint | C, E2E | Y | Any question | T-12 | Component: `aria-disabled="true"`, not the `disabled` attribute; focusable; hint linked with `aria-describedby`; activating it records nothing. E2E: the same in a real browser, plus axe |
+| T-US2-4 | After Submit the answer is locked and cannot change | U, C, E2E | Y | Any question | T-11 (U), T-12 | Unit: a second `submitAnswer` is a no-op. Component and E2E: radios read-only/disabled after submit, clicking another option changes nothing |
+| T-US2-5 | Double Submit, or Submit then Next rapidly, records 1 answer and advances exactly 1. F-4, F-8 | U, C, E2E | Y | `bank.json` | T-11 (U), T-12 | Unit: answers length 1 and index +1 after a double call. Component: double click. E2E: `dblclick` Submit, then fast Next: progress goes from "1 of N" to "2 of N" only |
+| T-US2-6 | Code/HTTP snippet in a monospace block that wraps or scrolls inside its own focusable, labelled box; no page horizontal scroll | U, E2E | Y | topic-c snippet longer than 320 px | T-10 (box), T-12 | Unit: `<pre>` with `tabindex="0"`, accessible name, monospace class. E2E at 320 px: `scrollWidth <= clientWidth` on the page, box scrollable, reachable by Tab |
+| T-US2-7 | `<script>`, `<img onerror>`, `javascript:` content shows as literal text and never executes (V-1) | U, E2E, CI | Y | topic-c payload question; the payloads also sit in an option and in the explanation | T-10 (U), T-01 (lint), T-12 (E2E) | Unit: rendered text equals the input; no `script`, `img` or `a[href^=javascript]` elements. E2E: payload text visible; no `dialog` event, no console error, no CSP violation, no request to an image URL. Lint fixture with `dangerouslySetInnerHTML` fails |
+| T-US2-8 | Mid-quiz browser Back or "Exit quiz" → landing; no submitted answer un-submitted. F-10 | U, E2E | Y | `bank.json` | T-12, T-08 (router) | E2E: answer Q1, go to Q2, press Back → landing heading focused (US-10.6); same with "Exit quiz". Unit: exit does not remove answers from state. Re-entry checks are added to T-US6-2 |
+| T-US2-9 | Question view: 0 serious/critical axe; selection and submit keyboard-only | E2E, M | P | `bank.json`; 6 PR viewports + WebKit mobile | T-12 | axe report for the unselected, selected and submitted states; keyboard E2E (Tab into the group, arrow keys to select, Tab to Submit, Enter); manual keyboard spot-check recorded |
+
+## 4. NFR and edge-case rows for US-7, US-1, US-2
+
+| Test ID | Requirement / edge case | Level | Auto | Task | Evidence expected |
+| --- | --- | --- | --- | --- | --- |
+| T-EC-US7-a | Invalid JSON, unknown topic, explanation of 19 chars, `reviewed` without `reviewedBy`, empty `sourceUrl` (file 02 section 4) | U | Y | T-05 | Vitest output with one case each |
+| T-EC-US7-b | The same validator runs locally (`npm run content:validate`) and in CI (NFR-6) | CI | Y | T-02, T-05 | CI log line; README command |
+| T-EC-US7-c | Fixture banks used by E2E pass the validator (drift guard) | CI | Y | T-03 | CI step output |
+| T-EC-US1-a | Topic with fewer than 10 questions labelled with its count ("5 questions") | C | Y | T-09 | Component output |
+| T-EC-US1-b | Unknown-topic deep link shows "Topic not found" plus the topic list; unknown route shows the 404 view (FR-24, part of US-12.2) | C, E2E | Y | T-08, T-09 | E2E on `#/topic/nope` and `#/nope` |
+| T-EC-US1-c | Loading indicator after 300 ms; data failure shows Retry (FR-25, part of US-12.4/12.5) | C, E2E | Y | T-08 | E2E with a delayed route and an aborted route, then Retry succeeds |
+| T-EC-US1-d | Deep-link refresh on hash routes loads the same view (part of US-12.3) | E2E | Y | T-08 | E2E reload on `#/topic/topic-a` |
+| T-EC-US2-a | A very long prompt or option wraps at 320 px; options stay reachable | E2E | Y | T-12 | No-horizontal-scroll helper output |
+| T-EC-US2-b | Resize or rotation after selecting, before Submit, keeps the selection | E2E | Y | T-12 | E2E `setViewportSize` 375x812 → 812x375 |
+| T-EC-US2-c | Document title "Question k of N - <topic> - ApiQuiz" (FR-27) | C, E2E | Y | T-12 | Title assertion |
+| T-NFR1-1 | First-load JS <= 200 KB gzip over all emitted JS; a 250 KB fixture fails | CI | Y | T-02 | Size report in the PR CI log |
+| T-NFR1-2 | Lighthouse mobile Performance >= 90, Accessibility >= 95 (median of 3) | CI | Y | T-18 (Sprint 2) | LHCI report; NOT RUN in Sprint 1 |
+| T-NFR1-3 | Submit to visible feedback <= 100 ms. F-9 | CI/M | P | T-18 (proposal) | Performance trace; not a gate until a profile is defined |
+| T-NFR2-1 | `lang="en"`; axe WCAG 2.2 AA tags on Landing and Question | E2E | Y | T-03, T-09, T-12 | axe reports |
+| T-NFR3-1 | No horizontal scroll at 320/375/768/1280/1920 and 640x360 on Landing and Question; targets >= 44x44 | E2E | Y | T-09, T-12 (full sweep T-16) | Helper output per viewport; bounding boxes |
+| T-NFR4-1 | No cookies; all requests same-origin; no third-party fonts or CDNs | E2E | Y | T-03 | `context.cookies()` is empty; request-listener log |
+| T-NFR5-1 | Built `index.html` has the CSP meta and no inline script; no CSP violations in the console | CI, E2E | Y | T-01, T-03 | Build-output check; console listener (V-4) |
+| T-NFR7-1 | After load, `setOffline(true)`: start a quiz and answer questions with 0 requests (Sprint 1 slice of SC-6) | E2E | Y | T-03, T-12 | Request count of 0 recorded after the offline point |
+| T-NFR9-1 | No uncaught exception reaches the user; the error boundary shows "Back to home" | C | Y | T-08 | Component test that throws inside a view |
+| T-NFR-dom | Domain line coverage >= 90% (standard 11) | U | Y | T-07, T-11 | Coverage summary in CI |
+
+## 5. Outline: US-3..US-13 (detail to be added before each story is Ready)
+
+| Story | Levels | Notes |
+| --- | --- | --- |
+| US-3 (6 AC) | U, C, E2E, M | Live-region text and focus to Next (C/E2E); SR announcement manual (US-10.3). Report link built by `URLSearchParams`: unit test asserts only `id` + `contentVersion` are sent. https guard (V-2) unit test. US-3.6 is a repository-file check on T-22 (CI or manual). |
+| US-4 (5 AC) | U, C, E2E | Rounding and band boundaries (0, 1, 49, 50, 79, 80, 99, 100; 2/3 = 67%) and N = 1 in `score` unit tests (T-14); focus to heading in E2E (T-15). |
+| US-5 (6 AC) | U, E2E | Retry content, reshuffle, N = 1, repeatable, best score unchanged, stale-ID drop with notice (route a bank without one ID). |
+| US-6 (8 AC) | U, C, E2E | V-6 fuzz on the storage guards; `MemoryStore` fallback with throwing `localStorage` stub; reset clears only `apiquiz:` keys; 50 KB cap; two-context last-write-wins. Also covers the deferred resume parts of T-US2-2 and T-US2-8. Real private-mode browsers: M. |
+| US-7 | mapped | Section 1. |
+| US-1 | mapped | Section 2. |
+| US-2 | mapped | Section 3. |
+| US-8 (5 AC) | CI, M | 8.1 by `--release`; 8.2-8.5 manual (PR review record, sponsor review per D4, originality); `reviewedBy` = commit author gives a warning only. |
+| US-9 (6 AC) | E2E, M | T-16 sweep across 6 viewports, rotation, 400% reflow, 200% text plus spacing, 640x360 focus not obscured; 9.6 iOS Safari manual. |
+| US-10 (6 AC) | E2E, M | axe on every state, keyboard-only full quiz, contrast via axe plus forced colours, reduced motion; 10.3 NVDA/VoiceOver manual. |
+| US-11 (2 AC) | U, C | Filter and length in `createQuiz`; disabled Start with explanation. |
+| US-12 (5 AC) | C, E2E | Parts already tested in T-EC-US1-b/c/d; 10 s "Still loading" with an injected clock; static `404.html` for non-hash paths. |
+| US-13 (2 AC) | E2E | `colorScheme: 'dark'` emulation with axe contrast; theme switch mid-quiz keeps state. |
+
+## 6. Flags: criteria not testable as written, or needing a decision
+
+The brief was not edited. Rewordings are proposals for `product-owner`; F-0 is for `tech-lead`.
+
+| Flag | Criterion | Problem | Proposed rewording / resolution |
+| --- | --- | --- | --- |
+| F-0 | Standard 11 (file 04) vs US-7.*, US-1.5 | "At least 1 Playwright test per AC" conflicts with standard 12 (only unit tests assert seeded order) and does not fit build-time content rules | "At least 1 automated test per AC at the lowest level that proves it, named `T-US<n>-<k>`; at least 1 Playwright test for each user-visible AC." |
+| F-1 | US-7.1 "unique stable slug `id`" | "Stable" (unchanged over time) cannot be checked in one validation run | "...a unique `id` matching `^[a-z0-9]+(-[a-z0-9]+)*$`; a removed ID is added to `retired-ids.json` and is never reused (US-7.3)." |
+| F-2 | US-7.3 "ambiguous correct answer" | Could mean the data shape or the meaning; only the shape is machine-checkable (meaning is US-8.4) | "...`correct` is missing, not a single value, or does not match exactly 1 option `id` of that question..." |
+| F-3 | US-7.4 "at most 60 KB gzipped" | Sprint 1 only has about 6 draft seeds, and a production build of all-draft content emits an empty bank, so the budget is never really exercised | Add: "CI also checks the budget against a synthetic 60-question bank." Testable as written otherwise. |
+| F-4 | US-1.6, US-2.5 "rapidly" | Timing is undefined | "...activated twice before the next view has rendered (for example a double-click)..." |
+| F-5 | US-1.7 "interactions" | Not defined (does Tab or scroll count?) | "...at most 2 activations (click, tap, Enter or Space) of controls, not counting focus moves or scrolling, for a topic or Mixed." |
+| F-6 | US-1.9 "fully keyboard operable" | Vague | "...every interactive control can be reached with Tab in visual order and operated with Enter, Space or arrow keys, with visible focus and no keyboard trap." |
+| F-7 | US-2.2 "including after resume" | Resume is US-6 (Sprint 3), so this part cannot be tested in Sprint 1 | No rewording needed; the resume part is verified under T-US6-2. US-2 can exit Sprint 1 with this part marked "deferred to US-6", if the PO agrees. |
+| F-8 | US-2.5 "Submit then Next" | Next is delivered by T-13 (US-3, stretch). If T-12 has no Next control, only the domain part (T-11) is testable in Sprint 1 | Tech-lead to confirm whether T-12 provides a minimal Next. Otherwise the E2E part moves to US-3. |
+| F-9 | NFR-1 "at most 100 ms on a mid-range mobile profile" | The profile is undefined, and wall-clock time in CI is noisy | "...at most 100 ms measured as the median of 5 Playwright runs under CPU throttling x4 (Chromium)." Owner: performance-engineer. |
+| F-10 | US-2.8 "no submitted answer is un-submitted" | After Back the user is on the landing page, so in Sprint 1 the answers cannot be observed again until resume exists | "...I return to the landing page; the quiz remains resumable (US-6) and resumed answers stay locked." In Sprint 1: unit check of state plus E2E landing check. |
