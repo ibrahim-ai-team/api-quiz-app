@@ -18,6 +18,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "content:validate": "node -e \"console.log('no content validator yet (T-05)')\"",
+    "size": "node scripts/check-size.mjs",
+    "size:selftest": "node tests/size-fixtures/run-size-selftest.mjs",
     "check": "npm run lint && npm run lint:fixtures && npm run typecheck && npm run content:validate && npm run test"
   },
   "dependencies": {

@@ -16,6 +16,8 @@ Stack: TypeScript (strict), React 19, Vite, CSS Modules with CSS custom-property
 
 Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm run check` runs lint, typecheck, content validation and unit tests, and `npm run e2e` (added in T-03) runs Playwright against `npm run build && npm run preview`.
 
+CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size` (gzip budgets: JS at most 200 kB, data at most 60 kB), plus dependency review on PRs and an informational, non-required Node 24 job.
+
 Commands (Node 22, see `.nvmrc`):
 
 | Command                                   | Purpose                                                                            |
