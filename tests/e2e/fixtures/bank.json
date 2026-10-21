@@ -68,7 +68,10 @@
       "options": [
         { "id": "a", "text": "GET" },
         { "id": "b", "text": "POST" },
-        { "id": "c", "text": "PUT" }
+        {
+          "id": "c",
+          "text": "PUT, a deliberately long option that must wrap at 320 px: /api-quiz-app/fixtures/an-unbroken-path-segment-that-is-much-wider-than-a-small-phone-screen"
+        }
       ],
       "correct": "a",
       "explanation": "Fixture explanation: the request line starts with GET.",

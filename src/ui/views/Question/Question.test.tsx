@@ -134,6 +134,18 @@ describe("T-US2-1 question, topic, progress and radio group", () => {
     renderQuestion({ ...QUIZ, scope: { kind: "topic", topicId: "topic-a" } });
     expect(document.title).toBe(strings.title.question(1, 2, "Topic A"));
   });
+
+  it("omits the topic line and title segment for an unknown topic id (SEC-R07 N-3)", () => {
+    const { container } = renderQuestion({
+      scope: { kind: "topic", topicId: "topic-x" },
+      seed: 1,
+      questions: [{ ...SECOND, topicId: "topic-x" }],
+    });
+    expect(container.textContent).not.toContain("Topic:");
+    expect(document.title).toBe(
+      `${strings.question.heading(1, 1)} - ${strings.appName}`,
+    );
+  });
 });
 
 describe("T-US2-3 Submit is unavailable until an option is selected", () => {
@@ -212,6 +224,23 @@ describe("T-US2-4/5 locked after Submit, one answer, one step", () => {
     expect(latest?.phase).toBe("feedback");
     fireEvent.click(seeResults, { detail: 1 });
     expect(latest?.phase).toBe("finished");
+  });
+});
+
+describe("T-US2-5 double click on Next (TL N2)", () => {
+  it("a click with detail 2 right after Submit leaves index 0 in feedback", () => {
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+      {
+        detail: 2,
+      },
+    );
+    expect(latest?.index).toBe(0);
+    expect(latest?.phase).toBe("feedback");
+    expect(latest?.answers).toHaveLength(1);
   });
 });
 

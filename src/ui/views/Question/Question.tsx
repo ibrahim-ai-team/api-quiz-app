@@ -32,8 +32,9 @@ export interface QuestionProps {
   readonly dispatch: (action: QuizAction) => void;
 }
 
-function topicName(topics: readonly BankTopic[], id: string): string {
-  return topics.find((topic) => topic.id === id)?.name ?? "";
+/** Display name of a bank topic, or null for an unknown id (SEC-R07 N-3). */
+function topicName(topics: readonly BankTopic[], id: string): string | null {
+  return topics.find((topic) => topic.id === id)?.name ?? null;
 }
 
 export function Question({ session, topics, dispatch }: QuestionProps) {
@@ -64,6 +65,7 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
 
   if (question === undefined) return null;
 
+  const questionTopic = topicName(topics, question.topicId);
   const locked = phase !== "answering";
   const canSubmit = !locked && selected !== null;
   const hintId = `${id}-hint`;
@@ -83,9 +85,10 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
       <h1 ref={headingRef} tabIndex={-1} className={common.heading}>
         {strings.question.heading(current, total)}
       </h1>
-      <p className={styles.topic}>
-        {strings.question.topic(topicName(topics, question.topicId))}
-      </p>
+      {/* An unknown topic id omits the line instead of showing "Topic: ". */}
+      {questionTopic !== null && (
+        <p className={styles.topic}>{strings.question.topic(questionTopic)}</p>
+      )}
       {/* Keyed by question, so a focused code box is never reused. */}
       <div key={`prompt-${question.id}`} className={styles.prompt}>
         {renderRichText(question.prompt, {

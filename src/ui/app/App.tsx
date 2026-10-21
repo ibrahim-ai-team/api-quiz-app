@@ -162,8 +162,9 @@ export function App({ bankPromise, reloadBank }: AppProps) {
   }, [viewKey, view]);
 
   // `#/quiz` with no quiz in memory (refresh, or after Exit/Back): replace
-  // the entry with Landing, whose h1 is then focused (views.md §2).
-  useEffect(() => {
+  // the entry with Landing, whose h1 is then focused (views.md §2). Layout
+  // effect: the replace happens before paint, so nothing flashes (TL N3).
+  useLayoutEffect(() => {
     if (view === "noQuiz") window.location.replace(LANDING_HREF);
   }, [view]);
 

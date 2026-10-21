@@ -5,6 +5,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,18 +33,23 @@ function navigate(hash: string): void {
   });
 }
 
-/** Lets a queued `hashchange` (from `location.hash =`/`replace`) run. */
-async function settle(): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
-}
-
 /** Selects the only topic in TEST_BANK and starts a 1-question quiz. */
 async function startQuiz(): Promise<void> {
   fireEvent.click(screen.getByRole("radio"));
   fireEvent.click(screen.getByRole("button", { name: strings.landing.start }));
-  await settle();
+  await waitFor(() => {
+    expect(window.location.hash).toBe("#/quiz");
+    expect(h1().textContent).toBe(strings.question.heading(1, 1));
+  });
+}
+
+/** Waits until Landing is shown at `#/` with its h1 focused. */
+async function expectLandingFocused(): Promise<void> {
+  await waitFor(() => {
+    expect(window.location.hash).toBe("#/");
+    expect(h1().textContent).toContain(strings.landing.heading);
+    expect(document.activeElement).toBe(h1());
+  });
 }
 
 /** Lets resolved loader promises reach the reducer. */
@@ -309,11 +315,8 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
     const before = window.history.length;
     renderApp(Promise.resolve(OK));
     await flush();
-    await settle();
-    expect(window.location.hash).toBe("#/");
+    await expectLandingFocused();
     expect(window.history.length).toBe(before);
-    expect(h1().textContent).toContain(strings.landing.heading);
-    expect(document.activeElement).toBe(h1());
     expect(screen.queryByRole("button", { name: strings.question.exit })).toBe(
       null,
     );
@@ -352,14 +355,9 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: strings.question.exit }),
     );
-    await settle();
-    expect(window.location.hash).toBe("#/");
-    expect(h1().textContent).toContain(strings.landing.heading);
-    expect(document.activeElement).toBe(h1());
+    await expectLandingFocused();
     navigate("#/quiz");
-    await settle();
-    expect(window.location.hash).toBe("#/");
-    expect(h1().textContent).toContain(strings.landing.heading);
+    await expectLandingFocused();
   });
 
   it("T-US2-8 Back to Landing clears the quiz, so Forward cannot show it again", async () => {
@@ -370,8 +368,7 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
     expect(document.activeElement).toBe(h1());
     expect(h1().textContent).toContain(strings.landing.heading);
     navigate("#/quiz");
-    await settle();
-    expect(window.location.hash).toBe("#/");
+    await expectLandingFocused();
   });
 });
 

@@ -37,9 +37,14 @@ export const strings = {
     appError: pageTitle("Something went wrong"),
     notFound: pageTitle("Page not found"),
     topicNotFound: pageTitle("Topic not found"),
-    /** copy:title.question; `topic` is "Mixed" for a Mixed quiz. */
-    question: (k: number, n: number, topic: string): string =>
-      pageTitle(`Question ${String(k)} of ${String(n)}`, topic),
+    /**
+     * copy:title.question; `topic` is "Mixed" for a Mixed quiz. A `null`
+     * topic (unknown id, SEC-R07 N-3) omits that segment.
+     */
+    question: (k: number, n: number, topic: string | null): string => {
+      const heading = `Question ${String(k)} of ${String(n)}`;
+      return topic === null ? pageTitle(heading) : pageTitle(heading, topic);
+    },
     /** Placeholder until T-15 sets copy:title.results. */
     resultsPlaceholder: pageTitle("Results"),
   },

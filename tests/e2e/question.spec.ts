@@ -256,6 +256,15 @@ test.describe("T-12 Question view", () => {
     await expect(view(page)).toContainText(
       "[click](javascript:alert('xss-link'))",
     );
+    await expect(view(page)).toContainText(
+      `<img src="xss-probe-prompt.png" onerror="alert('xss-img')">`,
+    );
+    for (const name of [
+      "<script>alert('xss-option-script')</script>",
+      "javascript:alert('xss-option-link')",
+    ]) {
+      await expect(options(page).getByRole("radio", { name })).toBeVisible();
+    }
     const payloadOption = options(page).getByRole("radio", {
       name: `<img src="xss-probe-option.png" onerror="alert('xss-option')">`,
     });
@@ -274,6 +283,46 @@ test.describe("T-12 Question view", () => {
     expect(requests.urls.filter((url) => url.includes("xss-probe"))).toEqual(
       [],
     );
+  });
+
+  test("T-EC-US2-a a long option wraps at 320 px: no page horizontal scroll, last radio reachable by keyboard", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await openTopicCQuestion(page, CODE_ID);
+    const longOption = options(page).getByRole("radio", {
+      name: /^PUT, a deliberately long option/,
+    });
+    await expect(longOption).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    // h1 -> code box -> radio group (one tab stop); ArrowUp from the first
+    // radio wraps to the last one (native radio behaviour).
+    const radios = options(page).getByRole("radio");
+    await page.getByRole("heading", { level: 1 }).focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(radios.first()).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(radios.last()).toBeFocused();
+    await expect(radios.last()).toBeChecked();
+    await expect(radios.last()).toBeInViewport();
+    await expectNoHorizontalScroll(page);
+  });
+
+  test("T-EC-US2-b rotation from 375x812 to 812x375 after selecting keeps the selection and the question", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await startQuiz(page, /^Fixture topic A/, 10);
+    const id = await view(page).getAttribute("data-question-id");
+    const radio = options(page).getByRole("radio").nth(1);
+    await radio.check();
+    await page.setViewportSize({ width: 812, height: 375 });
+    await expect(radio).toBeChecked();
+    await expect(view(page)).toHaveAttribute("data-question-id", id ?? "");
+    await expect(h1(page, strings.question.heading(1, 10))).toBeVisible();
+    await expect(submit(page)).not.toHaveAttribute("aria-disabled");
+    await expectNoHorizontalScroll(page);
   });
 
   test("T-US2-2 true/false options are shown as True, False", async ({
