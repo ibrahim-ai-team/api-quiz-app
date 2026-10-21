@@ -18,15 +18,15 @@ Install the Node.js version in `.nvmrc`, run `npm ci`, then `npm run dev`; `npm 
 
 Local E2E runs reuse a server already listening on port 4173 (`reuseExistingServer` outside CI), so stop any old `npm run preview` first or the run tests a stale build.
 
-CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size` (gzip budgets: JS at most 200 kB, data at most 60 kB), plus dependency review on PRs and an informational, non-required Node 24 job. A separate `e2e` job validates the E2E fixture bank and runs Playwright: the PR set (Chromium at 320, 375, 768, 1280, 1920 and 640x360, plus WebKit iPhone) on pull requests, and additionally Firefox and the full device set (`E2E_FULL=1`) on pushes to `main`.
+CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: `npm ci`, `npm audit --audit-level=high`, `npm run check`, `npm run build`, `npm run size:selftest` and `npm run size -- --require-data` (gzip budgets: JS at most 200 kB, data at most 60 kB; the `assets/bank-<hash>.json` data asset must exist), plus dependency review on PRs and an informational, non-required Node 24 job. A separate `e2e` job validates the E2E fixture bank and runs Playwright: the PR set (Chromium at 320, 375, 768, 1280, 1920 and 640x360, plus WebKit iPhone) on pull requests, and additionally Firefox and the full device set (`E2E_FULL=1`) on pushes to `main`.
 
 Commands (Node 22, see `.nvmrc`):
 
 | Command                                   | Purpose                                                                            |
 | ----------------------------------------- | ---------------------------------------------------------------------------------- |
 | `npm ci`                                  | Install the exact dependency versions from `package-lock.json`                     |
-| `npm run dev`                             | Vite dev server at `http://localhost:5173/api-quiz-app/` (no CSP in dev)           |
-| `npm run build`                           | Type-check (`tsc -b`) and build to `dist/`; the CSP `<meta>` is injected only here |
+| `npm run dev`                             | `content:build:dev` (keeps drafts), then the Vite dev server (no CSP), port 5173   |
+| `npm run build`                           | `content:build`, `tsc -b`, `vite build` to `dist/`; the CSP `<meta>` is added here |
 | `npm run preview`                         | Serve the build at `http://localhost:4173/api-quiz-app/`                           |
 | `npm run check`                           | `lint`, `lint:fixtures`, `typecheck`, `content:validate` and `test`                |
 | `npm run lint`                            | ESLint with `--max-warnings 0`                                                     |
@@ -35,6 +35,7 @@ Commands (Node 22, see `.nvmrc`):
 | `npm run test`                            | Vitest unit tests                                                                  |
 | `npm run format` / `npm run format:check` | Prettier write / check                                                             |
 | `npm run content:validate`                | Validates the question bank; `content:validate:release` adds US-8.1 thresholds     |
+| `npm run content:build`                   | Writes the bank to `src/content/generated/`, no drafts; `:dev` keeps drafts        |
 | `npm run e2e`                             | Playwright PR set on the production build; `E2E_FULL=1` adds Firefox and devices   |
 | `npm run e2e:chromium`                    | Only the Chromium projects (for machines without WebKit)                           |
 | `npm run e2e:install`                     | Install the Playwright Chromium and WebKit browsers with system dependencies       |

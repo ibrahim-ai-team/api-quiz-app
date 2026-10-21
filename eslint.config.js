@@ -12,6 +12,32 @@ import tseslint from "typescript-eslint";
  */
 const SRC = "{src,tests/lint-fixtures/src}";
 
+/**
+ * Imports banned in all application source (T-05-R01 M3, standard 3). Zod and
+ * the `scripts/` build tools are build-time only; `src/content/types.ts` holds
+ * plain-TS types and a runtime guard instead. Flat config replaces (not
+ * merges) rule options, so the domain block below repeats these.
+ */
+const SRC_RESTRICTED_PATHS = [
+  {
+    name: "zod",
+    message:
+      "Zod is build/CI-time only; use the plain-TS guards in src/content/types.ts.",
+  },
+];
+const SRC_RESTRICTED_PATTERNS = [
+  {
+    group: ["zod/*"],
+    message:
+      "Zod is build/CI-time only; use the plain-TS guards in src/content/types.ts.",
+  },
+  {
+    group: ["**/scripts", "**/scripts/**"],
+    message:
+      "src/ must not import build tooling from scripts/ (use src/content/types.ts).",
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -122,6 +148,10 @@ export default tseslint.config(
           message: "Do not render raw HTML via srcDoc (standard 5).",
         },
       ],
+      "no-restricted-imports": [
+        "error",
+        { paths: SRC_RESTRICTED_PATHS, patterns: SRC_RESTRICTED_PATTERNS },
+      ],
     },
   },
   {
@@ -151,6 +181,7 @@ export default tseslint.config(
         "error",
         {
           paths: [
+            ...SRC_RESTRICTED_PATHS,
             {
               name: "react",
               message: "src/domain must not depend on React.",
@@ -161,6 +192,7 @@ export default tseslint.config(
             },
           ],
           patterns: [
+            ...SRC_RESTRICTED_PATTERNS,
             {
               group: ["react/*", "react-dom/*"],
               message: "src/domain must not depend on React.",

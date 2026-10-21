@@ -37,7 +37,8 @@ function fail(file: string, message: string): string[] {
 }
 
 function validateFixture(name: string): string[] {
-  const file = path.join(FIXTURES, name);
+  // resolve, not join: absolute paths (temp-dir self-test banks) stay absolute.
+  const file = path.resolve(FIXTURES, name);
   let bank: unknown;
   try {
     bank = JSON.parse(readFileSync(file, "utf8")) as unknown;
