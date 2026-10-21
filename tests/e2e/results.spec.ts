@@ -63,6 +63,7 @@ async function playQuiz(
   page: Page,
   n: number,
   correctAt: (k: number) => boolean,
+  finish: "click" | "dblclick" = "click",
 ): Promise<Played[]> {
   const played: Played[] = [];
   for (let k = 1; k <= n; k += 1) {
@@ -79,10 +80,10 @@ async function playQuiz(
       : (q.options.find((o) => o.id !== q.correct)?.id ?? "");
     await page.locator(`input[type="radio"][value="${optionId}"]`).check();
     await button(page, strings.question.submit).click();
-    await button(
-      page,
-      k === n ? strings.feedback.seeResults : strings.feedback.next,
-    ).click();
+    if (k < n) await button(page, strings.feedback.next).click();
+    else if (finish === "click")
+      await button(page, strings.feedback.seeResults).click();
+    else await button(page, strings.feedback.seeResults).dblclick();
     played.push({ id, topic: q.topic, correct });
   }
   await expect(h1(page, strings.results.heading)).toBeFocused();
@@ -117,7 +118,7 @@ test.describe("T-15 Results view", () => {
     await useFixtureBank(page);
   });
 
-  test("T-US4-1 T-US4-2 T-US4-3 T-US4-5 topic quiz: X / N, percentage, band, scope, title, no breakdown, no Exit", async ({
+  test("T-US4-1 T-US4-2 T-US4-3 topic quiz: X / N, percentage, band, scope, title, no breakdown, no Exit", async ({
     page,
   }) => {
     await playTopicB(page);
@@ -190,7 +191,7 @@ test.describe("T-15 Results view", () => {
     await expect(h1(page, strings.landing.heading)).toBeFocused();
   });
 
-  test("T-US4-5 browser Back from results goes to Landing and clears the session; Forward redirects home", async ({
+  test("US-2.8 views §4 browser Back from results goes to Landing and clears the session; Forward redirects home", async ({
     page,
   }) => {
     await playTopicB(page);
@@ -203,7 +204,7 @@ test.describe("T-15 Results view", () => {
     await expect(h1(page, strings.landing.heading)).toBeFocused();
   });
 
-  test("T-US4-5 refreshing #/results redirects to Landing with its h1 focused", async ({
+  test("views §4 refresh: reloading #/results redirects to Landing with its h1 focused", async ({
     page,
   }) => {
     await playTopicB(page);
@@ -222,6 +223,47 @@ test.describe("T-15 Results view", () => {
     await playMixed(page);
     await expectNoHorizontalScroll(page);
     await expectNoAxeSeriousOrCritical(page, breakdownHeading(page));
+  });
+});
+
+test.describe("TL F1/F2 double clicks that change the view", () => {
+  test.beforeEach(async ({ page }) => {
+    await useFixtureBank(page);
+  });
+
+  test("TL F1 dblclick on See results ends on #/results with the h1 focused and the score shown", async ({
+    page,
+  }) => {
+    await startQuiz(page, /^Fixture topic B/, 5);
+    await playQuiz(page, 5, (k) => k <= 3, "dblclick");
+    await expect(page.locator("main")).toContainText(
+      strings.results.score(3, 5),
+    );
+    await expect(button(page, strings.question.submit)).toHaveCount(0);
+  });
+
+  test("TL F2 dblclick on Try again: Question 1 of N with no radio checked and the h1 focused", async ({
+    page,
+  }) => {
+    await playTopicB(page);
+    await button(page, strings.results.tryAgain).dblclick();
+    await expect(h1(page, strings.question.heading(1, 5))).toBeFocused();
+    await expect(page).toHaveURL(/#\/quiz$/);
+    await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
+  });
+
+  test("TL F2 dblclick on Start: Question 1 of N with no radio checked and the h1 focused", async ({
+    page,
+  }) => {
+    await page.goto("./");
+    await expect(page.locator("main")).toHaveAttribute(
+      "data-bank-status",
+      "ready",
+    );
+    await page.getByRole("radio", { name: /^Fixture topic B/ }).check();
+    await button(page, strings.landing.start).dblclick();
+    await expect(h1(page, strings.question.heading(1, 5))).toBeFocused();
+    await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   });
 });
 

@@ -7,9 +7,11 @@
  * from the app's route focus rule; there is no live region (views.md §4).
  * The US-5 Review / Retry missed slot is not built here.
  */
+import type { MouseEvent } from "react";
 import type { BankTopic } from "../../../content/types";
 import { score, type QuizSession } from "../../../domain";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
+import { useEntryClickGuard } from "../../components/useEntryClickGuard";
 import common from "../../components/common.module.css";
 import { strings } from "../../strings";
 import styles from "./Results.module.css";
@@ -40,6 +42,14 @@ export function Results({
     session,
     topics.map((topic) => topic.id),
   );
+  // The 2nd click of a double click on "See results" lands on this view
+  // (TL F1): the guard keeps it from moving focus off the h1, and the
+  // handlers ignore it too. Keyboard activation has detail 0.
+  useEntryClickGuard();
+  const singleClick = (action: () => void) => (event: MouseEvent) => {
+    if (event.detail > 1) return;
+    action();
+  };
   // An unknown topic id is never echoed (SEC-R07 N-3): its row is omitted.
   const rows = result.byTopic.flatMap((t) => {
     const name = nameOf(t.topicId);
@@ -57,7 +67,7 @@ export function Results({
         <span>{strings.results.percent(result.percent)}</span>
       </p>
       <p className={common.text}>{strings.results.band[result.band]}</p>
-      {rows.length > 0 && (
+      {rows.length > 1 && (
         <>
           <h2 className={styles.breakdownHeading}>
             {strings.results.breakdownHeading}
@@ -79,14 +89,14 @@ export function Results({
         <button
           type="button"
           className={common.buttonPrimary}
-          onClick={onTryAgain}
+          onClick={singleClick(onTryAgain)}
         >
           {strings.results.tryAgain}
         </button>
         <button
           type="button"
           className={common.buttonSecondary}
-          onClick={onChooseAnother}
+          onClick={singleClick(onChooseAnother)}
         >
           {strings.results.chooseAnother}
         </button>

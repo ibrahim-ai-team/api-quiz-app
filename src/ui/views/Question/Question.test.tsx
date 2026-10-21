@@ -465,7 +465,54 @@ describe("T-US2-5 the Submit sequence ends on keyboard use and on a new question
       screen.getByRole("button", { name: strings.feedback.next }),
       { detail: 1 },
     );
+    // A detail-2 press right after Next is now cancelled by the entry guard
+    // (TL F2), not by the Submit sequence; a fresh press ends both.
+    expect(fireEvent.mouseDown(h1(), { detail: 2 })).toBe(false);
+    expect(fireEvent.mouseDown(h1(), { detail: 1 })).toBe(true);
     expect(fireEvent.mouseDown(h1(), { detail: 2 })).toBe(true);
+  });
+});
+
+describe("TL F2 the 2nd click of a double click that opened the question checks nothing", () => {
+  const radio = (name: string) =>
+    screen.getByRole<HTMLInputElement>("radio", { name });
+
+  it("on mount, detail-2 mousedown and click are cancelled and select nothing", () => {
+    renderQuestion();
+    expect(fireEvent.mouseDown(radio("POST"), { detail: 2 })).toBe(false);
+    expect(fireEvent.click(radio("POST"), { detail: 2 })).toBe(false);
+    expect(radio("POST").checked).toBe(false);
+    expect(
+      submitButton().getAttribute("aria-disabled"),
+      "nothing selected",
+    ).toBe("true");
+  });
+
+  it("a fresh click ends the entry sequence", () => {
+    renderQuestion();
+    fireEvent.mouseDown(radio("POST"), { detail: 1 });
+    fireEvent.click(radio("POST"), { detail: 2 });
+    expect(radio("POST").checked).toBe(true);
+  });
+
+  it("a key press ends the entry sequence", () => {
+    renderQuestion();
+    fireEvent.keyDown(h1(), { key: "Tab" });
+    fireEvent.click(radio("POST"), { detail: 2 });
+    expect(radio("POST").checked).toBe(true);
+  });
+
+  it("a new question starts a new entry sequence (double click on Next)", () => {
+    renderQuestion();
+    fireEvent.click(radio("POST"), { detail: 1 });
+    fireEvent.click(submitButton(), { detail: 1 });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+      { detail: 1 },
+    );
+    expect(h1().textContent).toBe(strings.question.heading(2, 2));
+    fireEvent.click(radio("Two"), { detail: 2 });
+    expect(radio("Two").checked).toBe(false);
   });
 });
 

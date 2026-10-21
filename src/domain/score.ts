@@ -45,8 +45,9 @@ export interface Score {
  * `correct / total` as a whole-number percentage, rounded half-up (FR-10).
  * Integer arithmetic, so .5 cases such as 1/8 = 12.5% -> 13% are exact.
  * Clamped to 1..99 unless the score is exactly 0 or `total`, so a displayed
- * 0% or 100% always matches the zero or perfect band (this can only differ
- * from plain rounding when total > 100). `total <= 0` gives 0.
+ * 0% or 100% always matches the zero or perfect band (decision T-14-D01).
+ * The clamp changes the result only when total >= 200 (199/200, 1/201); it
+ * is unreachable for quiz lengths <= 10. `total <= 0` gives 0.
  */
 export function percentHalfUp(correct: number, total: number): number {
   if (total <= 0 || correct <= 0) return 0;

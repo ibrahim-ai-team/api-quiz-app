@@ -164,6 +164,37 @@ describe("T-15 Results view", () => {
     expect(onChooseAnother).toHaveBeenCalledTimes(1);
   });
 
+  it("TL F1 ignores the 2nd click of a double click (detail 2); keyboard (detail 0) still works", () => {
+    const { onTryAgain, onChooseAnother } = renderResults(
+      finished(TOPIC_A, [["topic-a", true]]),
+    );
+    const tryAgain = screen.getByRole("button", {
+      name: strings.results.tryAgain,
+    });
+    const chooseAnother = screen.getByRole("button", {
+      name: strings.results.chooseAnother,
+    });
+    fireEvent.click(tryAgain, { detail: 2 });
+    fireEvent.click(chooseAnother, { detail: 2 });
+    expect(onTryAgain).not.toHaveBeenCalled();
+    expect(onChooseAnother).not.toHaveBeenCalled();
+    fireEvent.click(tryAgain, { detail: 0 });
+    fireEvent.click(chooseAnother, { detail: 0 });
+    expect(onTryAgain).toHaveBeenCalledTimes(1);
+    expect(onChooseAnother).toHaveBeenCalledTimes(1);
+  });
+
+  it("TL N6 shows no breakdown when only 1 named topic row remains", () => {
+    renderResults(
+      finished({ kind: "mixed" }, [
+        ["topic-a", true],
+        ["gone", false],
+      ]),
+    );
+    expect(screen.queryByRole("heading", { level: 2 })).toBe(null);
+    expect(screen.queryByRole("list")).toBe(null);
+  });
+
   it("omits an unknown topic: no scope line, plain title, no breakdown row (SEC-R07 N-3)", () => {
     renderResults(
       finished({ kind: "topic", topicId: "gone" }, [["gone", true]]),

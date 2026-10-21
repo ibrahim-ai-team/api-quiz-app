@@ -143,12 +143,6 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     (scope: QuizScope) => beginQuiz(scope, false),
     [beginQuiz],
   );
-  // Try again (US-4.4, FR-11): a fresh draw for the finished quiz's scope.
-  // `started` replaces the session synchronously (T-11-R01 input on #35).
-  const tryAgain = () => {
-    if (session !== null) beginQuiz(session.quiz.scope, true);
-  };
-
   // Exit and browser Back both leave the quiz for Landing (US-2.8, views.md
   // §2) and both clear the session, so `#/quiz` never shows a stale quiz.
   // Leaving the results for Landing (Choose another topic, Back, the brand
@@ -156,6 +150,15 @@ export function App({ bankPromise, reloadBank }: AppProps) {
   const exitQuiz = () => {
     dispatchSession({ type: "exited" });
     window.location.hash = LANDING_HREF;
+  };
+  // Try again (US-4.4, FR-11): a fresh draw for the finished quiz's scope.
+  // `started` replaces the session synchronously (T-11-R01 input on #35).
+  // Only from a finished quiz (SEC N-1).
+  const tryAgain = () => {
+    if (session?.phase !== "finished") return;
+    // Cannot fail with a ready, unchanged bank (the scope came from it); if
+    // it ever does, leave for Landing rather than keep stale results.
+    if (!beginQuiz(session.quiz.scope, true)) exitQuiz();
   };
   useEffect(() => {
     const onHashChange = (event: HashChangeEvent) => {
