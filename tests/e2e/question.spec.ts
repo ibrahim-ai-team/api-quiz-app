@@ -274,7 +274,7 @@ test.describe("T-12 Question view", () => {
     await expect(payloadOption).toBeVisible();
     await expect(
       page.locator(
-        "main script, main img, main iframe, a[href^='javascript:']",
+        "main script, main img, main iframe, a[href^='javascript:' i]",
       ),
     ).toHaveCount(0);
     await payloadOption.check();
@@ -288,11 +288,16 @@ test.describe("T-12 Question view", () => {
     await expect(panel).toContainText(
       `<img src="xss-probe-explanation.png" onerror="alert(1)">`,
     );
+    await expect(panel).toContainText(
+      "[x](javascript:alert('xss-explanation-link'))",
+    );
     await expect(
       page.locator(
-        "main script, main img, main iframe, a[href^='javascript:']",
+        "main script, main img, main iframe, a[href^='javascript:' i]",
       ),
     ).toHaveCount(0);
+    // Exactly the source and report links (TL L2, SEC L-1).
+    await expect(page.locator("main a")).toHaveCount(2);
     for (const href of await page
       .locator("main a")
       .evaluateAll((links) => links.map((a) => a.getAttribute("href") ?? ""))) {
@@ -425,6 +430,24 @@ async function borderStyle(page: Page, name: string): Promise<string> {
   );
 }
 
+/**
+ * Waits until no CSS transition runs. `getAnimations` flushes style, so a
+ * transition whose start is still pending (it would read as the old value)
+ * is included. Same wait as the axe helper's.
+ */
+async function settleTransitions(page: Page): Promise<void> {
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => !(a instanceof CSSTransition)),
+  );
+}
+
+async function rowBackground(page: Page, name: string): Promise<string> {
+  return optionRow(page, name).evaluate(
+    (radio) =>
+      getComputedStyle(radio.closest("label") ?? radio).backgroundColor,
+  );
+}
+
 test.describe("T-13 Feedback", () => {
   test.beforeEach(async ({ page }) => {
     await useFixtureBank(page);
@@ -445,6 +468,19 @@ test.describe("T-13 Feedback", () => {
     const both = `GET ${strings.feedback.tagCorrect} ${strings.feedback.tagChosen}`;
     await expect(optionRow(page, both)).toBeChecked();
     expect(await borderStyle(page, both)).toBe("solid");
+    // Prompt and explanation code boxes: 2 regions, 2 distinct names (TL L1).
+    await expect(
+      page.getByRole("region", {
+        name: strings.question.codeLabel(1, 1),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("region", {
+        name: strings.feedback.explanationCodeLabel(1, 1),
+        exact: true,
+      }),
+    ).toBeVisible();
     await expectNoAxeSeriousOrCritical(page, next(page));
     await expectNoHorizontalScroll(page);
   });
@@ -475,6 +511,23 @@ test.describe("T-13 Feedback", () => {
     await expect(optionRow(page, chosenName)).toBeChecked();
     expect(await borderStyle(page, correctName)).toBe("solid");
     expect(await borderStyle(page, chosenName)).toBe("dashed");
+    // Hover keeps the correct row's success tint (TL M1). Reduced motion
+    // makes the hover colour change (if any) immediate.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const correctRow = optionRow(page, correctName).locator(
+      "xpath=ancestor::label",
+    );
+    await page.mouse.move(0, 0);
+    await settleTransitions(page);
+    const tint = await rowBackground(page, correctName);
+    expect(tint).not.toBe("rgba(0, 0, 0, 0)");
+    await correctRow.hover();
+    await expect
+      .poll(() => correctRow.evaluate((el) => el.matches(":hover")))
+      .toBe(true);
+    await settleTransitions(page);
+    expect(await rowBackground(page, correctName)).toBe(tint);
+    await page.mouse.move(0, 0);
     await expectNoAxeSeriousOrCritical(page, next(page));
     await expectNoHorizontalScroll(page);
 

@@ -7,7 +7,8 @@
  */
 import { useId, type Ref } from "react";
 import type { Answer, QuizQuestion } from "../../../domain";
-import { ExternalLink, safeHttpsUrl } from "../../components/ExternalLink";
+import { ExternalLink } from "../../components/ExternalLink";
+import { safeHttpsUrl } from "../../components/safeUrl";
 import { questionReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import { renderInlineText, renderRichText } from "../../text/renderRichText";

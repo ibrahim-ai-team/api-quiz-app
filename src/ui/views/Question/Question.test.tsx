@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useReducer } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BankTopic } from "../../../content/types";
 import {
   quizReducer,
@@ -432,5 +432,112 @@ describe("T-US2-5 the 2nd click of a double Submit keeps focus on Next", () => {
     expect(fireEvent.mouseDown(panel, { detail: 1 })).toBe(true);
     expect(fireEvent.mouseDown(panel, { detail: 2 })).toBe(true);
     expect(fireEvent.click(report, { detail: 1 })).toBe(true);
+  });
+});
+
+describe("T-US2-5 the Submit sequence ends on keyboard use and on a new question (TL N1, SEC I-2)", () => {
+  it("a keyboard Submit (detail 0) starts no sequence", () => {
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton(), { detail: 0 });
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.incorrect,
+    });
+    expect(fireEvent.mouseDown(panel, { detail: 2 })).toBe(true);
+  });
+
+  it("a key press ends the sequence", () => {
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton(), { detail: 1 });
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.incorrect,
+    });
+    fireEvent.keyDown(panel, { key: "Tab" });
+    expect(fireEvent.mouseDown(panel, { detail: 2 })).toBe(true);
+  });
+
+  it("a new question ends the sequence", () => {
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton(), { detail: 1 });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+      { detail: 1 },
+    );
+    expect(fireEvent.mouseDown(h1(), { detail: 2 })).toBe(true);
+  });
+});
+
+describe("T-US3-3 scroll rule on Submit (views.md §3)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function reducedMotion(matches: boolean) {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: matches && query === "(prefers-reduced-motion: reduce)",
+          media: query,
+        }) as MediaQueryList,
+    );
+  }
+
+  it("panel and Next fit: scrollIntoView end, auto under reduced motion, then focus without scrolling", () => {
+    reducedMotion(true);
+    vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
+      800,
+    );
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    focus.mockClear();
+    fireEvent.click(submitButton());
+    const next = screen.getByRole("button", { name: strings.feedback.next });
+    expect(scroll).toHaveBeenCalledTimes(1);
+    expect(scroll.mock.contexts[0]).toBe(next);
+    expect(scroll).toHaveBeenCalledWith({ block: "end", behavior: "auto" });
+    expect(focus.mock.contexts.at(-1)).toBe(next);
+    expect(focus).toHaveBeenLastCalledWith({ preventScroll: true });
+    expect(scroll.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+      focus.mock.invocationCallOrder.at(-1) ?? 0,
+    );
+    expect(document.activeElement).toBe(next);
+  });
+
+  it("uses smooth scrolling without reduced motion", () => {
+    reducedMotion(false);
+    vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
+      800,
+    );
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton());
+    expect(scroll).toHaveBeenCalledWith({ block: "end", behavior: "smooth" });
+  });
+
+  it("panel and Next do not fit: a plain focus, no scrollIntoView", () => {
+    reducedMotion(true);
+    vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
+      300,
+    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      bottom: 1000,
+    } as DOMRect);
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    focus.mockClear();
+    fireEvent.click(submitButton());
+    expect(scroll).not.toHaveBeenCalled();
+    expect(focus).toHaveBeenLastCalledWith();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    );
   });
 });

@@ -74,7 +74,7 @@
         }
       ],
       "correct": "a",
-      "explanation": "Fixture explanation: the request line starts with GET.",
+      "explanation": "Fixture explanation: the request line starts with GET.\n\n```http\nGET /items/42 HTTP/1.1\n```",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.1",
       "reviewStatus": "reviewed",
       "reviewedBy": "qa-fixture"
@@ -332,7 +332,7 @@
         { "id": "c", "text": "javascript:alert('xss-option-link')" }
       ],
       "correct": "a",
-      "explanation": "Fixture explanation: <script>alert('xss-explanation')</script> and <img src=\"xss-probe-explanation.png\" onerror=\"alert(1)\"> stay literal text.",
+      "explanation": "Fixture explanation: <script>alert('xss-explanation')</script> and <img src=\"xss-probe-explanation.png\" onerror=\"alert(1)\"> stay literal text. [x](javascript:alert('xss-explanation-link'))",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
       "reviewStatus": "reviewed",
       "reviewedBy": "qa-fixture"

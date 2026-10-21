@@ -54,6 +54,20 @@ describe("T-US3-5 question report link", () => {
   });
 });
 
+describe("SEC L-3 an unsafe base URL falls back to REPORT_BASE_URL", () => {
+  it.each([
+    "javascript:alert(1)",
+    "http://example.test/issues/new",
+    "https://user:pass@example.test/issues/new",
+    "not a url",
+  ])("%s", (base) => {
+    expect(parse(questionReportHref("q", "v", base)).base).toBe(
+      REPORT_BASE_URL,
+    );
+    expect(parse(generalReportHref(base)).base).toBe(REPORT_BASE_URL);
+  });
+});
+
 describe("T-US12-1 general report link", () => {
   it("carries the template only: no question ID, no title, no version", () => {
     const { base, params } = parse(generalReportHref());

@@ -67,7 +67,8 @@
   cursor: default;
 }
 
-.group:disabled .option:not(:has(.radio:checked)):hover {
+/* The correct row keeps its success tint on hover (TL M1). */
+.group:disabled .option:not(:has(.radio:checked)):not(.optionCorrect):hover {
   background: transparent;
 }
 

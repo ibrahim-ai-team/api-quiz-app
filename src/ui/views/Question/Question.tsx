@@ -56,16 +56,15 @@ function topicName(topics: readonly BankTopic[], id: string): string | null {
 function revealFeedback(panel: HTMLElement | null, next: HTMLElement | null) {
   if (next === null) return;
   const top = panel?.getBoundingClientRect().top ?? 0;
-  const fits = next.getBoundingClientRect().bottom - top <= window.innerHeight;
-  // jsdom implements neither scrollIntoView nor matchMedia.
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see above
-  if (!fits || next.scrollIntoView === undefined) {
+  // Layout viewport height, without a horizontal scrollbar (TL N3).
+  const fits =
+    next.getBoundingClientRect().bottom - top <=
+    document.documentElement.clientHeight;
+  if (!fits) {
     next.focus();
     return;
   }
-  const reduce =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see above
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? true;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   next.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
   next.focus({ preventScroll: true });
 }
@@ -95,7 +94,8 @@ export function Question({
   // The 2nd click of a double Submit lands on the panel that took Submit's
   // place: its mousedown would move focus off Next, and its click could
   // follow a link. Cancel both defaults, but only for clicks continuing the
-  // sequence that hit Submit (Next keeps its own `detail` guard).
+  // pointer sequence that hit Submit (Next keeps its own `detail` guard).
+  // Any key press or new question ends the sequence (TL N1, SEC I-2).
   const submitSequence = useRef(false);
   useEffect(() => {
     const view = viewRef.current;
@@ -107,11 +107,16 @@ export function Question({
         event.preventDefault();
       }
     };
+    const endSequence = () => {
+      submitSequence.current = false;
+    };
     view.addEventListener("mousedown", guard);
     view.addEventListener("click", guard);
+    view.addEventListener("keydown", endSequence);
     return () => {
       view.removeEventListener("mousedown", guard);
       view.removeEventListener("click", guard);
+      view.removeEventListener("keydown", endSequence);
     };
   }, []);
   const shown = useRef({ questionId, phase });
@@ -119,6 +124,7 @@ export function Question({
     const previous = shown.current;
     shown.current = { questionId, phase };
     if (previous.questionId !== questionId) {
+      submitSequence.current = false;
       headingRef.current?.focus();
     } else if (previous.phase === "answering" && phase === "feedback") {
       // The verdict is already in the status region (same commit).
@@ -144,9 +150,10 @@ export function Question({
         ? strings.feedback.liveCorrect(correctText)
         : strings.feedback.liveIncorrect(correctText);
 
-  const submit = () => {
+  const submit = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (!canSubmit) return;
-    submitSequence.current = true;
+    // detail 0 = keyboard or programmatic activation: no pointer sequence.
+    if (event.detail > 0) submitSequence.current = true;
     dispatch({ type: "submit" });
   };
   const goNext = (event: ReactMouseEvent<HTMLButtonElement>) => {

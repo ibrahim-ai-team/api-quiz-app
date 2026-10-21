@@ -32,6 +32,13 @@ describe("T-US3-2 V-2 safeHttpsHref", () => {
     expect(safeHttpsHref("HTTPS://Example.COM")).toBe("https://example.com/");
   });
 
+  it.each([
+    ["trailing space and NUL", "https://example.com/ \u0000"],
+    ["backslashes after the scheme", "https:\\\\example.com"],
+  ])("re-serialises %s to a clean https href (SEC L-2)", (_name, input) => {
+    expect(safeHttpsHref(input)).toBe("https://example.com/");
+  });
+
   it("strips leading whitespace and control characters from an https href", () => {
     expect(safeHttpsHref(" \u0001https://example.com/a b")).toBe(
       "https://example.com/a%20b",

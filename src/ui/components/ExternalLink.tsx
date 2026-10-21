@@ -11,24 +11,9 @@
 import type { ReactNode } from "react";
 import { strings } from "../strings";
 import styles from "./common.module.css";
+import { safeHttpsHref } from "./safeUrl";
 
-/** Parsed `https:` URL with no username or password, or null. Never throws. */
-export function safeHttpsUrl(s: string): URL | null {
-  let url: URL;
-  try {
-    url = new URL(s);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:" || url.username !== "" || url.password !== "")
-    return null;
-  return url;
-}
-
-/** Safe href for `s` (see `safeHttpsUrl`), or null. Never throws. */
-export function safeHttpsHref(s: string): string | null {
-  return safeHttpsUrl(s)?.href ?? null;
-}
+export { safeHttpsHref, safeHttpsUrl } from "./safeUrl";
 
 export interface ExternalLinkProps {
   /** Untrusted URL; guarded by `safeHttpsHref`. */

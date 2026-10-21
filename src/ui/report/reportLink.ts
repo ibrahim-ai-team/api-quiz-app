@@ -15,6 +15,8 @@
  * field `id`, so T-22 must use exactly these ids. Change both sides together.
  */
 
+import { safeHttpsUrl } from "../components/safeUrl";
+
 /** Configurable base: the public repository's new-issue page. */
 export const REPORT_BASE_URL =
   "https://github.com/ibrahim-ai-team/api-quiz-app/issues/new";
@@ -28,8 +30,9 @@ export function reportTitle(questionId: string): string {
   return `[Question] ${questionId}`;
 }
 
+/** An unsafe `base` (not https, or with credentials) falls back (SEC L-3). */
 function build(params: URLSearchParams, base: string): string {
-  const url = new URL(base);
+  const url = safeHttpsUrl(base) ?? new URL(REPORT_BASE_URL);
   url.search = params.toString();
   return url.href;
 }
