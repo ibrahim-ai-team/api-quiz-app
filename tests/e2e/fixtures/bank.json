@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "contentVersion": "e2e-fixture-1",
+  "topics": [
+    { "id": "topic-a", "name": "Fixture topic A" },
+    { "id": "topic-b", "name": "Fixture topic B" },
+    { "id": "topic-c", "name": "Fixture topic C" },
+    { "id": "topic-d", "name": "Fixture topic D (no questions)" }
+  ],
+  "questions": [
+    {
+      "id": "fixture-a-single-choice",
+      "topic": "topic-a",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture A1: which option is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture option A" },
+        { "id": "b", "text": "Fixture option B" },
+        { "id": "c", "text": "Fixture option C" }
+      ],
+      "correct": "b",
+      "explanation": "Fixture explanation: option B is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-a-true-false",
+      "topic": "topic-a",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "Fixture A2: this statement is true.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "true",
+      "explanation": "Fixture explanation: the statement is true by definition.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-b-four-options",
+      "topic": "topic-b",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Fixture B1: which of four options is correct?",
+      "options": [
+        { "id": "a", "text": "Fixture option A" },
+        { "id": "b", "text": "Fixture option B" },
+        { "id": "c", "text": "Fixture option C" },
+        { "id": "d", "text": "Fixture option D" }
+      ],
+      "correct": "d",
+      "explanation": "Fixture explanation: option D is the correct answer.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    },
+    {
+      "id": "fixture-c-code-snippet",
+      "topic": "topic-c",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Fixture C1: which method does this request use?\n\n```http\nGET /api-quiz-app/fixtures/a-deliberately-long-request-target-that-is-wider-than-320px?with=query&and=more HTTP/1.1\n```",
+      "options": [
+        { "id": "a", "text": "GET" },
+        { "id": "b", "text": "POST" },
+        { "id": "c", "text": "PUT" }
+      ],
+      "correct": "a",
+      "explanation": "Fixture explanation: the request line starts with GET.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "qa-fixture"
+    }
+  ]
+}
