@@ -4,15 +4,23 @@
  * "Question k of N" is the h1, then the topic line, the prompt (rich text)
  * and the options as a native radio group in a fieldset. Submit is
  * `aria-disabled` with a hint until an option is selected. After Submit the
- * fieldset is disabled (answer locked) and Next or See results replaces it;
- * the feedback panel and live region are T-13. Exit is in the app header.
+ * fieldset is disabled (answer locked), the options are marked, the feedback
+ * panel appears below them (T-13, views.md §3) and Next or See results
+ * replaces Submit. Exit is in the app header.
  *
- * Focus (views.md §0): Submit focuses Next, and Next focuses the new h1.
- * Entry focus on the h1 comes from the app's route focus rule.
+ * Focus (views.md §0, §3): Submit announces the verdict in the always-mounted
+ * polite status region, then focuses Next; Next clears it and focuses the
+ * new h1. Entry focus on the h1 comes from the app's route focus rule.
  */
-import { useEffect, useId, useRef, type MouseEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import type { BankTopic } from "../../../content/types";
 import {
+  currentAnswer,
   currentQuestion,
   isLastQuestion,
   progress,
@@ -21,6 +29,7 @@ import {
 } from "../../../domain";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
 import common from "../../components/common.module.css";
+import { CheckIcon, CrossIcon, Feedback } from "./Feedback";
 import { strings } from "../../strings";
 import { renderInlineText, renderRichText } from "../../text/renderRichText";
 import styles from "./Question.module.css";
@@ -29,6 +38,8 @@ export interface QuestionProps {
   readonly session: QuizSession;
   /** Bank topics; display names always come from here. */
   readonly topics: readonly BankTopic[];
+  /** Bank `contentVersion`, for the report link only (US-3.5). */
+  readonly contentVersion: string;
   readonly dispatch: (action: QuizAction) => void;
 }
 
@@ -37,7 +48,34 @@ function topicName(topics: readonly BankTopic[], id: string): string | null {
   return topics.find((topic) => topic.id === id)?.name ?? null;
 }
 
-export function Question({ session, topics, dispatch }: QuestionProps) {
+/**
+ * views.md §3 scroll rule: when the panel plus Next fit in the viewport,
+ * scroll them into view and focus Next without a second scroll; otherwise a
+ * plain focus scrolls Next into view (the panel is above it in reading order).
+ */
+function revealFeedback(panel: HTMLElement | null, next: HTMLElement | null) {
+  if (next === null) return;
+  const top = panel?.getBoundingClientRect().top ?? 0;
+  const fits = next.getBoundingClientRect().bottom - top <= window.innerHeight;
+  // jsdom implements neither scrollIntoView nor matchMedia.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see above
+  if (!fits || next.scrollIntoView === undefined) {
+    next.focus();
+    return;
+  }
+  const reduce =
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see above
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? true;
+  next.scrollIntoView({ block: "end", behavior: reduce ? "auto" : "smooth" });
+  next.focus({ preventScroll: true });
+}
+
+export function Question({
+  session,
+  topics,
+  contentVersion,
+  dispatch,
+}: QuestionProps) {
   const id = useId();
   const question = currentQuestion(session);
   const { current, total } = progress(session);
@@ -52,6 +90,30 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
+  // The 2nd click of a double Submit lands on the panel that took Submit's
+  // place: its mousedown would move focus off Next, and its click could
+  // follow a link. Cancel both defaults, but only for clicks continuing the
+  // sequence that hit Submit (Next keeps its own `detail` guard).
+  const submitSequence = useRef(false);
+  useEffect(() => {
+    const view = viewRef.current;
+    if (view === null) return;
+    const guard = (event: MouseEvent) => {
+      if (event.detail <= 1) {
+        if (event.type === "mousedown") submitSequence.current = false;
+      } else if (submitSequence.current) {
+        event.preventDefault();
+      }
+    };
+    view.addEventListener("mousedown", guard);
+    view.addEventListener("click", guard);
+    return () => {
+      view.removeEventListener("mousedown", guard);
+      view.removeEventListener("click", guard);
+    };
+  }, []);
   const shown = useRef({ questionId, phase });
   useEffect(() => {
     const previous = shown.current;
@@ -59,7 +121,8 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
     if (previous.questionId !== questionId) {
       headingRef.current?.focus();
     } else if (previous.phase === "answering" && phase === "feedback") {
-      nextRef.current?.focus();
+      // The verdict is already in the status region (same commit).
+      revealFeedback(panelRef.current, nextRef.current);
     }
   }, [questionId, phase]);
 
@@ -69,19 +132,33 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
   const locked = phase !== "answering";
   const canSubmit = !locked && selected !== null;
   const hintId = `${id}-hint`;
+  const answer = locked ? currentAnswer(session) : undefined;
+  const correctText =
+    question.options.find((option) => option.id === question.correctOptionId)
+      ?.text ?? "";
+  // Only the short verdict is announced, so nothing is read twice (§3).
+  const liveText =
+    answer === undefined
+      ? ""
+      : answer.correct
+        ? strings.feedback.liveCorrect(correctText)
+        : strings.feedback.liveIncorrect(correctText);
 
   const submit = () => {
-    if (canSubmit) dispatch({ type: "submit" });
+    if (!canSubmit) return;
+    submitSequence.current = true;
+    dispatch({ type: "submit" });
   };
-  const goNext = (event: MouseEvent<HTMLButtonElement>) => {
-    // The second click of a double click on Submit lands on Next, which
-    // takes Submit's place: ignore it so 1 activation advances 1 (US-2.5).
+  const goNext = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    // The second click of a double click on Submit can land on Next (the
+    // view guard above cancels only defaults): ignore it so 1 activation
+    // advances 1 (US-2.5).
     if (event.detail > 1) return;
     dispatch({ type: "next" });
   };
 
   return (
-    <div className={styles.view} data-question-id={question.id}>
+    <div ref={viewRef} className={styles.view} data-question-id={question.id}>
       <h1 ref={headingRef} tabIndex={-1} className={common.heading}>
         {strings.question.heading(current, total)}
       </h1>
@@ -103,24 +180,67 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
         <legend className={styles.legend}>
           {strings.question.optionsLegend}
         </legend>
-        {question.options.map((option) => (
-          <label key={option.id} className={styles.option}>
-            <input
-              type="radio"
-              name={`${id}-${question.id}`}
-              value={option.id}
-              className={styles.radio}
-              checked={selected === option.id}
-              onChange={() => {
-                dispatch({ type: "select", optionId: option.id });
-              }}
-            />
-            <span className={styles.optionText}>
-              {renderInlineText(option.text)}
-            </span>
-          </label>
-        ))}
+        {question.options.map((option) => {
+          const isCorrect =
+            answer !== undefined && option.id === question.correctOptionId;
+          const isChosen = answer?.optionId === option.id;
+          const marker = isCorrect
+            ? styles.optionCorrect
+            : isChosen
+              ? styles.optionWrong
+              : undefined;
+          return (
+            <label
+              key={option.id}
+              className={[styles.option, marker].filter(Boolean).join(" ")}
+            >
+              <input
+                type="radio"
+                name={`${id}-${question.id}`}
+                value={option.id}
+                className={styles.radio}
+                checked={selected === option.id}
+                onChange={() => {
+                  dispatch({ type: "select", optionId: option.id });
+                }}
+              />
+              <span className={styles.optionText}>
+                {renderInlineText(option.text)}
+                {/* Text tags plus icons (US-3.1): part of the radio's name. */}
+                {isCorrect && (
+                  <>
+                    {" "}
+                    <span className={styles.tag}>
+                      <CheckIcon />
+                      {strings.feedback.tagCorrect}
+                    </span>
+                  </>
+                )}
+                {isChosen && (
+                  <>
+                    {" "}
+                    <span className={styles.tag}>
+                      {!isCorrect && <CrossIcon />}
+                      {strings.feedback.tagChosen}
+                    </span>
+                  </>
+                )}
+              </span>
+            </label>
+          );
+        })}
       </fieldset>
+      {answer !== undefined && (
+        // Keyed by question, so a focused explanation code box is never reused.
+        <Feedback
+          key={`feedback-${question.id}`}
+          ref={panelRef}
+          question={question}
+          answer={answer}
+          correctText={correctText}
+          contentVersion={contentVersion}
+        />
+      )}
       <div className={styles.actions}>
         {locked ? (
           // Keyed: Next is never the reused Submit element.
@@ -154,6 +274,10 @@ export function Question({ session, topics, dispatch }: QuestionProps) {
             )}
           </>
         )}
+      </div>
+      {/* Mounted empty from the start (G4); text set on Submit, cleared on Next. */}
+      <div role="status" className={common.visuallyHidden}>
+        {renderInlineText(liveText)}
       </div>
     </div>
   );

@@ -49,6 +49,7 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | `feedback.tagCorrect` | Correct answer | Option tag |
 | `feedback.tagChosen` | Your answer | Option tag |
 | `feedback.explanationHeading` | Explanation | h3 |
+| `feedback.explanationCodeLabel` *fn* | Explanation code example / Explanation code example {i} of {count} | Code boxes in the explanation; numbered only when count > 1. Distinct from `question.codeLabel` so 2 regions never share a name (axe `landmark-unique`). Added by T-13, designer to confirm |
 | `feedback.sourcePrefix` | Source: | Followed by the link (hostname plus cue) |
 | `feedback.sourceUnlinked` *fn* | Source: {url} | Non-https, plain text |
 | `feedback.report` | Report a problem with this question | Followed by the cue (US-3.5) |

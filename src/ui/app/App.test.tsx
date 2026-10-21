@@ -337,9 +337,10 @@ describe("T-12 quiz session in the app (T-09-R01 N3)", () => {
       name: strings.feedback.seeResults,
     });
     expect(document.activeElement).toBe(next);
-    // Locked through `fieldset disabled` (views.md §2).
+    // Locked through `fieldset disabled` (views.md §2); the feedback tags
+    // (T-13) are now part of the radio's name.
     expect(
-      screen.getByRole("radio", { name: "True" }).matches(":disabled"),
+      screen.getByRole("radio", { name: /^True\b/ }).matches(":disabled"),
     ).toBe(true);
     fireEvent.click(next);
     expect(h1().textContent).toBe(strings.placeholder.resultsHeading);

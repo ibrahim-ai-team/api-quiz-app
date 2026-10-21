@@ -1,6 +1,6 @@
 /*
  * Question view (T-12; views.md §2; tokens.md §1-§7). Option rows follow the
- * Landing rows (views.md §2 "styled like Landing rows").
+ * Landing rows (views.md §2 "styled like Landing rows"). Feedback (T-13, §3).
  */
 
 .view {
@@ -117,10 +117,107 @@
   }
 }
 
+/*
+ * Feedback markers (T-13, views.md §3, US-3.1): correct = 3px solid success,
+ * wrong choice = 3px dashed danger. The border style, icon and text tag carry
+ * the meaning, so it survives forced colours. Padding drops 1px to offset the
+ * thicker border, so the row does not shift.
+ */
+.option.optionCorrect,
+.option.optionCorrect:has(.radio:checked),
+.option.optionWrong,
+.option.optionWrong:has(.radio:checked) {
+  border-width: var(--border-width-state);
+  padding: calc(var(--space-3) - 1px);
+}
+
+.option.optionCorrect,
+.option.optionCorrect:has(.radio:checked) {
+  border-style: solid;
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.option.optionWrong,
+.option.optionWrong:has(.radio:checked) {
+  border-style: dashed;
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-inline-end: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.iconCorrect,
+.iconWrong {
+  flex: none;
+}
+
+.iconCorrect {
+  color: var(--color-success);
+}
+
+.iconWrong {
+  color: var(--color-danger);
+}
+
+/* Feedback panel: 4px left edge plus tint; the h2 verdict carries meaning. */
+.panel {
+  min-width: 0;
+  margin-block: 0 var(--space-4);
+  padding: var(--space-4);
+  border-inline-start: 4px solid;
+  border-radius: var(--radius-md);
+}
+
+.panelCorrect {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.panelIncorrect {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: 0 var(--space-2);
+  font-size: var(--font-size-xl);
+}
+
+.panelHeading {
+  margin-block: var(--space-4) var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.panelText {
+  margin-block: 0 var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.explanation {
+  min-width: 0;
+}
+
 @media (forced-colors: active) {
   .option,
   .option:has(.radio:checked) {
     border-color: CanvasText;
+  }
+
+  .panel {
+    border: 1px solid CanvasText;
+    border-inline-start-width: 4px;
   }
 
   @supports selector(:has(*)) {

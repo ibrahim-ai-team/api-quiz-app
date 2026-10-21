@@ -199,6 +199,7 @@ export function App({ bankPromise, reloadBank }: AppProps) {
           <Question
             session={session}
             topics={bank.bank.topics}
+            contentVersion={bank.bank.contentVersion}
             dispatch={dispatchSession}
           />
         ) : null;

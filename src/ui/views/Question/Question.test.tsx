@@ -81,7 +81,14 @@ function start(quiz: Quiz): QuizSession {
 
 function Harness({ quiz }: { readonly quiz: Quiz }) {
   const [session, dispatch] = useReducer(recording, quiz, start);
-  return <Question session={session} topics={TOPICS} dispatch={dispatch} />;
+  return (
+    <Question
+      session={session}
+      topics={TOPICS}
+      contentVersion="v-test"
+      dispatch={dispatch}
+    />
+  );
 }
 
 function renderQuestion(quiz: Quiz = QUIZ) {
@@ -193,7 +200,9 @@ describe("T-US2-4/5 locked after Submit, one answer, one step", () => {
     fireEvent.click(screen.getByRole("radio", { name: "PUT" }));
     expect(latest?.selected).toBe("b");
     expect(
-      screen.getByRole<HTMLInputElement>("radio", { name: "POST" }).checked,
+      screen.getByRole<HTMLInputElement>("radio", {
+        name: `POST ${strings.feedback.tagChosen}`,
+      }).checked,
     ).toBe(true);
   });
 
@@ -269,5 +278,159 @@ describe("T-US2-9 keyboard operation", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("button", { name: strings.feedback.seeResults }),
     );
+  });
+});
+
+const cue = strings.common.newTabCue;
+
+function submitOption(name: string) {
+  fireEvent.click(screen.getByRole("radio", { name }));
+  fireEvent.click(submitButton());
+}
+
+describe("T-US3-1 verdict and non-colour option marking", () => {
+  it("incorrect: Incorrect h2 names the panel, correct answer line, both rows tagged", () => {
+    renderQuestion();
+    submitOption("POST");
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.incorrect,
+    });
+    expect(panel.tagName).toBe("SECTION");
+    expect(within(panel).getByRole("heading", { level: 2 }).textContent).toBe(
+      strings.feedback.incorrect,
+    );
+    expect(panel.textContent).toContain(
+      strings.feedback.correctAnswer("Use GET"),
+    );
+    expect(panel.querySelector("p code")?.textContent).toBe("GET");
+    // Tags are text (icons are decorative) and part of each radio's name.
+    screen.getByRole("radio", {
+      name: `Use GET ${strings.feedback.tagCorrect}`,
+    });
+    screen.getByRole("radio", { name: `POST ${strings.feedback.tagChosen}` });
+    screen.getByRole("radio", { name: "PUT" });
+    for (const svg of panel.querySelectorAll("svg")) {
+      expect(svg.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+
+  it("correct: Correct h2, no correct answer line, the chosen row shows both tags", () => {
+    renderQuestion();
+    submitOption("Use GET");
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.correct,
+    });
+    expect(panel.textContent).not.toContain("Correct answer:");
+    screen.getByRole("radio", {
+      name: `Use GET ${strings.feedback.tagCorrect} ${strings.feedback.tagChosen}`,
+    });
+    screen.getByRole("radio", { name: "POST" });
+  });
+
+  it("renders the explanation as rich text with its own code label", () => {
+    const explained = {
+      ...SECOND,
+      explanation: "Because:\n\n```\nPUT /x\n```\n\n<b>literal</b>",
+    };
+    renderQuestion({ ...QUIZ, questions: [explained] });
+    submitOption("One");
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.correct,
+    });
+    within(panel).getByRole("heading", {
+      level: 3,
+      name: strings.feedback.explanationHeading,
+    });
+    const code = within(panel).getByRole("region", {
+      name: strings.feedback.explanationCodeLabel(1, 1),
+    });
+    expect(code.textContent).toBe("PUT /x");
+    expect(strings.feedback.explanationCodeLabel(1, 1)).not.toBe(
+      strings.question.codeLabel(1, 1),
+    );
+    expect(panel.textContent).toContain("<b>literal</b>");
+    expect(panel.querySelector("b")).toBe(null);
+  });
+});
+
+describe("T-US3-3 live region and focus", () => {
+  it("is mounted empty, announces the verdict on Submit, focuses Next, clears on Next", () => {
+    renderQuestion();
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    submitOption("POST");
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toBe(strings.feedback.liveIncorrect("Use GET"));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+      { detail: 1 },
+    );
+    expect(status.textContent).toBe("");
+    submitOption("One");
+    expect(status.textContent).toBe(strings.feedback.liveCorrect("One"));
+  });
+});
+
+describe("T-US3-2 T-US3-5 source and report links", () => {
+  it("links the https source by hostname and the report with only id and version", () => {
+    renderQuestion();
+    submitOption("POST");
+    const source = screen.getByRole("link", {
+      name: `example.com ${cue}`,
+    });
+    expect(source.getAttribute("href")).toBe("https://example.com/");
+    expect(source.getAttribute("target")).toBe("_blank");
+    expect(source.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(source.closest("p")?.textContent).toContain(
+      strings.feedback.sourcePrefix,
+    );
+    const report = screen.getByRole("link", {
+      name: `${strings.feedback.report} ${cue}`,
+    });
+    expect(report.getAttribute("rel")).toBe("noopener noreferrer");
+    const params = [
+      ...new URL(report.getAttribute("href") ?? "").searchParams.entries(),
+    ];
+    expect(params).toEqual([
+      ["template", "question-report.yml"],
+      ["title", "[Question] q-1"],
+      ["question-id", "q-1"],
+      ["content-version", "v-test"],
+    ]);
+  });
+
+  it("shows a non-https source as plain text, not a link", () => {
+    const http = { ...SECOND, sourceUrl: "javascript:alert(1)" };
+    const { container } = renderQuestion({ ...QUIZ, questions: [http] });
+    submitOption("One");
+    expect(container.textContent).toContain(
+      strings.feedback.sourceUnlinked("javascript:alert(1)"),
+    );
+    expect(container.querySelectorAll("a")).toHaveLength(1);
+    expect(container.querySelector("a[href^='javascript']")).toBe(null);
+  });
+});
+
+describe("T-US2-5 the 2nd click of a double Submit keeps focus on Next", () => {
+  it("cancels mousedown and click defaults only while continuing the Submit sequence", () => {
+    renderQuestion();
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton(), { detail: 1 });
+    const panel = screen.getByRole("region", {
+      name: strings.feedback.incorrect,
+    });
+    const report = screen.getByRole("link", {
+      name: `${strings.feedback.report} ${cue}`,
+    });
+    // fireEvent returns false when the default was prevented.
+    expect(fireEvent.mouseDown(panel, { detail: 2 })).toBe(false);
+    expect(fireEvent.click(report, { detail: 2 })).toBe(false);
+    // A new click sequence is untouched.
+    expect(fireEvent.mouseDown(panel, { detail: 1 })).toBe(true);
+    expect(fireEvent.mouseDown(panel, { detail: 2 })).toBe(true);
+    expect(fireEvent.click(report, { detail: 1 })).toBe(true);
   });
 });
