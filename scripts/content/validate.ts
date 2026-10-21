@@ -51,7 +51,7 @@ export interface ValidateOptions {
 export interface ValidationResult {
   errors: ContentIssue[];
   warnings: ContentIssue[];
-  /** Schema-valid questions (including drafts), in file order. */
+  /** Error-free questions (including drafts), in file order. */
   questions: Question[];
   topics: Topic[];
 }

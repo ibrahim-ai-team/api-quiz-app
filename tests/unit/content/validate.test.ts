@@ -88,6 +88,7 @@ const RULE_FIXTURES: [string, [string, string][]][] = [
   ],
   ["true-false-bad-id.json", [["valid-question", "options[0].id"]]],
   ["true-false-bad-text.json", [["valid-question", "options[0].text"]]],
+  ["true-false-order.json", [["valid-question", "options"]]],
   // T-US7-3 duplicates and correct answer (F-2)
   ["duplicate-option-id.json", [["valid-question", "options[1].id"]]],
   ["duplicate-option-text.json", [["valid-question", "options[1].text"]]],

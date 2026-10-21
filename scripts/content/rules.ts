@@ -70,6 +70,17 @@ function optionIdProblems(question: Question): FieldProblem[] {
       });
     }
   });
+  // M4: true-false options are always ordered [true, false].
+  if (
+    question.type === "true-false" &&
+    question.options[0]?.id === "false" &&
+    question.options[1]?.id === "true"
+  ) {
+    problems.push({
+      field: "options",
+      message: 'true-false options must be in order ["true", "false"]',
+    });
+  }
   return problems;
 }
 
