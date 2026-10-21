@@ -1,4 +1,3 @@
-// @ts-check
 import js from "@eslint/js";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import react from "eslint-plugin-react";
@@ -107,6 +106,21 @@ export default tseslint.config(
             "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
           message: "Do not assign innerHTML/outerHTML (standard 5).",
         },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(insertAdjacentHTML|createContextualFragment)$/]",
+          message:
+            "Do not parse HTML strings (insertAdjacentHTML/createContextualFragment, standard 5).",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='document'][callee.property.name=/^(write|writeln)$/]",
+          message: "Do not use document.write/writeln (standard 5).",
+        },
+        {
+          selector: "JSXAttribute[name.name=/^srcdoc$/i]",
+          message: "Do not render raw HTML via srcDoc (standard 5).",
+        },
       ],
     },
   },
@@ -119,6 +133,20 @@ export default tseslint.config(
   {
     files: [`${SRC}/domain/**/*.{ts,tsx}`],
     rules: {
+      "no-restricted-globals": [
+        "error",
+        ...[
+          "window",
+          "document",
+          "localStorage",
+          "sessionStorage",
+          "navigator",
+          "fetch",
+        ].map((name) => ({
+          name,
+          message: `src/domain is pure TypeScript: do not use ${name} (standard 1).`,
+        })),
+      ],
       "no-restricted-imports": [
         "error",
         {

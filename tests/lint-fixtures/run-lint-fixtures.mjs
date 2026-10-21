@@ -10,13 +10,30 @@ const root = path.resolve(
   "..",
 );
 
-/** fixture path (relative to repo root) -> rule IDs that must report an error */
+/**
+ * fixture path (relative to repo root) -> { ruleId: exact number of errors }.
+ * Exact counts prove that every violation in a fixture is caught, not just one.
+ */
 const expectations = {
-  "tests/lint-fixtures/src/ui/Danger.tsx": ["react/no-danger"],
-  "tests/lint-fixtures/src/domain/importsReact.ts": ["no-restricted-imports"],
-  "tests/lint-fixtures/src/domain/importsUi.ts": ["no-restricted-imports"],
-  "tests/lint-fixtures/src/ui/mathRandom.ts": ["no-restricted-properties"],
-  "tests/lint-fixtures/src/ui/consoleLog.ts": ["no-console"],
+  "tests/lint-fixtures/src/ui/Danger.tsx": {
+    "react/no-danger": 1,
+    "no-restricted-syntax": 1, // srcDoc
+  },
+  "tests/lint-fixtures/src/ui/innerHtml.ts": {
+    // innerHTML, outerHTML, insertAdjacentHTML, createContextualFragment,
+    // document.write, document.writeln
+    "no-restricted-syntax": 6,
+  },
+  "tests/lint-fixtures/src/domain/importsReact.ts": {
+    "no-restricted-imports": 1,
+  },
+  "tests/lint-fixtures/src/domain/importsUi.ts": { "no-restricted-imports": 1 },
+  "tests/lint-fixtures/src/domain/usesDom.ts": {
+    // window, document, localStorage, sessionStorage, navigator, fetch
+    "no-restricted-globals": 6,
+  },
+  "tests/lint-fixtures/src/ui/mathRandom.ts": { "no-restricted-properties": 1 },
+  "tests/lint-fixtures/src/ui/consoleLog.ts": { "no-console": 1 },
 };
 
 // ignore: false lints the fixtures despite the global ignore in eslint.config.js.
@@ -37,19 +54,21 @@ for (const [file, expectedRules] of Object.entries(expectations)) {
     failures++;
     continue;
   }
-  const errorRules = new Set(
-    result.messages.filter((m) => m.severity === 2).map((m) => m.ruleId),
-  );
-  const missing = expectedRules.filter((rule) => !errorRules.has(rule));
-  if (missing.length > 0) {
-    console.error(
-      `FAIL ${file}: expected error(s) not reported: ${missing.join(", ")}`,
-    );
+  const counts = new Map();
+  for (const m of result.messages) {
+    if (m.severity === 2) counts.set(m.ruleId, (counts.get(m.ruleId) ?? 0) + 1);
+  }
+  const mismatches = Object.entries(expectedRules)
+    .filter(([rule, n]) => counts.get(rule) !== n)
+    .map(([rule, n]) => `${rule} expected ${n}, got ${counts.get(rule) ?? 0}`);
+  const summary = Object.entries(expectedRules)
+    .map(([rule, n]) => `${rule} x${n}`)
+    .join(", ");
+  if (mismatches.length > 0) {
+    console.error(`FAIL ${file}: ${mismatches.join("; ")}`);
     failures++;
   } else {
-    console.log(
-      `ok   ${file}: fails lint as expected (${expectedRules.join(", ")})`,
-    );
+    console.log(`ok   ${file}: fails lint as expected (${summary})`);
   }
 }
 

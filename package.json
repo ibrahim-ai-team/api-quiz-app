@@ -5,7 +5,7 @@
   "type": "module",
   "description": "ApiQuiz: static client-only API interview quiz.",
   "engines": {
-    "node": "22"
+    "node": ">=22.18 <23"
   },
   "scripts": {
     "dev": "vite",

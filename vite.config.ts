@@ -28,13 +28,14 @@ function cspMetaPlugin(): Plugin {
     apply: "build",
     transformIndexHtml(html) {
       // Place the policy directly after <meta charset> and before any script.
-      const charset = '<meta charset="UTF-8" />';
-      if (!html.includes(charset)) {
-        throw new Error(`CSP plugin: ${charset} not found in index.html`);
+      const charset = /<meta\s+charset\s*=\s*["']?utf-8["']?\s*\/?>/i;
+      if (!charset.test(html)) {
+        throw new Error("CSP plugin: <meta charset> not found in index.html");
       }
       return html.replace(
         charset,
-        `${charset}\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`,
+        (match) =>
+          `${match}\n    <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />`,
       );
     },
   };

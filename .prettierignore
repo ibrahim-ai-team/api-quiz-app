@@ -7,7 +7,7 @@ playwright-report/
 test-results/
 .lighthouseci/
 
-# Coordination docs and templates are maintained outside the code formatter.
+# Coordination docs and GitHub templates are maintained outside the code formatter.
 docs/
-.github/
-*.md
+.github/pull_request_template.md
+.github/CODEOWNERS
