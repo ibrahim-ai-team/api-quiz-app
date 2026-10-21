@@ -50,3 +50,60 @@ export type CreateQuizError = "unknown-topic" | "empty-topic" | "empty-bank";
 export type CreateQuizResult =
   | { readonly ok: true; readonly quiz: Quiz }
   | { readonly ok: false; readonly error: CreateQuizError };
+
+/*
+ * Answer state (T-11; US-2.4, US-2.5, US-3.4, FR-6, FR-9). Consumed by the
+ * quiz-flow reducer (standard 8), scoring (T-14), review/retry (US-5) and
+ * resume (US-6).
+ */
+
+/** One submitted, locked answer. */
+export interface Answer {
+  readonly questionId: string;
+  readonly optionId: string;
+  /** `optionId === question.correctOptionId` at submit time. */
+  readonly correct: boolean;
+}
+
+/**
+ * - `answering`: the current question is open; an option may be selected.
+ * - `feedback`: the current question was submitted and its answer is locked.
+ * - `finished`: every question has been answered (results, US-4).
+ */
+export type QuizPhase = "answering" | "feedback" | "finished";
+
+/**
+ * The state of one quiz run. Always replaced, never mutated.
+ *
+ * Invariants maintained by `src/domain/answer.ts`, with
+ * N = `quiz.questions.length`:
+ * - `answering`: `answers.length === index`.
+ * - `feedback`: `answers.length === index + 1` and
+ *   `selected === answers[index].optionId`.
+ * - `finished`: `answers.length === N` and `index === max(0, N - 1)`.
+ */
+export interface QuizSession {
+  readonly quiz: Quiz;
+  /**
+   * Index of the current question, 0-based. When `phase` is `finished` it
+   * stays on the last question (or 0 for an empty quiz).
+   */
+  readonly index: number;
+  /**
+   * Option chosen for the current question. While answering it may change;
+   * in `feedback` it equals the locked answer's option. Reset on `next`.
+   */
+  readonly selected: string | null;
+  /**
+   * Submitted answers in question order: `answers[i]` belongs to
+   * `quiz.questions[i]`, so `answers.length` is the number answered.
+   */
+  readonly answers: readonly Answer[];
+  readonly phase: QuizPhase;
+}
+
+/** Actions for the UI's `useReducer` (standard 8). */
+export type QuizAction =
+  | { readonly type: "select"; readonly optionId: string }
+  | { readonly type: "submit" }
+  | { readonly type: "next" };
