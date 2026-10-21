@@ -6,6 +6,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { strings } from "../../src/ui/strings.ts";
 import { expectNoAxeSeriousOrCritical } from "./helpers/a11y.ts";
 import { expectNoCspViolations, trackCspViolations } from "./helpers/csp.ts";
 import {
@@ -31,8 +32,8 @@ const fixtureContentVersion = (
 /**
  * Explicit readiness (replaces `networkidle`): the shell sets
  * `data-bank-status` on <main> once the startup bank request has settled
- * (T-06). It is a non-visual, CSP-safe signal; T-08 adds the visible loading,
- * error and Retry states. "ready" also proves the asset was fetched and
+ * (T-06). It is a non-visual, CSP-safe signal, kept by T-08 (decision T-33
+ * L6) next to the visible loading, error and Retry states (shell.spec.ts). "ready" also proves the asset was fetched and
  * passed the runtime guard (it is not a data: URL blocked by connect-src).
  */
 async function expectBankReady(page: Page): Promise<void> {
@@ -65,9 +66,9 @@ test.describe("T-03 shell smoke", () => {
     expect(new URL(page.url()).pathname).toBe(BASE_PATH);
 
     await expect(
-      page.getByRole("heading", { level: 1, name: "ApiQuiz" }),
+      page.getByRole("heading", { level: 1, name: strings.landing.heading }),
     ).toBeVisible();
-    await expect(page).toHaveTitle("ApiQuiz");
+    await expect(page).toHaveTitle(strings.title.landing);
     // The CSP meta exists only in the build output, so this proves that the
     // run is against `vite preview`, not the dev server (V-4).
     await expect(
@@ -92,7 +93,7 @@ test.describe("T-03 shell smoke", () => {
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expectNoAxeSeriousOrCritical(
       page,
-      page.getByRole("heading", { level: 1, name: "ApiQuiz" }),
+      page.getByRole("heading", { level: 1, name: strings.landing.heading }),
     );
   });
 
@@ -134,7 +135,7 @@ test.describe("T-03 shell smoke", () => {
       await p.locator("main").click();
     });
     await expect(
-      page.getByRole("heading", { level: 1, name: "ApiQuiz" }),
+      page.getByRole("heading", { level: 1, name: strings.landing.heading }),
     ).toBeVisible();
   });
 });

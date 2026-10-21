@@ -1,0 +1,31 @@
+<!doctype html>
+<!--
+  Static fallback for GitHub Pages (ADR-0001 routing, G13; T-08). Pages serves
+  this file with HTTP 404 for any path that is not a built file, for example
+  /api-quiz-app/quiz instead of /api-quiz-app/#/quiz. App views use hash
+  routes, so a refresh of any app view never reaches this page.
+  CSP-safe on purpose: no script, no style, no meta refresh (an automatic
+  redirect would hide the error and move the user without warning); a plain
+  link back to the app is offered instead.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data:; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>Page not found - ApiQuiz</title>
+  </head>
+  <body>
+    <main>
+      <h1>Page not found</h1>
+      <p>There is no page at this address.</p>
+      <p><a href="/api-quiz-app/">Go to the home page</a></p>
+    </main>
+  </body>
+</html>
