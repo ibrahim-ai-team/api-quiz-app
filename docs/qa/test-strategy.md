@@ -3,7 +3,8 @@
 - **Delegation:** T-19-D01 (qa-automation), task T-19, Sprint 1. Date: 2026-10-21.
 - **Inputs:** `docs/planning/01`..`05`. IDs US-n.k, FR-n, NFR-n, SC-n, V-n, T-n refer to those files. The brief (file 01) is the source of truth for acceptance-criteria text.
 - **Companion:** `docs/qa/ac-test-matrix.md` maps each criterion to a test ID `T-US<n>-<k>`.
-- **Evidence state:** This is a plan. No code, test, CI workflow or build exists yet, so no test has run. Every check below is **NOT RUN** until the task that implements it reports observed output.
+- **Evidence state:** Written as a plan in Sprint 1. Observed run status per criterion now lives in `docs/qa/ac-test-matrix.md` (header and section 7); a check counts as passed only with the observed output recorded there.
+- **Manual passes:** `docs/qa/manual-pass-checklist.md` (T-16) holds the screen-reader, real-device iOS Safari, double-tap and Exit/Back checks of section 9.
 
 ## 1. Scope and risk ranking
 

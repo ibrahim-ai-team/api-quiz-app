@@ -69,6 +69,12 @@ export async function goOfflineAfterLoad(
 
     await interact(page);
     // Let any request triggered by the interaction be issued and observed.
+    // This is the one deliberate fixed wait (T-16-R01 N2): the test proves
+    // that something does NOT happen (0 requests), so there is no state to
+    // wait on. Two animation frames let React commit and run effects; the
+    // 250 ms grace then catches a fetch started from a timer or a late
+    // effect. It bounds the check, it does not paper over flakiness: a
+    // longer-delayed request would be missed, not retried.
     await page.evaluate(
       () =>
         new Promise<void>((resolve) => {
