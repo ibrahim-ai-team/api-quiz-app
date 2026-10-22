@@ -4,9 +4,10 @@
 # trigger, so pushes, pull requests and merges never publish the site. Run it
 # from the Actions tab ("Deploy to GitHub Pages (manual)" > Run workflow) with
 # the branch set to `main`. Every job is skipped on any other ref, and the
-# `github-pages` environment must also be limited to `main` in the repository
-# settings (see docs/ops/deploy-github-pages.md); that server-side rule is the
-# real enforcement, because a workflow file on another branch could be edited.
+# `github-pages` environment must also allow only the branch `main` (a rule of
+# ref type Branch, no tag rules) in the repository settings (see
+# docs/ops/deploy-github-pages.md); that server-side rule is the real
+# enforcement, because a workflow file on another branch could be edited.
 #
 # The build job re-runs the repository's own gates on the exact commit being
 # published; it never relaxes them. E2E and Lighthouse already run in ci.yml on
@@ -67,21 +68,41 @@ jobs:
         env:
           ACCEPT_BELOW_THRESHOLDS: ${{ inputs.accept_below_release_thresholds }}
         run: |
-          if npm run --silent content:validate:release; then
-            echo "Question bank meets the US-8.1 release thresholds."
-          elif [ "$ACCEPT_BELOW_THRESHOLDS" = "true" ]; then
-            echo "::warning title=Release thresholds not met::The question bank is below the US-8.1 release thresholds; publishing because the sponsor ticked accept_below_release_thresholds."
-            echo "### Published below the US-8.1 content thresholds (sponsor override)" >> "$GITHUB_STEP_SUMMARY"
+          record() {
+            {
+              echo "### Release content thresholds: $1"
+              echo "- accept_below_release_thresholds: $ACCEPT_BELOW_THRESHOLDS"
+              echo "- commit: $GITHUB_SHA"
+              echo "- started by: $GITHUB_ACTOR (this attempt: $GITHUB_TRIGGERING_ACTOR)"
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          status=0
+          npm run --silent content:validate:release > release.log 2>&1 || status=$?
+          cat release.log
+          if [ "$status" -eq 0 ]; then
+            record "met"
+            exit 0
+          fi
+          # Only a pure threshold miss (exit 1, every error on a bank-level
+          # "reviewed.*" field) can be overridden; any other failure stops here.
+          if [ "$status" -ne 1 ] || ! grep -q '^error: ' release.log || grep '^error: ' release.log | grep -vq '› reviewed\.'; then
+            echo "::error::content:validate:release failed for a reason other than the US-8.1 thresholds."
+            exit 1
+          fi
+          if [ "$ACCEPT_BELOW_THRESHOLDS" = "true" ]; then
+            echo "::warning title=Release thresholds not met::Publishing below the US-8.1 release thresholds because the sponsor ticked accept_below_release_thresholds."
+            record "NOT met, sponsor override"
           else
-            echo "::error title=Release thresholds not met::The question bank is below the US-8.1 release thresholds. Add content, or re-run with accept_below_release_thresholds ticked if the sponsor approves."
+            echo "::error title=Release thresholds not met::The question bank is below the US-8.1 release thresholds. Add content, or run again with accept_below_release_thresholds ticked if the sponsor approves."
+            record "NOT met, deployment stopped"
             exit 1
           fi
 
       - name: Production build (content build, typecheck, Vite)
         run: npm run build
 
-      - name: Size budgets
-        run: npm run size
+      - name: Size budgets (same flags as ci.yml)
+        run: npm run size -- --require-data
 
       - name: CSP meta present, no inline script or style
         run: npm run csp:check
@@ -132,6 +153,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # If the repository ever becomes private, deploy-pages may also need
+    # `actions: read` to fetch the artifact (SEC-R12 I-1).
     permissions:
       pages: write # publish the uploaded artifact
       id-token: write # OIDC token that deploy-pages uses to prove this run's origin
@@ -162,7 +185,7 @@ jobs:
           echo "Checking $url"
           # Pages can take a moment to serve a new deployment.
           for attempt in 1 2 3 4 5 6; do
-            code=$(curl -sS -o page.html -w '%{http_code}' "$url" || true)
+            code=$(curl -sS --max-time 20 --proto '=https' -o page.html -w '%{http_code}' "$url" || true)
             [ "$code" = "200" ] && break
             echo "HTTP $code, retrying in 10 s"; sleep 10
           done
@@ -171,12 +194,12 @@ jobs:
           script=$(grep -Eo 'src="/api-quiz-app/assets/[^"]+\.js"' page.html | head -1 | sed 's/^src="//; s/"$//')
           [ -n "$script" ] || { echo "::error::no app script found in the live page"; exit 1; }
           origin=$(printf '%s' "$url" | sed -E 's#^(https?://[^/]+).*#\1#')
-          js=$(curl -sS -o /dev/null -w '%{http_code}' "$origin$script")
+          js=$(curl -sS --max-time 20 --proto '=https' -o /dev/null -w '%{http_code}' "$origin$script" || true)
           [ "$js" = "200" ] || { echo "::error::$origin$script returned HTTP $js"; exit 1; }
-          nf=$(curl -sS -o notfound.html -w '%{http_code}' "${url}no-such-page")
+          nf=$(curl -sS --max-time 20 --proto '=https' -o notfound.html -w '%{http_code}' "${url}no-such-page" || true)
           [ "$nf" = "404" ] && grep -q 'Page not found' notfound.html || { echo "::error::unknown path did not get the static 404 page (HTTP $nf)"; exit 1; }
           http_url=$(printf '%s' "$url" | sed 's#^https://#http://#')
-          redirect=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "$http_url")
+          redirect=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code} %{redirect_url}' "$http_url" || true)
           case "$redirect" in
             30[178]\ https://*) echo "HTTPS enforced: $redirect" ;;
             *) echo "::error::HTTP is not redirected to HTTPS ($redirect). Tick 'Enforce HTTPS' in Settings > Pages."; exit 1 ;;

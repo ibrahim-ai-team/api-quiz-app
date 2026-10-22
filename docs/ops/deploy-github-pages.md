@@ -17,13 +17,13 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
    - This stops the legacy "Deploy from a branch" mode. That mode currently publishes the raw `main` source through Jekyll on every merge, without building the app.
 2. **Settings > Pages > Enforce HTTPS: ticked.** The verify job fails if `http://` does not redirect to `https://`.
 3. **Settings > Environments > `github-pages`** (GitHub creates it):
-   - **Deployment branches and tags:** "Selected branches and tags", with the single rule `main`. This is the server-side guarantee that only `main` can be published.
+   - **Deployment branches and tags:** "Selected branches and tags", then **Add deployment branch or tag rule** with **Ref type: Branch** and name pattern `main`. Add no tag rules: a Tag rule named `main` would allow `refs/tags/main` and block the real branch. This is the server-side guarantee that only `main` can be published. GitHub creates this environment automatically, so check what it contains instead of assuming its defaults.
    - **Optional: Required reviewers:** add yourself. Every deployment then waits for an explicit approval in the run.
 4. **Optional:** **Settings > Actions > General > Workflow permissions:** "Read repository contents and packages permissions". The workflows set their own least-privilege permissions anyway.
 
 ## 2. Deploying
 
-1. Check that CI is green on the `main` commit you want to publish: Actions > CI > the latest run on `main`. This covers E2E (Chromium and WebKit) and Lighthouse, which the deploy workflow does not repeat.
+1. Check that CI is green on the `main` commit you want to publish: Actions > CI > the latest run on `main`. This covers E2E (Chromium and WebKit) and Lighthouse. **The deploy workflow does not repeat them and does not enforce this check**, so a commit whose CI failed could still be deployed. Do not skip this step.
 2. Go to Actions > **Deploy to GitHub Pages (manual)** > **Run workflow**.
 3. Leave **Use workflow from** set to `main`. Any other branch skips every job.
 4. Leave **accept_below_release_thresholds** unticked for a normal release.
@@ -50,13 +50,14 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
   2. Open the last good run.
   3. Choose **Re-run all jobs**.
 
-  A re-run builds and publishes the same commit as that run.
+  A re-run builds and publishes the same commit as that run, with the **same `accept_below_release_thresholds` value**: re-running an override run applies the override again. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
 - **Bad commit on main:** revert it through a pull request, then run a new deployment.
 - **Emergency:** Settings > Pages > **Unpublish site**. Publishing again later needs a new manual run.
 
 ## 5. Security notes
 
-- The workflow has no `push`, `pull_request` or `release` trigger; it only runs when a person starts it.
+- The workflow has no `push`, `pull_request`, `release` or `schedule` trigger. It only runs on an explicit manual dispatch or a re-run by someone with write access to Actions, which can also be done through the API. No event publishes automatically.
+- Every run's summary records the release-threshold result, the override value, the commit and who started the run.
 - The default token is `contents: read`. Only the deploy job gets Pages write access and an OIDC token. The verify job has no permissions at all.
 - Every action is pinned by commit SHA, following the repository convention:
   - `actions/configure-pages` v6.0.0
