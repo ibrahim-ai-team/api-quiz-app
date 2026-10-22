@@ -130,7 +130,9 @@ jobs:
   e2e-shard:
     name: E2E shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Browser OS-dependency installation can be slow on GitHub-hosted runners.
+    # Keep enough headroom for setup plus the sharded E2E suite.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
