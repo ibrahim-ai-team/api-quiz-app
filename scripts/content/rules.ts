@@ -1,6 +1,6 @@
 /**
  * Content rules that need more than one field (FR-21, FR-22, US-7.2, US-7.3)
- * and the US-8.1 release thresholds (US-7.5). Pure functions: no file system.
+ * and the release content policies (US-7.5 / US-8.1). Pure functions: no file system.
  */
 import {
   SINGLE_CHOICE_MAX_OPTIONS,
@@ -173,12 +173,26 @@ export function questionProblems(
   return problems;
 }
 
-/** US-8.1 release thresholds, counted after draft exclusion. */
-export const RELEASE_THRESHOLDS = {
+/**
+ * Active MVP release policy, counted after drafts and invalid questions are
+ * excluded. The quality floor (5 per covered topic and 20% medium/hard) remains.
+ */
+export const MVP_RELEASE_THRESHOLDS = {
+  minReviewedQuestions: 24,
+  minTopics: 3,
+  minPerTopic: 5,
+  /** At least 20% of reviewed questions are medium or hard. */
+  minMediumOrHardPercent: 20,
+} as const;
+
+/**
+ * Future content target from US-8.1. Kept separate from the current MVP gate so
+ * the temporary release policy does not rewrite the product acceptance criteria.
+ */
+export const FUTURE_RELEASE_TARGET = {
   minReviewedQuestions: 60,
   minTopics: 8,
   minPerTopic: 5,
-  /** At least 20% of reviewed questions are medium or hard. */
   minMediumOrHardPercent: 20,
 } as const;
 
@@ -191,7 +205,7 @@ export function releaseThresholdProblems(
   questions: readonly Question[],
   topics: readonly Topic[],
 ): FieldProblem[] {
-  const t = RELEASE_THRESHOLDS;
+  const t = MVP_RELEASE_THRESHOLDS;
   const reviewed = questions.filter((q) => q.reviewStatus === "reviewed");
   const perTopic = new Map<string, number>();
   for (const q of reviewed) {
@@ -201,13 +215,13 @@ export function releaseThresholdProblems(
   if (reviewed.length < t.minReviewedQuestions) {
     problems.push({
       field: "reviewed.total",
-      message: `${String(reviewed.length)} reviewed questions; release needs at least ${String(t.minReviewedQuestions)}`,
+      message: `${String(reviewed.length)} reviewed questions; MVP release needs at least ${String(t.minReviewedQuestions)}`,
     });
   }
   if (perTopic.size < t.minTopics) {
     problems.push({
       field: "reviewed.topics",
-      message: `${String(perTopic.size)} topics with reviewed questions; release needs at least ${String(t.minTopics)}`,
+      message: `${String(perTopic.size)} topics with reviewed questions; MVP release needs at least ${String(t.minTopics)}`,
     });
   }
   // Curated order first, then any topic not in the list (already an error).
