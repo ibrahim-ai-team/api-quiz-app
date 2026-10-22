@@ -39,26 +39,9 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* The whole row is the tap target (--option-min). */
+/* Shared row, hover, selected, focus ring and forced colours (optionRow). */
 .option {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  min-height: var(--option-min);
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--easing-standard);
-}
-
-.option:hover {
-  background: var(--color-surface);
-}
-
-.option:has(.radio:checked) {
-  border-color: var(--color-primary);
-  background: var(--color-selected-bg);
+  composes: row from "../../components/optionRow.module.css";
 }
 
 /* Locked after Submit: labels keep full text contrast (views.md §2). */
@@ -76,24 +59,8 @@
   cursor: default;
 }
 
-@supports selector(:has(*)) {
-  .option:has(.radio:focus-visible) {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
-  }
-
-  .option .radio:focus-visible {
-    outline: none;
-  }
-}
-
 .radio {
-  flex: none;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin: 0.125rem 0 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
+  composes: radio from "../../components/optionRow.module.css";
 }
 
 .optionText {
@@ -146,6 +113,11 @@
   background: var(--color-danger-bg);
 }
 
+/*
+ * The tag is one inline box, so it moves to the next line as a whole; when it
+ * is still wider than the row (200% text plus 1.4.12 spacing at 320-375 px,
+ * D-T16-01) its text wraps beside the icon instead of overflowing the page.
+ */
 .tag {
   display: inline-flex;
   align-items: center;
@@ -153,7 +125,6 @@
   margin-inline-end: var(--space-2);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
 }
 
 .iconCorrect,
@@ -194,6 +165,8 @@
   gap: var(--space-2);
   margin-block: 0 var(--space-2);
   font-size: var(--font-size-xl);
+  /* 200% text plus 1.4.12 spacing at 320 px: "Incorrect" is wider than the panel. */
+  overflow-wrap: anywhere;
 }
 
 .panelHeading {
@@ -211,19 +184,8 @@
 }
 
 @media (forced-colors: active) {
-  .option,
-  .option:has(.radio:checked) {
-    border-color: CanvasText;
-  }
-
   .panel {
     border: 1px solid CanvasText;
     border-inline-start-width: 4px;
-  }
-
-  @supports selector(:has(*)) {
-    .option:has(.radio:focus-visible) {
-      outline-color: Highlight;
-    }
   }
 }

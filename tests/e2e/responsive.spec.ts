@@ -227,21 +227,20 @@ test.describe("T-16 responsive: rotation, reflow, text spacing, short landscape"
 });
 
 /**
- * 200% text plus text spacing, at explicit viewports. 320x800 and 375x812
- * carry `knownDefect: "D-T16-01"`: the feedback option tags ("Correct
- * answer" / "Your answer") use `white-space: nowrap` and push the page to
- * scrollWidth 426 px. Those cases are marked `test.fail`, so they report as
- * expected failures now, and T-17's fix shows up as an unexpected pass: the
- * signal to remove `knownDefect`. Recorded in docs/qa/ac-test-matrix.md
- * (section 7, D-T16-01) and the manual checklist (section E).
+ * 200% text plus text spacing, at explicit viewports. A viewport entry can
+ * carry `knownDefect: "<id>"` to mark the case `test.fail` while a recorded
+ * defect is open; its fix then shows up as an unexpected pass, the signal to
+ * remove the marker. D-T16-01 (option tags and the verdict heading overflowing
+ * at 320/375) was fixed by T-17, so no entry is marked now. See
+ * docs/qa/ac-test-matrix.md section 7.
  */
 const TEXT_SPACING_VIEWPORTS: readonly {
   width: number;
   height: number;
   knownDefect?: string;
 }[] = [
-  { width: 320, height: 800, knownDefect: "D-T16-01" },
-  { width: 375, height: 812, knownDefect: "D-T16-01" },
+  { width: 320, height: 800 },
+  { width: 375, height: 812 },
   { width: 1280, height: 800 },
   { width: 768, height: 1024 },
   { width: 640, height: 360 },
@@ -259,7 +258,10 @@ test.describe("T-16 responsive: 200% text and WCAG 1.4.12 text spacing", () => {
       page,
       browserName,
     }) => {
-      test.fail(viewport.knownDefect !== undefined, "D-T16-01, fixed by T-17");
+      test.fail(
+        viewport.knownDefect !== undefined,
+        `known defect ${viewport.knownDefect ?? ""}`,
+      );
       await page.setViewportSize({
         width: viewport.width,
         height: viewport.height,

@@ -55,7 +55,7 @@ Device: a real iPhone with current iOS Safari (not a simulator). Portrait first,
 | IOS-3 | Tap "Start quiz", answer a few questions with taps, including one with a code example if present. | Each step works with a single tap; the code box scrolls sideways on its own, the page does not. Feedback appears under the options and Next is reachable with the thumb. |  |  |
 | IOS-4 | Mid-question, select an answer, then rotate to landscape and back. Then submit, rotate again. | The same question, the same selection and later the same locked answer and feedback are kept. No horizontal page scroll in either orientation. |  |  |
 | IOS-5 | In feedback, tap the source link, then return to the app tab. | The source opens in a new tab; the quiz is still on the same question with the feedback shown. |  |  |
-| IOS-6 | Settings > Accessibility > Display & Text Size > Larger Text: set a large size (about 200%). Return to Safari and reload. Answer one question. | All text is visible, nothing overlaps or is cut off, and every control can still be reached. Note: automated tests found a defect at this size on narrow screens (D-T16-01, see section E). |  |  |
+| IOS-6 | Settings > Accessibility > Display & Text Size > Larger Text: set a large size (about 200%). Return to Safari and reload. Answer one question. | All text is visible, nothing overlaps or is cut off, and every control can still be reached. Note: automated tests found a defect at this size on narrow screens (D-T16-01, see section E), fixed by T-17; confirm on the device. |  |  |
 | IOS-7 | Pinch-zoom to the maximum on a question. | Content can be zoomed; nothing is disabled. |  |  |
 | IOS-8 | Turn on dark mode (Control Centre). | The app switches to the dark theme; text stays readable; the quiz state is kept (US-13.2). |  |  |
 | IOS-9 | After the app has loaded, turn on Airplane mode and finish the quiz. | The quiz continues to results with no error (SC-6). |  |  |
@@ -91,4 +91,4 @@ Run on one desktop browser with the keyboard and on the iPhone with taps.
 
 | ID | Finding | Where |
 | --- | --- | --- |
-| D-T16-01 | With 200% text and WCAG 1.4.12 text spacing at 320 and 375 px wide, the feedback option tags ("Correct answer", "Your answer") do not wrap and make the page scroll sideways (scrollWidth 426 px). Automated as an expected failure (`test.fail`) in `responsive.spec.ts` until T-17 fixes it. | matrix section 7; owner T-17 (frontend-developer) |
+| D-T16-01 | With 200% text and WCAG 1.4.12 text spacing at 320 and 375 px wide, the feedback option tags ("Correct answer", "Your answer") do not wrap and make the page scroll sideways (scrollWidth 426 px). **Fixed by T-17:** the tags wrap, and the feedback heading may break inside the word at this size. The automated checks now enforce it. | matrix section 7; fixed in T-17 |
