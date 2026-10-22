@@ -279,10 +279,24 @@ export function App({ bankPromise, reloadBank }: AppProps) {
         <div className={styles.headerInner}>
           {route.name === "quiz" ? (
             // Plain text on the quiz route: Exit is explicit (views.md §0).
-            <span className={styles.brand}>{strings.appName}</span>
+            <span className={styles.brand}>
+              <span className={styles.brandMark} aria-hidden="true">
+                {"</>"}
+              </span>
+              <span className={styles.brandText}>{strings.appName}</span>
+              <span className={styles.brandSubtitle}>
+                API Interview Practice
+              </span>
+            </span>
           ) : (
             <a className={styles.brandLink} href={LANDING_HREF}>
-              {strings.appName}
+              <span className={styles.brandMark} aria-hidden="true">
+                {"</>"}
+              </span>
+              <span className={styles.brandText}>{strings.appName}</span>
+              <span className={styles.brandSubtitle}>
+                API Interview Practice
+              </span>
             </a>
           )}
           {route.name === "quiz" && session !== null && (
