@@ -34,7 +34,7 @@ Commands (Node 22, see `.nvmrc`):
 | `npm run typecheck`                       | `tsc -b` over the app, tooling and test projects                                   |
 | `npm run test`                            | Vitest unit tests                                                                  |
 | `npm run format` / `npm run format:check` | Prettier write / check                                                             |
-| `npm run content:validate`                | Validates the question bank; `content:validate:release` adds US-8.1 thresholds     |
+| `npm run content:validate`                | Validates the question bank; `content:validate:release` enforces the documented MVP gate (24 reviewed / 3 topics)     |
 | `npm run content:build`                   | Writes the bank to `src/content/generated/`, no drafts; `:dev` keeps drafts        |
 | `npm run e2e`                             | Playwright PR set on the production build; `E2E_FULL=1` adds Firefox and devices   |
 | `npm run e2e:chromium`                    | Only the Chromium projects (for machines without WebKit)                           |
