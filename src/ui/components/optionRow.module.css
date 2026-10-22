@@ -1,10 +1,40 @@
 /*
- * Shared option row (T-17, T-12-R01 L4; views.md §1 and §2 "styled like
- * Landing rows"; tokens.md §3-§6). Landing topic rows and Question answer rows
- * compose `.row` and `.radio`; view-specific states (locked rows, feedback
- * markers) stay in the view modules. Consumers must compose BOTH `.row` and
- * `.radio`: the selected and focus-ring rules match `.row:has(.radio...)`.
+ * Shared option list (T-17, T-12-R01 L4, T-17-R01 L5; views.md §1 and §2
+ * "styled like Landing rows"; tokens.md §3-§6). Landing topic rows and
+ * Question answer rows compose `.group`, `.legend`, `.row` and `.radio`;
+ * view-specific states (locked rows, feedback markers) stay in the view
+ * modules. Consumers must compose BOTH `.row` and `.radio`: the selected and
+ * focus-ring rules match `.row:has(.radio...)`.
+ *
+ * Duplication accepted (T-17-R01 L2, decision T-34): each view module that
+ * composes from this file pulls in its own copy, so the unminified CSS has it
+ * twice (dev server, `vite build --minify false`). The minified production CSS
+ * has one copy (observed in T-34: one `._row_` rule, ahead of both view
+ * modules). The copies are identical and both precede the view rules, and
+ * every view override that ties on specificity is written to win without
+ * relying on cross-file order (T-17-R01 L1), so a second copy changes
+ * nothing. Importing this module from TSX and joining class names instead
+ * would spread one styling concern across both views' markup for about 1 kB
+ * of unminified CSS.
  */
+
+/* Fieldset with the legend as a heading-sized label (views.md §1, §2). */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+}
 
 /* The whole row is the tap target (--option-min). */
 .row {

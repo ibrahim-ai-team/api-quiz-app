@@ -1,23 +1,14 @@
 /* Landing topic group and Start (T-09; views.md §1; tokens.md §1-§7). */
 
+/* Shared fieldset, legend, row, focus ring and forced colours (optionRow). */
 .group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-4);
-  padding: 0;
-  border: 0;
-  min-width: 0;
+  composes: group from "../../components/optionRow.module.css";
 }
 
 .legend {
-  margin-block-end: var(--space-2);
-  padding: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
+  composes: legend from "../../components/optionRow.module.css";
 }
 
-/* Shared row, hover, selected, focus ring and forced colours (optionRow). */
 .option {
   composes: row from "../../components/optionRow.module.css";
 }
@@ -59,6 +50,43 @@
 
 .hint {
   margin: 0;
+}
+
+/*
+ * Loading reserve (T-34, CLS): the status region and an invisible copy of the
+ * topic group share one grid cell, so the cell is as tall as the loaded group
+ * and the content below does not move when the bank arrives. Neither box is
+ * positioned, so a taller status (400% zoom, "Still loading" plus Retry)
+ * grows the cell instead of overlapping "About the questions".
+ */
+.reserve {
+  display: grid;
+}
+
+.reserve > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/*
+ * The status keeps its pre-T-34 place: --space-5 below the description (whose
+ * --space-4 margin no longer collapses into it) and, in the error state,
+ * --space-6 above the About heading (its own end margin used to collapse).
+ */
+.reserve > :first-child {
+  align-self: start;
+  margin-block: calc(var(--space-5) - var(--space-4)) 0;
+}
+
+/* Takes space, never painted, not in the accessibility tree (aria-hidden too). */
+.reserveGroup {
+  visibility: hidden;
+}
+
+/* A grid item keeps its last child's margin; in the loaded page that margin
+   collapses into the larger About heading margin, so drop it here. */
+.reserveGroup .start {
+  margin-block-end: 0;
 }
 
 .aboutHeading {

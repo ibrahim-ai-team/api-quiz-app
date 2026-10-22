@@ -70,7 +70,7 @@ Every text pair is at least 4.5:1, so the design never depends on the large-text
 | `--line-height-body` / `-heading` / `-code` | `1.5` / `1.25` / `1.45` |
 | `--font-weight-regular` / `-semibold` / `-bold` | `400` / `600` / `700` |
 
-Safe at 200% text size and with text-spacing overrides: no fixed `height` on text containers (use `min-height` only), no `line-clamp`, no truncation; `overflow-wrap: anywhere` on prompts, options and URLs (but not inside `pre`); content width set in rem.
+Safe at 200% text size and with text-spacing overrides: no fixed `height` on text containers (use `min-height` only), no `line-clamp`, no truncation; `overflow-wrap: anywhere` on prompts, options and URLs (but not inside `pre`); `overflow-wrap: anywhere` plus `hyphens: auto` on the feedback verdict heading and the option feedback tags (T-17, T-34), whose icon stays on the first line when they wrap; content width set in rem.
 
 ## 3. Spacing, size, radius
 
