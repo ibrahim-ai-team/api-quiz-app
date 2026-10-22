@@ -17,47 +17,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
-/* The whole row is the tap target (--option-min). */
+/* Shared row, hover, selected, focus ring and forced colours (optionRow). */
 .option {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  min-height: var(--option-min);
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--duration-fast) var(--easing-standard);
-}
-
-.option:hover {
-  background: var(--color-surface);
-}
-
-.option:has(.radio:checked) {
-  border-color: var(--color-primary);
-  background: var(--color-selected-bg);
-}
-
-/* Ring on the whole row; the input's own outline is the fallback. */
-@supports selector(:has(*)) {
-  .option:has(.radio:focus-visible) {
-    outline: var(--focus-ring-width) solid var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
-  }
-
-  .option .radio:focus-visible {
-    outline: none;
-  }
+  composes: row from "../../components/optionRow.module.css";
 }
 
 .radio {
-  flex: none;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin: 0.125rem 0 0;
-  accent-color: var(--color-primary);
-  cursor: pointer;
+  composes: radio from "../../components/optionRow.module.css";
 }
 
 .optionText {
@@ -117,18 +83,5 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-  }
-}
-
-@media (forced-colors: active) {
-  .option,
-  .option:has(.radio:checked) {
-    border-color: CanvasText;
-  }
-
-  @supports selector(:has(*)) {
-    .option:has(.radio:focus-visible) {
-      outline-color: Highlight;
-    }
   }
 }
