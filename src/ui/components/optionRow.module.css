@@ -2,7 +2,8 @@
  * Shared option row (T-17, T-12-R01 L4; views.md §1 and §2 "styled like
  * Landing rows"; tokens.md §3-§6). Landing topic rows and Question answer rows
  * compose `.row` and `.radio`; view-specific states (locked rows, feedback
- * markers) stay in the view modules.
+ * markers) stay in the view modules. Consumers must compose BOTH `.row` and
+ * `.radio`: the selected and focus-ring rules match `.row:has(.radio...)`.
  */
 
 /* The whole row is the tap target (--option-min). */

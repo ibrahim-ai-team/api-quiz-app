@@ -100,6 +100,9 @@
 }
 
 .option.optionCorrect,
+/* :hover listed explicitly: the shared .row:hover (optionRow.module.css) has
+   the same specificity, and cross-file order is not guaranteed (T-17-R01 L1). */
+.option.optionCorrect:hover,
 .option.optionCorrect:has(.radio:checked) {
   border-style: solid;
   border-color: var(--color-success);
@@ -121,6 +124,8 @@
 .tag {
   display: inline-flex;
   align-items: center;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   gap: var(--space-1);
   margin-inline-end: var(--space-2);
   font-size: var(--font-size-sm);
@@ -165,7 +170,9 @@
   gap: var(--space-2);
   margin-block: 0 var(--space-2);
   font-size: var(--font-size-xl);
-  /* 200% text plus 1.4.12 spacing at 320 px: "Incorrect" is wider than the panel. */
+  /* 200% text plus 1.4.12 spacing at 320 px: "Incorrect" is wider than the
+     panel. Hyphenate where the browser can; break anywhere as a last resort. */
+  hyphens: auto;
   overflow-wrap: anywhere;
 }
 
