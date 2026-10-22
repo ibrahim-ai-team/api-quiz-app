@@ -167,16 +167,22 @@ export async function tabUntil(
   );
 }
 
+/** Id of the temporary focus sentinels that `expectTabCycle` adds. */
+const SENTINEL = "e2e-focus-sentinel";
+
 /**
- * Logical order and no keyboard trap (2.4.3, 2.1.2). Presses Tab (or
- * Shift+Tab) enough times to go round the page at least twice, recording each
- * stop; at every stop the focus indicator must be visible and not obscured.
- * Then:
- * - the set of stops equals `expected` (nothing missing, nothing extra);
- * - every move goes to the next stop of the cyclic `expected` order (or the
- *   previous one for Shift+Tab). Passing through the document (`body`)
- *   between the last and first stop is allowed: that is focus leaving the
- *   page, so it is not a trap.
+ * Logical order and no keyboard trap (2.4.3, 2.1.2), without relying on the
+ * browser wrapping focus from the last stop back to the first: Firefox lets
+ * focus leave the document instead, so a "go round twice" walk never returns.
+ *
+ * Two temporary focusable sentinels are added as the first and last children
+ * of <body> (outside the app root). Focus starts on one sentinel and `key` is
+ * pressed until focus reaches the other one, recording each stop; at every
+ * stop the focus indicator must be visible and not obscured. Then:
+ * - the recorded stops equal `expected` in order (reversed for Shift+Tab):
+ *   nothing missing, nothing extra, logical order;
+ * - reaching the far sentinel within a bounded number of presses proves
+ *   focus can move through and past every stop (no keyboard trap).
  * Link stops are compared only where `linksAreTabStops` is true.
  */
 export async function expectTabCycle(
@@ -188,25 +194,58 @@ export async function expectTabCycle(
   const keepLinks = linksAreTabStops(browserName);
   const relevant = (d: string) => keepLinks || !d.startsWith('link "');
   const order = expected.filter(relevant);
-  const cycle = key === "Tab" ? order : [...order].reverse();
+  const want = key === "Tab" ? order : [...order].reverse();
+  const forward = key === "Tab";
+  await page.evaluate(
+    ({ id, forward: fwd }) => {
+      for (const pos of ["start", "end"]) {
+        document.getElementById(`${id}-${pos}`)?.remove();
+        const el = document.createElement("div");
+        el.id = `${id}-${pos}`;
+        el.tabIndex = 0;
+        el.setAttribute("aria-label", `${id}-${pos}`);
+        el.style.cssText =
+          "position:fixed;top:0;left:0;width:1px;height:1px;overflow:hidden";
+        if (pos === "start") document.body.prepend(el);
+        else document.body.append(el);
+      }
+      document.getElementById(`${id}-${fwd ? "start" : "end"}`)?.focus();
+    },
+    { id: SENTINEL, forward },
+  );
+  const target = `${SENTINEL}-${forward ? "end" : "start"}`;
   const stops: string[] = [];
-  for (let i = 0; i < order.length * 2 + 3; i += 1) {
-    await page.keyboard.press(key);
-    const info = await focusInfo(page);
-    if (info.descriptor === "body") continue;
-    expect(
-      info.indicator,
-      `no visible focus indicator on ${info.descriptor} (${info.styles})`,
-    ).toBe(true);
-    await expectFocusNotObscured(page);
-    if (relevant(info.descriptor)) stops.push(info.descriptor);
+  let reached = false;
+  try {
+    // Every stop once, plus slack for link stops that are filtered out.
+    for (let i = 0; i < expected.length * 2 + 6; i += 1) {
+      await page.keyboard.press(key);
+      const activeId = await page.evaluate(
+        () => document.activeElement?.id ?? "",
+      );
+      if (activeId === target) {
+        reached = true;
+        break;
+      }
+      const info = await focusInfo(page);
+      if (info.descriptor === "body") continue;
+      expect(
+        info.indicator,
+        `no visible focus indicator on ${info.descriptor} (${info.styles})`,
+      ).toBe(true);
+      await expectFocusNotObscured(page);
+      if (relevant(info.descriptor)) stops.push(info.descriptor);
+    }
+  } finally {
+    await page.evaluate((id) => {
+      document.getElementById(`${id}-start`)?.remove();
+      document.getElementById(`${id}-end`)?.remove();
+    }, SENTINEL);
   }
   const trail = `${key} trail: ${stops.join(" -> ")}`;
-  expect([...new Set(stops)].sort(), trail).toEqual([...order].sort());
-  for (let i = 1; i < stops.length; i += 1) {
-    const from = cycle.indexOf(stops[i - 1] ?? "");
-    expect(stops[i], `${trail}\nafter ${stops[i - 1] ?? ""}`).toBe(
-      cycle[(from + 1) % cycle.length],
-    );
-  }
+  expect(
+    reached,
+    `${trail}\nfocus never reached the end of the page (keyboard trap?)`,
+  ).toBe(true);
+  expect(stops, trail).toEqual(want);
 }
