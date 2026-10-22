@@ -16,14 +16,6 @@ name: Deploy to GitHub Pages (manual)
 
 on:
   workflow_dispatch:
-    inputs:
-      accept_below_release_thresholds:
-        description: >-
-          Sponsor go/no-go: publish even if the question bank is below the
-          US-8.1 release thresholds (content:validate:release). Leave unticked
-          for a normal release.
-        type: boolean
-        default: false
 
 # Least privilege by default; the deploy job alone gets Pages write access.
 permissions:
@@ -64,14 +56,13 @@ jobs:
       - name: Lint, typecheck, content validation, unit tests
         run: npm run check
 
-      - name: Release content thresholds (US-8.1)
-        env:
-          ACCEPT_BELOW_THRESHOLDS: ${{ inputs.accept_below_release_thresholds }}
+      - name: Release content thresholds (MVP policy)
         run: |
           record() {
             {
-              echo "### Release content thresholds: $1"
-              echo "- accept_below_release_thresholds: $ACCEPT_BELOW_THRESHOLDS"
+              echo "### MVP release content thresholds: $1"
+              echo "- policy: 24 reviewed questions / 3 topics; 5 per covered topic; 20% medium or hard"
+              echo "- future US-8.1 target: 60 reviewed questions / 8 topics"
               echo "- commit: $GITHUB_SHA"
               echo "- started by: $GITHUB_ACTOR (this attempt: $GITHUB_TRIGGERING_ACTOR)"
             } >> "$GITHUB_STEP_SUMMARY"
@@ -83,21 +74,9 @@ jobs:
             record "met"
             exit 0
           fi
-          # Only a pure threshold miss (exit 1, every error on a bank-level
-          # "reviewed.*" field) can be overridden; any other failure stops here.
-          if [ "$status" -ne 1 ] || ! grep -q '^error: ' release.log || grep '^error: ' release.log | grep -vq '› reviewed\.'; then
-            echo "::error::content:validate:release failed for a reason other than the US-8.1 thresholds."
-            exit 1
-          fi
-          if [ "$ACCEPT_BELOW_THRESHOLDS" = "true" ]; then
-            echo "::warning title=Release thresholds not met::Publishing below the US-8.1 release thresholds because the sponsor ticked accept_below_release_thresholds."
-            record "NOT met, sponsor override"
-          else
-            echo "::error title=Release thresholds not met::The question bank is below the US-8.1 release thresholds. Add content, or run again with accept_below_release_thresholds ticked if the sponsor approves."
-            record "NOT met, deployment stopped"
-            exit 1
-          fi
-
+          echo "::error title=MVP release thresholds not met::The question bank does not meet the documented MVP release policy, or content validation found an error."
+          record "NOT met, deployment stopped"
+          exit 1
       - name: Production build (content build, typecheck, Vite)
         run: npm run build
 
