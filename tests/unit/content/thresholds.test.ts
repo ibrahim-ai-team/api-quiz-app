@@ -1,10 +1,14 @@
 /**
- * T-US7-5: `--release` fails below the US-8.1 thresholds (60 reviewed, 8
- * topics, 5 per topic, 20% medium or hard); dev mode only warns. Banks are
- * generated in memory; drafts are never counted.
+ * T-US7-5: release mode enforces the documented MVP policy (24 reviewed
+ * questions, 3 topics, 5 per topic, 20% medium/hard); drafts never count.
+ * US-8.1's separate future target remains 60 questions across 8 topics.
  */
 import { describe, expect, it } from "vitest";
-import { releaseThresholdProblems } from "../../../scripts/content/rules.ts";
+import {
+  FUTURE_RELEASE_TARGET,
+  MVP_RELEASE_THRESHOLDS,
+  releaseThresholdProblems,
+} from "../../../scripts/content/rules.ts";
 import {
   BANK_LEVEL,
   validateContent,
@@ -41,50 +45,60 @@ function fields(spec: BankSpec): string[] {
   return releaseThresholdProblems(questions, topics).map((p) => p.field);
 }
 
-const EIGHT_BY_60 = [8, 8, 8, 8, 7, 7, 7, 7]; // 60 reviewed over 8 topics
+const THREE_BY_24 = [8, 8, 8]; // 24 reviewed questions across 3 topics
 
-describe("release thresholds at and just below each boundary", () => {
-  it("passes exactly at every threshold (60 total, 8 topics, 12/60 = 20%)", () => {
-    expect(fields({ perTopic: EIGHT_BY_60, mediumOrHard: 12 })).toEqual([]);
+describe("centralized release policy", () => {
+  it("uses the MVP release thresholds while retaining the US-8.1 future target", () => {
+    expect(MVP_RELEASE_THRESHOLDS).toEqual({
+      minReviewedQuestions: 24,
+      minTopics: 3,
+      minPerTopic: 5,
+      minMediumOrHardPercent: 20,
+    });
+    expect(FUTURE_RELEASE_TARGET).toEqual({
+      minReviewedQuestions: 60,
+      minTopics: 8,
+      minPerTopic: 5,
+      minMediumOrHardPercent: 20,
+    });
+  });
+});
+
+describe("MVP release thresholds at and just below each boundary", () => {
+  it("passes exactly at every MVP threshold (24 total, 3 topics, 5/24 medium or hard)", () => {
+    expect(fields({ perTopic: THREE_BY_24, mediumOrHard: 5 })).toEqual([]);
   });
 
-  it("59 reviewed questions fails reviewed.total", () => {
+  it("23 reviewed questions fails reviewed.total", () => {
     expect(
-      fields({ perTopic: [8, 8, 8, 8, 7, 7, 7, 6], mediumOrHard: 12 }),
+      fields({ perTopic: [8, 8, 7], mediumOrHard: 5 }),
     ).toEqual(["reviewed.total"]);
   });
 
-  it("drafts do not count toward the total", () => {
+  it("drafts do not count toward the reviewed total", () => {
     expect(
-      fields({
-        perTopic: [8, 8, 8, 8, 7, 7, 7, 6],
-        mediumOrHard: 12,
-        drafts: 5,
-      }),
+      fields({ perTopic: [8, 8, 7], mediumOrHard: 5, drafts: 5 }),
     ).toEqual(["reviewed.total"]);
   });
 
-  it("7 topics fails reviewed.topics", () => {
+  it("2 topics fails reviewed.topics", () => {
     expect(
-      fields({ perTopic: [9, 9, 9, 9, 8, 8, 8], mediumOrHard: 12 }),
+      fields({ perTopic: [12, 12], mediumOrHard: 5 }),
     ).toEqual(["reviewed.topics"]);
   });
 
-  it("4 in one topic fails reviewed.perTopic for that topic; 5 passes", () => {
+  it("4 in one covered topic fails; 5 per topic passes", () => {
     expect(
-      fields({ perTopic: [9, 9, 9, 9, 9, 6, 5, 4], mediumOrHard: 12 }),
-    ).toEqual(["reviewed.perTopic.topic-8"]);
-    expect(
-      fields({ perTopic: [9, 9, 9, 9, 9, 5, 5, 5], mediumOrHard: 12 }),
-    ).toEqual([]);
+      fields({ perTopic: [15, 5, 4], mediumOrHard: 5 }),
+    ).toEqual(["reviewed.perTopic.topic-3"]);
+    expect(fields({ perTopic: [14, 5, 5], mediumOrHard: 5 })).toEqual([]);
   });
 
-  it("19% medium or hard fails reviewed.difficulty; 20% passes", () => {
-    const hundred = [13, 13, 13, 13, 12, 12, 12, 12];
-    expect(fields({ perTopic: hundred, mediumOrHard: 19 })).toEqual([
-      "reviewed.difficulty",
-    ]);
-    expect(fields({ perTopic: hundred, mediumOrHard: 20 })).toEqual([]);
+  it("less than 20% medium or hard fails; exactly 20% passes", () => {
+    expect(
+      fields({ perTopic: THREE_BY_24, mediumOrHard: 4 }),
+    ).toEqual(["reviewed.difficulty"]);
+    expect(fields({ perTopic: THREE_BY_24, mediumOrHard: 5 })).toEqual([]);
   });
 
   it("an empty bank fails every bank-wide threshold", () => {
@@ -98,8 +112,8 @@ describe("release thresholds at and just below each boundary", () => {
 
 describe("dev mode warns, release mode fails", () => {
   const below: BankSpec = {
-    perTopic: [8, 8, 8, 8, 7, 7, 7, 6],
-    mediumOrHard: 11,
+    perTopic: [8, 8, 7],
+    mediumOrHard: 4,
   };
 
   it("dev: shortfalls are warnings and there are no errors", () => {
@@ -125,12 +139,12 @@ describe("dev mode warns, release mode fails", () => {
     ]);
   });
 
-  it("release: a bank meeting every threshold has no errors", () => {
+  it("release: a bank meeting every MVP threshold has no errors", () => {
     const result = validateBank(
-      { perTopic: EIGHT_BY_60, mediumOrHard: 12 },
+      { perTopic: THREE_BY_24, mediumOrHard: 5 },
       true,
     );
     expect(result.errors).toEqual([]);
-    expect(result.questions).toHaveLength(60);
+    expect(result.questions).toHaveLength(24);
   });
 });
