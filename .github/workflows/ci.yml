@@ -124,10 +124,17 @@ jobs:
   # WebKit iPhone project). Pushes to main, and PRs labelled `e2e-full`, add
   # Firefox and the full device set (E2E_FULL=1). retries: 1 in CI; a pass on
   # retry is reported as flaky and logged by QA (not auto-failed).
-  e2e:
-    name: E2E (Playwright; full set on main or label e2e-full)
+  # The tests are split over 4 parallel shards (Playwright --shard) so the full
+  # set (about 1,500 tests) does not run on a single 2-worker runner; the `e2e`
+  # job below keeps the original check name and fails unless every shard passed.
+  e2e-shard:
+    name: E2E shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     env:
       E2E_FULL: ${{ (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'e2e-full')) && '1' || '0' }}
     steps:
@@ -155,19 +162,34 @@ jobs:
         if: env.E2E_FULL == '1'
         run: npx playwright install --with-deps firefox
 
-      - name: E2E (Playwright)
-        run: npm run e2e
+      - name: E2E (Playwright, shard ${{ matrix.shard }}/4)
+        run: npm run e2e -- --shard=${{ matrix.shard }}/4
 
       - name: Upload Playwright report (also on failure; skipped if cancelled)
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+  e2e:
+    name: E2E (Playwright; full set on main or label e2e-full)
+    needs: e2e-shard
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Every E2E shard passed
+        env:
+          SHARDS_RESULT: ${{ needs.e2e-shard.result }}
+        run: |
+          echo "E2E shards: $SHARDS_RESULT"
+          [ "$SHARDS_RESULT" = "success" ]
 
   # Lighthouse CI (T-18, issue #38; SC-5; tech-lead adjustments 2 and 5).
   # Mobile preset (Lighthouse default), 3 runs against `npm run preview` at
