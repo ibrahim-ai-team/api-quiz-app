@@ -31,7 +31,8 @@
     "e2e:chromium": "playwright test --project=\"chromium-*\"",
     "e2e:install": "playwright install --with-deps chromium webkit",
     "e2e:fixtures": "node tests/e2e/fixtures/validate-fixtures.ts",
-    "check": "npm run lint && npm run lint:fixtures && npm run typecheck && npm run content:validate && npm run test"
+    "check": "npm run lint && npm run lint:fixtures && npm run typecheck && npm run content:validate && npm run test",
+    "lighthouse": "npx --yes --before=2026-10-08 @lhci/cli@0.15.1 autorun"
   },
   "dependencies": {
     "react": "19.3.1",
