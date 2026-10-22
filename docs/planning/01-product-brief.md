@@ -28,7 +28,7 @@ Developers getting ready for backend, full-stack or API-focused interviews need 
 | ID | Criterion | How verified |
 | --- | --- | --- |
 | SC-1 | 100% of MVP stories' acceptance criteria pass automated or recorded manual tests | QA test report |
-| SC-2 | Question bank has at least 60 questions across at least 8 topics, and 100% of them are marked `reviewed` | Schema validation script in CI |
+| SC-2 | Future content target: at least 60 questions across at least 8 topics, all marked `reviewed` (US-8.1). The current MVP release gate is defined separately in `docs/ops/release-content-policy.md` | Schema validation script in CI |
 | SC-3 | No horizontal scrolling and all features usable at 320px, 375px, 768px, 1280px and 1920px widths, and at 640x360 landscape | Automated viewport tests and screenshots |
 | SC-4 | 0 critical or serious axe-core violations on all screens. Full keyboard-only completion of a quiz. Lighthouse Accessibility at least 95 | Automated a11y tests and manual keyboard check |
 | SC-5 | Lighthouse Performance at least 90 (mobile profile) and first load JS at most 200 KB gzipped | Lighthouse CI / build report |
