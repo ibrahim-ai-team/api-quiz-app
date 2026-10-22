@@ -168,3 +168,48 @@ jobs:
             test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+  # Lighthouse CI (T-18, issue #38; SC-5; tech-lead adjustments 2 and 5).
+  # Mobile preset (Lighthouse default), 3 runs against `npm run preview` at
+  # http://localhost:4173/api-quiz-app/ (not staticDistDir, because of the
+  # /api-quiz-app/ base). The median must reach Performance >= 0.90 and
+  # Accessibility >= 0.95 (lighthouserc.json). Reports go to .lighthouseci/
+  # (filesystem target) and are uploaded as an artifact; nothing is sent to
+  # third-party storage, and no secret is needed. ubuntu-latest ships Google
+  # Chrome, which LHCI finds without CHROME_PATH.
+  lighthouse:
+    name: Lighthouse (mobile, median of 3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install (npm ci, engine-strict)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lighthouse CI (collect 3 runs, assert median, write .lighthouseci/)
+        run: npm run lighthouse
+
+      - name: Upload Lighthouse reports (also on failure)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          # .lighthouseci is a dot-directory; upload-artifact skips hidden
+          # files by default. It holds only Lighthouse reports.
+          include-hidden-files: true
+          retention-days: 14
+          if-no-files-found: ignore
