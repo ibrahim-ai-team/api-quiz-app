@@ -8,15 +8,28 @@
       "type": "single-choice",
       "prompt": "Which status code indicates that the request has been fulfilled and has resulted in one or more new resources being created?",
       "options": [
-        { "id": "a", "text": "200 OK" },
-        { "id": "b", "text": "201 Created" },
-        { "id": "c", "text": "202 Accepted" },
-        { "id": "d", "text": "204 No Content" }
+        {
+          "id": "a",
+          "text": "200 OK"
+        },
+        {
+          "id": "b",
+          "text": "201 Created"
+        },
+        {
+          "id": "c",
+          "text": "202 Accepted"
+        },
+        {
+          "id": "d",
+          "text": "204 No Content"
+        }
       ],
       "correct": "b",
-      "explanation": "RFC 9110 defines 201 Created as meaning the request has been fulfilled and has resulted in one or more new resources being created. 202 means the request was accepted but processing is not complete.",
+      "explanation": "RFC 9110 defines 201 Created as meaning the request has been fulfilled and has resulted in one or more new resources being created. The primary resource created is identified by a `Location` header field in the response or, if none is received, by the target URI. In contrast, 202 Accepted means the request was accepted for processing but the processing has not been completed.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
     },
     {
       "id": "status-401-missing-credentials",
@@ -25,14 +38,200 @@
       "type": "single-choice",
       "prompt": "Which status code does RFC 9110 define for a request that has not been applied because it lacks valid authentication credentials for the target resource?",
       "options": [
-        { "id": "a", "text": "400 Bad Request" },
-        { "id": "b", "text": "401 Unauthorized" },
-        { "id": "c", "text": "404 Not Found" }
+        {
+          "id": "a",
+          "text": "400 Bad Request"
+        },
+        {
+          "id": "b",
+          "text": "401 Unauthorized"
+        },
+        {
+          "id": "c",
+          "text": "404 Not Found"
+        },
+        {
+          "id": "d",
+          "text": "403 Forbidden"
+        }
       ],
       "correct": "b",
-      "explanation": "RFC 9110 defines 401 Unauthorized for a request that lacks valid authentication credentials for the target resource. The server must also send a WWW-Authenticate header field with at least one challenge.",
+      "explanation": "RFC 9110 defines 401 Unauthorized for a request that has not been applied because it lacks valid authentication credentials for the target resource, and the server generating a 401 response MUST send a `WWW-Authenticate` header field containing at least one challenge applicable to the target resource. 403 Forbidden instead means the server understood the request but refuses to fulfill it; if credentials were provided, the server considers them insufficient, and the client SHOULD NOT automatically repeat the request with the same credentials.",
       "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.2",
-      "reviewStatus": "draft"
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-405-requires-allow-header",
+      "topic": "status-codes",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "An origin server answers `DELETE /reports/9` with 405 Method Not Allowed. Which header field MUST it include in that response?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Allow, listing the methods the resource currently supports"
+        },
+        {
+          "id": "b",
+          "text": "WWW-Authenticate, with at least one challenge"
+        },
+        {
+          "id": "c",
+          "text": "Retry-After, saying when to try the method again"
+        },
+        {
+          "id": "d",
+          "text": "Location, pointing to a resource that supports DELETE"
+        }
+      ],
+      "correct": "a",
+      "explanation": "RFC 9110 says the origin server MUST generate an `Allow` header field in a 405 response, listing the target resource's currently supported methods. A 405 means the method is known to the server but not supported by this target resource; `WWW-Authenticate` is the field required in a 401 response.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.6",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-410-gone-permanent-removal",
+      "topic": "status-codes",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "An origin server knows that `/promo/summer` was removed on purpose, that the removal is likely to be permanent, and that there is no replacement URI. Which status code does RFC 9110 prefer for requests to it?",
+      "options": [
+        {
+          "id": "a",
+          "text": "404 Not Found"
+        },
+        {
+          "id": "b",
+          "text": "410 Gone"
+        },
+        {
+          "id": "c",
+          "text": "301 Moved Permanently"
+        },
+        {
+          "id": "d",
+          "text": "503 Service Unavailable"
+        }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 Section 15.5.11 defines 410 Gone as meaning that access to the target resource is no longer available at the origin server and that this condition is likely to be permanent; it is intended to tell recipients that the resource is intentionally unavailable, which is common for limited-time, promotional services. Section 15.5.5 adds that, because a 404 does not indicate whether the condition is temporary or permanent, 410 is preferred over 404 when the origin server knows the condition is likely to be permanent. If the server does not know whether it is permanent, it ought to use 404 instead.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.11",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-307-preserves-request-method",
+      "topic": "status-codes",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A client sends `POST /upload` and receives a redirect. Which status code indicates a temporary redirect for which the user agent MUST NOT change the request method if it follows the redirect automatically?",
+      "options": [
+        {
+          "id": "a",
+          "text": "301 Moved Permanently"
+        },
+        {
+          "id": "b",
+          "text": "302 Found"
+        },
+        {
+          "id": "c",
+          "text": "303 See Other"
+        },
+        {
+          "id": "d",
+          "text": "307 Temporary Redirect"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 9110 defines 307 Temporary Redirect so that the user agent MUST NOT change the request method if it performs an automatic redirection. For historical reasons, a user agent MAY change POST to GET after a 301 or 302, and a 303 sends the user agent to retrieve a different resource, which in HTTP means a GET or HEAD request.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.8",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-415-vs-406-request-format",
+      "topic": "status-codes",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "`POST /orders` is supported, but the resource only accepts `application/json` content. A client sends a POST with `Content-Type: application/xml`. Which status code fits this rejection according to RFC 9110?",
+      "options": [
+        {
+          "id": "a",
+          "text": "415 Unsupported Media Type"
+        },
+        {
+          "id": "b",
+          "text": "406 Not Acceptable"
+        },
+        {
+          "id": "c",
+          "text": "405 Method Not Allowed"
+        },
+        {
+          "id": "d",
+          "text": "422 Unprocessable Content"
+        }
+      ],
+      "correct": "a",
+      "explanation": "415 means the origin server refuses the request because its content is in a format not supported by this method on the target resource, for example because of the indicated `Content-Type`. 406 is about the response instead: no current representation is acceptable according to the request's proactive negotiation fields, such as `Accept`.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.16",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-422-unprocessable-content",
+      "topic": "status-codes",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A server supports the content type of a request, and the request content is syntactically correct, but the server is unable to process the instructions it contains. Which status code does RFC 9110 define for this case?",
+      "options": [
+        {
+          "id": "a",
+          "text": "415 Unsupported Media Type"
+        },
+        {
+          "id": "b",
+          "text": "406 Not Acceptable"
+        },
+        {
+          "id": "c",
+          "text": "422 Unprocessable Content"
+        },
+        {
+          "id": "d",
+          "text": "411 Length Required"
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 defines 422 Unprocessable Content for content whose type the server understands and whose syntax is correct, but whose contained instructions it cannot process. The RFC states that 415 is inappropriate here because the content type is understood.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.21",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
+    },
+    {
+      "id": "status-503-retry-after-optional",
+      "topic": "status-codes",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "RFC 9110 requires a server that sends 503 Service Unavailable to include a `Retry-After` header field.",
+      "options": [
+        {
+          "id": "true",
+          "text": "True"
+        },
+        {
+          "id": "false",
+          "text": "False"
+        }
+      ],
+      "correct": "false",
+      "explanation": "503 means the server is currently unable to handle the request because of a temporary overload or scheduled maintenance. The server MAY send `Retry-After` to suggest how long the client should wait, but it is not required to.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.6.4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-25-R01)"
     }
   ]
 }
