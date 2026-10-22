@@ -101,7 +101,7 @@ Acceptance check for the fix: CLS 0 in all 3 runs in two consecutive `npm run li
 - B. Keep `@lhci/cli` out of the lockfile and run it only in the Lighthouse job with `npx --yes @lhci/cli@0.15.1 autorun`. This keeps the audit job green but bypasses the audit and dependency review for that tool. It would also need the AC that requires a devDependency to change.
 - C. Use `overrides` for the fixable packages and still need A or B for `extract-zip`.
 
-**Decision (2026-10-22, sponsor): option B.** `package.json` has only the `lighthouse` script (`npx --yes @lhci/cli@0.15.1 autorun`), and the lockfile is unchanged. Accepted risk: an unaudited, version-pinned tool runs in the Lighthouse CI job with `contents: read` and no secrets. AC 1 of #38 (devDependency) is amended accordingly.
+**Decision (2026-10-22, sponsor): option B.** `package.json` has only the `lighthouse` script (`npx --yes @lhci/cli@0.15.1 autorun`), and the lockfile is unchanged. Accepted risk: an unaudited, version-pinned tool runs in the Lighthouse CI job with `contents: read` and no secrets. AC 1 of #38 (devDependency) is amended accordingly. Hardening after SEC-R11: install scripts are disabled for the Lighthouse step, `--before=2026-10-08` freezes transitive resolution (bump it together with the LHCI version), and the job uses no npm cache. Residual risk accepted: a malicious runtime dependency could still run inside this read-only job with no secrets.
 
 ## 6. Limitations
 
