@@ -15,6 +15,7 @@ import common from "../../components/common.module.css";
 import { generalReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import styles from "./Landing.module.css";
+import { RESERVE_TOPICS } from "./reserve";
 
 export interface LandingProps {
   readonly bank: BankState;
@@ -38,10 +39,10 @@ interface Choice {
 /**
  * Stand-in rows for the loading reserve (T-34): the shipped bank shows 3
  * topics plus Mixed. Names are one non-breaking space, so each row is one
- * line, like a short topic name. Update the count when the shipped topic
- * count changes; a mismatch moves later content by the difference only.
+ * line, like a short topic name. A unit test keeps `RESERVE_TOPICS` equal to
+ * the shipped topic count; a mismatch would move later content by the
+ * difference only.
  */
-const RESERVE_TOPICS = 3;
 const RESERVE_CHOICES: readonly Choice[] = [
   ...Array.from({ length: RESERVE_TOPICS }, (_, index) => ({
     key: `reserve-${String(index)}`,

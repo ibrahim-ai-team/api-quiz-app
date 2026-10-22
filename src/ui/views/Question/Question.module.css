@@ -132,6 +132,7 @@
 .iconCorrect,
 .iconWrong {
   flex: none;
+  /* Without `lh` (Safari < 16.4, Firefox < 120) this is dropped: margin 0, the icon sits 0.5-2.5px high. */
   margin-block-start: max(0px, (1lh - 20px) / 2);
 }
 

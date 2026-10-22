@@ -50,7 +50,7 @@ Hierarchy: h1, description, [resume banner slot], topic group (fieldset), Start 
 
 - Topic group: `fieldset` + `legend` (`copy:landing.topicsLegend`) with native radios. Each row is a full-width `label` (`--option-min`, the whole row can be tapped). Its accessible name is the name plus the count, for example "Status codes, 12 questions". Topics appear in the curated order and only when they have at least 1 eligible question. Mixed comes last, shows the total, and is hidden when only 1 topic is shown (US-1.1, 1.2). Row states: default (2px border), hover (surface), selected (2px primary border, selected-bg, native checked radio), focus (ring on the row). Space for a best-score text slot is reserved per row for US-6.1.
 - Start (primary, `copy:landing.start`): `aria-disabled="true"` with `aria-describedby` pointing at the visible hint until a topic is selected. Activating it while unavailable does nothing. After the first activation it becomes `aria-disabled` while the quiz is created (US-1.6). Deep link `#/topic/<slug>`: the topic is preselected, Start is available, and the quiz does not auto-start (US-1.8). Interactions: select + Start = 2 (US-1.7).
-- States: **loading** (topic group replaced by §5 Loading; h1, description and About stay visible, because the shell renders before data, per the TL review); **data error** (§6 in the same place); **topic not found** (§7b).
+- States: **loading** (topic group replaced by §5 Loading; h1, description and About stay visible, because the shell renders before data, per the TL review; the topic area keeps the height of the loaded group, so About does not move when the topics arrive, see §5 and T-34); **data error** (§6 in the same place); **topic not found** (§7b).
 - Focus order: brand, topic radios (one tab stop, arrow keys move between them), Start, report link. Entry focus: none on first load; `h1` after Exit, "Choose another topic" or the 404 home link.
 - Title: `copy:title.landing`. Live region: none (Start's hint is a description, not an announcement).
 - 640x360 and 400%: the list scrolls with the page. Start sits below the list and is reached by scrolling or Tab; it is never sticky.
@@ -160,7 +160,8 @@ all widths (inside the Landing topic area)
 ```
 
 - Shown only if data takes more than 300 ms (J1), so there is no flash on fast loads. The text `copy:loading.text` is inside `role="status"`, so it is announced politely once. After 10 s the same region shows `copy:loading.still`, and a Retry button (secondary) appears after it. Focus does not move. Retry restarts the fetch, or reloads the page if a code chunk failed.
-- Title: the Landing title. Reduced motion: static icon. 640x360 and 400%: one short block, no layout issues.
+- Reserved space (T-34, CLS): while loading, the Landing topic area is as tall as the loaded topic group (topic rows, Mixed, Start and its hint). The status line sits at the top of that space, and the rest is blank until the topics arrive. The space comes from an invisible, `aria-hidden` copy of the group with disabled controls: it is not announced, not focusable and never painted. Its row count (`RESERVE_TOPICS`) must match the shipped topic count; a unit test enforces this. The data error state (§6) does not reserve space.
+- Title: the Landing title. Reduced motion: static icon. 640x360 and 400%: the status sits at the top of the reserved space; a taller status grows the space and never overlaps About.
 
 ## 6. Data error and app error (T-08; US-12.5, NFR-9)
 

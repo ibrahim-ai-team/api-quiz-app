@@ -15,6 +15,8 @@ import path from "node:path";
 const CLS_LIMIT = 0.01;
 
 interface ShiftReport {
+  /** The engine supports the Layout Instability API (`layout-shift`). */
+  supported: boolean;
   cls: number;
   shifts: { value: number; sources: string[] }[];
 }
@@ -22,6 +24,7 @@ interface ShiftReport {
 declare global {
   interface Window {
     __shifts?: ShiftReport["shifts"];
+    __layoutShiftSupported?: boolean;
   }
 }
 
@@ -41,6 +44,8 @@ async function serveSlowFixtureBank(
 async function observeLayoutShifts(page: Page): Promise<void> {
   await page.addInitScript(() => {
     window.__shifts = [];
+    window.__layoutShiftSupported =
+      PerformanceObserver.supportedEntryTypes.includes("layout-shift");
     const describe = (node: Node | null): string => {
       if (!(node instanceof Element)) return String(node?.nodeName);
       const text = node.textContent.trim().slice(0, 40);
@@ -72,6 +77,7 @@ async function readShifts(page: Page): Promise<ShiftReport> {
             setTimeout(() => {
               const shifts = window.__shifts ?? [];
               resolve({
+                supported: window.__layoutShiftSupported === true,
                 cls: shifts.reduce((sum, s) => sum + s.value, 0),
                 shifts,
               });
@@ -108,6 +114,8 @@ async function loadLandingLate(
     page.getByRole("group", { name: strings.landing.topicsLegend }),
   ).toBeVisible();
   const report = await readShifts(page);
+  // Without the API the observer records nothing, and CLS 0 would be vacuous.
+  expect(report.supported, "layout-shift entries are supported").toBe(true);
   // Recorded for the report (T-34 evidence), whether the assertion passes.
   test.info().annotations.push({
     type: "CLS",
@@ -117,6 +125,11 @@ async function loadLandingLate(
 }
 
 test.describe("T-34 Landing CLS: the topic area does not move later content", () => {
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "layout-shift (Layout Instability API) is Chromium-only",
+  );
+
   for (const delayMs of [1500, 150]) {
     test(`T-34-CLS bank answered after ${String(delayMs)} ms: CLS < ${String(CLS_LIMIT)}`, async ({
       page,
