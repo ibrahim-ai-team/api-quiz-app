@@ -50,7 +50,7 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
   2. Open the last good run.
   3. Choose **Re-run all jobs**.
 
-  A re-run builds and publishes the same commit as that run, with the **same `accept_below_release_thresholds` value**: re-running an override run applies the override again. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
+  A re-run builds and publishes the same commit as that run, with the release policy defined by that commit. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
 - **Bad commit on main:** revert it through a pull request, then run a new deployment.
 - **Emergency:** Settings > Pages > **Unpublish site**. Publishing again later needs a new manual run.
 
