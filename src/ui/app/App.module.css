@@ -59,9 +59,7 @@
   text-decoration: none;
 }
 
-.brand::before,
-.brandLink::before {
-  content: "</>";
+.brandMark {
   position: absolute;
   inset-inline-start: 0;
   top: 50%;
@@ -78,18 +76,19 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.08em;
-  text-decoration: none;
 }
 
-.brand::after,
-.brandLink::after {
-  content: "API Interview Practice";
+.brandText {
+  display: block;
+}
+
+.brandSubtitle {
+  display: block;
   margin-block-start: 0.2rem;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-regular);
   line-height: 1.2;
-  text-decoration: none;
 }
 
 .brandLink {
@@ -101,6 +100,8 @@
 }
 
 .brandLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-sm);
 }
 
