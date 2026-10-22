@@ -128,14 +128,12 @@
     padding-inline-start: 2.9rem;
   }
 
-  .brand::before,
-  .brandLink::before {
+  .brandMark {
     width: 2.25rem;
     height: 2.25rem;
   }
 
-  .brand::after,
-  .brandLink::after {
+  .brandSubtitle {
     font-size: var(--font-size-sm);
   }
 }
