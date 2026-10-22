@@ -90,7 +90,7 @@ CI was green on each PR's final head; the human owner merged each one.
 ## Risks and blockers
 
 - No blocker for Sprint 2 start.
-- R-1: Sprint 2 ends with about 24 reviewed questions in 3 topics, below the US-8.1 release threshold (60 / 8 topics / 5 per topic); the release gate (`content:validate:release`) will fail.
+- R-1: The sponsor selected a separate MVP release policy (24 reviewed questions across 3 topics); US-8.1's 60-question / 8-topic target remains future backlog work. See `docs/ops/release-content-policy.md`.
 - R-2: T-20 must not deploy on merge before the go/no-go.
 - R-3: sponsor review load (content PRs, manual passes, acceptances).
 - Full list: file 06 §3.6.
