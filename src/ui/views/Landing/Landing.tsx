@@ -15,6 +15,7 @@ import common from "../../components/common.module.css";
 import { generalReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import styles from "./Landing.module.css";
+import { RESERVE_TOPICS } from "./reserve";
 
 export interface LandingProps {
   readonly bank: BankState;
@@ -34,6 +35,29 @@ interface Choice {
   readonly count: number;
   readonly description?: string;
 }
+
+/**
+ * Stand-in rows for the loading reserve (T-34): the shipped bank shows 3
+ * topics plus Mixed. Names are one non-breaking space, so each row is one
+ * line, like a short topic name. A unit test keeps `RESERVE_TOPICS` equal to
+ * the shipped topic count; a mismatch would move later content by the
+ * difference only.
+ */
+const RESERVE_CHOICES: readonly Choice[] = [
+  ...Array.from({ length: RESERVE_TOPICS }, (_, index) => ({
+    key: `reserve-${String(index)}`,
+    scope: { kind: "topic", topicId: `reserve-${String(index)}` } as const,
+    name: "\u00a0",
+    count: 8,
+  })),
+  {
+    key: "reserve-mixed",
+    scope: { kind: "mixed" },
+    name: strings.landing.mixedLabel,
+    count: RESERVE_TOPICS * 8,
+    description: strings.landing.mixedDescription,
+  },
+];
 
 function sameScope(a: QuizScope | null, b: QuizScope): boolean {
   if (a?.kind !== b.kind) return false;
@@ -109,31 +133,33 @@ export function Landing({
     }
   };
 
-  const hintId = `${id}-hint`;
-  let topicArea;
-  if (bank.status !== "ready") {
-    topicArea = <BankStatus state={bank} onRetry={onRetry} />;
-  } else if (choices.length === 0) {
-    topicArea = <p className={common.text}>{strings.landing.noTopics}</p>;
-  } else {
-    topicArea = (
+  /**
+   * The topic group and Start. `placeholder` renders the same markup with
+   * stand-in rows for the loading reserve: no handlers, no ids shared with the
+   * live group, and every control disabled.
+   */
+  const topicGroup = (list: readonly Choice[], placeholder: boolean) => {
+    const prefix = placeholder ? `${id}-reserve` : id;
+    const showHint = placeholder ? selected === null : selection === null;
+    return (
       <>
-        <fieldset className={styles.group}>
+        <fieldset className={styles.group} disabled={placeholder || undefined}>
           <legend className={styles.legend}>
             {strings.landing.topicsLegend}
           </legend>
-          {choices.map((choice, index) => {
+          {list.map((choice, index) => {
             const count = strings.landing.topicCount(choice.count);
-            const descId = `${id}-desc-${String(index)}`;
+            const descId = `${prefix}-desc-${String(index)}`;
             const hasDescription = choice.description !== undefined;
             return (
               <label key={choice.key} className={styles.option}>
                 <input
                   type="radio"
-                  name={`${id}-topic`}
+                  name={`${prefix}-topic`}
                   className={styles.radio}
-                  checked={sameScope(selection, choice.scope)}
+                  checked={!placeholder && sameScope(selection, choice.scope)}
                   onChange={() => {
+                    if (placeholder) return;
                     setSelected(choice.scope);
                     setFailed(false);
                   }}
@@ -160,18 +186,47 @@ export function Landing({
           <button
             type="button"
             className={common.buttonPrimary}
+            disabled={placeholder || undefined}
             aria-disabled={unavailable ? true : undefined}
-            aria-describedby={selection === null ? hintId : undefined}
-            onClick={start}
+            aria-describedby={showHint ? `${prefix}-hint` : undefined}
+            onClick={placeholder ? undefined : start}
           >
             {strings.landing.start}
           </button>
-          {selection === null && (
-            <p id={hintId} className={styles.hint}>
+          {showHint && (
+            <p id={`${prefix}-hint`} className={styles.hint}>
               {strings.landing.startHint}
             </p>
           )}
         </div>
+      </>
+    );
+  };
+
+  let topicArea;
+  if (bank.status !== "ready") {
+    // CLS (T-34): while the bank loads, an invisible copy of the topic group
+    // reserves its height, so "About the questions" does not move when the
+    // real group replaces it. The status region sits on top in the same grid
+    // cell, so the loading text still appears after 300 ms in role="status".
+    // The wrapper stays for the error state too: BankStatus keeps its place
+    // in the tree, so Retry stays the same DOM node and keeps focus.
+    topicArea = (
+      <div className={styles.reserve}>
+        <BankStatus state={bank} onRetry={onRetry} />
+        {bank.status === "loading" && (
+          <div className={styles.reserveGroup} aria-hidden="true">
+            {topicGroup(RESERVE_CHOICES, true)}
+          </div>
+        )}
+      </div>
+    );
+  } else if (choices.length === 0) {
+    topicArea = <p className={common.text}>{strings.landing.noTopics}</p>;
+  } else {
+    topicArea = (
+      <>
+        {topicGroup(choices, false)}
         {failed && (
           <p role="alert" className={common.text}>
             {strings.landing.startError}
