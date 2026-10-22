@@ -199,6 +199,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # @lhci/cli is deliberately NOT a devDependency: its transitive tree has
+      # high advisories with no fixed release (extract-zip via puppeteer), and
+      # the npm audit gate in the `ci` job must stay strict. It runs here only,
+      # pinned via npx, with read-only permissions and no secrets (sponsor
+      # decision on T-18, PR for #38).
       - name: Lighthouse CI (collect 3 runs, assert median, write .lighthouseci/)
         run: npm run lighthouse
 

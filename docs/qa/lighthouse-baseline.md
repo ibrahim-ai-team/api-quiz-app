@@ -2,7 +2,7 @@
 
 - **Delegation:** T-18-D01 (performance-engineer), task T-18, issue #38. Date: 2026-10-22.
 - **Status:** local runs only. **CI not yet observed.** The CI job `Lighthouse (mobile, median of 3)` is added in `.github/workflows/ci.yml`; no GitHub Actions run of it exists yet.
-- **Blocker:** adding `@lhci/cli@0.15.1` makes `npm audit --audit-level=high` fail (see section 5). This must be resolved before the job can merge without turning the existing `ci` job red.
+- **Audit decision (resolved):** `@lhci/cli` is not a devDependency. The sponsor chose option B (section 5): the tool runs only in the Lighthouse job through `npx --yes @lhci/cli@0.15.1`, so the `npm audit` gate stays strict.
 
 ## 1. Thresholds (declared before measuring)
 
@@ -101,7 +101,7 @@ Acceptance check for the fix: CLS 0 in all 3 runs in two consecutive `npm run li
 - B. Keep `@lhci/cli` out of the lockfile and run it only in the Lighthouse job with `npx --yes @lhci/cli@0.15.1 autorun`. This keeps the audit job green but bypasses the audit and dependency review for that tool. It would also need the AC that requires a devDependency to change.
 - C. Use `overrides` for the fixable packages and still need A or B for `extract-zip`.
 
-The working tree currently follows AC 1 literally (devDependency added), so the `ci` job's audit step would fail if this were pushed.
+**Decision (2026-10-22, sponsor): option B.** `package.json` has only the `lighthouse` script (`npx --yes @lhci/cli@0.15.1 autorun`), and the lockfile is unchanged. Accepted risk: an unaudited, version-pinned tool runs in the Lighthouse CI job with `contents: read` and no secrets. AC 1 of #38 (devDependency) is amended accordingly.
 
 ## 6. Limitations
 
