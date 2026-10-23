@@ -103,3 +103,40 @@ export function buildBank(
 export function serializeBank(bank: Bank): string {
   return `${JSON.stringify(bank)}\n`;
 }
+
+/**
+ * Landing loading reserve data (T-35, issue #84). The Landing view reserves
+ * room for the topic group while the bank loads; it imports this file as a
+ * module so the reserve holds as many rows, with the same names, as the
+ * loaded group. A topic is eligible when the emitted bank has at least one
+ * question for it, the same rule as `eligibleTopics` in `src/domain`
+ * (a unit test keeps the two equal).
+ */
+export interface LandingReserve {
+  readonly eligibleTopicCount: number;
+  /** Names of the eligible topics, in curated order. */
+  readonly topicNames: readonly string[];
+  /**
+   * Their ids, in the same order. Only compared with a `#/topic/:id` deep
+   * link, so the reserve can tell whether Start will show its hint.
+   */
+  readonly topicIds: readonly string[];
+}
+
+export function buildLandingReserve(bank: Bank): LandingReserve {
+  const withQuestions = new Set(bank.questions.map((q) => q.topic));
+  const eligible = bank.topics.filter((topic) => withQuestions.has(topic.id));
+  return {
+    eligibleTopicCount: eligible.length,
+    topicNames: eligible.map((topic) => topic.name),
+    topicIds: eligible.map((topic) => topic.id),
+  };
+}
+
+/** File name of the reserve data, written next to the bank. */
+export const LANDING_RESERVE_FILE = "landing-reserve.json";
+
+/** File contents of the reserve data (compact JSON plus a newline). */
+export function serializeLandingReserve(reserve: LandingReserve): string {
+  return `${JSON.stringify(reserve)}\n`;
+}

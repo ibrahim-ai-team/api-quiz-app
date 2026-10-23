@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { landingReserve } from "../../../content/landingReserve";
 import type { Bank, BankQuestion } from "../../../content/types";
 import type { QuizScope } from "../../../domain";
 import type { BankState } from "../../app/bankState";
@@ -261,6 +262,46 @@ describe("T-US12-2 topic not found variant (views.md §7b)", () => {
 });
 
 describe("states and structure", () => {
+  it("reserves the loaded group with the generated topic names while loading (T-35)", () => {
+    renderLanding({
+      bank: { status: "loading", attempt: 0, userRetry: false },
+    });
+    const reserve = document.querySelector('[aria-hidden="true"]');
+    expect(reserve).not.toBeNull();
+    // aria-label is "<name>, <count>"; a name may itself contain ", ".
+    const names = [...(reserve?.querySelectorAll("input") ?? [])].map(
+      (input) => {
+        const label = input.getAttribute("aria-label") ?? "";
+        return label.slice(0, label.lastIndexOf(", "));
+      },
+    );
+    expect(names).toEqual([
+      ...landingReserve.topicNames,
+      ...(landingReserve.eligibleTopicCount > 1
+        ? [strings.landing.mixedLabel]
+        : []),
+    ]);
+    // Placeholder rows are not in the accessibility tree.
+    expect(radios()).toHaveLength(0);
+  });
+
+  it("reserves the Start hint only when the loaded group will show it (T-35)", () => {
+    const loading: BankState = {
+      status: "loading",
+      attempt: 0,
+      userRetry: false,
+    };
+    const hint = () =>
+      document
+        .querySelector('[aria-hidden="true"]')
+        ?.textContent.includes(strings.landing.startHint);
+    renderLanding({ bank: loading, topicId: "no-such-topic" });
+    expect(hint()).toBe(true);
+    cleanup();
+    renderLanding({ bank: loading, topicId: landingReserve.topicIds[0] ?? "" });
+    expect(hint()).toBe(false);
+  });
+
   it("shows the data error in the topic area with the data error title", () => {
     renderLanding({
       bank: {
