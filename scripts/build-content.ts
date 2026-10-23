@@ -6,7 +6,9 @@
  *
  * Validates `content/` with the T-05 rules (dev thresholds: shortfalls are
  * warnings), refuses to emit when there is any error, and writes the bank to
- * `src/content/generated/bank.json` (gitignored). `npm run build` uses
+ * `src/content/generated/bank.json` (gitignored). In the same run it writes
+ * `landing-reserve.json` next to the bank (T-35): the eligible topic count
+ * and names that the Landing loading reserve imports. `npm run build` uses
  * production mode (drafts excluded); `npm run dev` uses development mode
  * (drafts included). The default mode is production, so a forgotten flag can
  * never ship drafts. Runs with Node's built-in type stripping.
@@ -19,7 +21,14 @@ import {
   type BankQuestion,
   type BankTopic,
 } from "../src/content/types.ts";
-import { buildBank, serializeBank, type BuildMode } from "./content/emit.ts";
+import {
+  buildBank,
+  buildLandingReserve,
+  LANDING_RESERVE_FILE,
+  serializeBank,
+  serializeLandingReserve,
+  type BuildMode,
+} from "./content/emit.ts";
 import type { Question, Topic } from "./content/schema.ts";
 import {
   formatIssue,
@@ -82,6 +91,13 @@ function parseArgs(argv: readonly string[]): Args | null {
   return args;
 }
 
+/** Writes through a temp file and a rename, so readers never see half a file. */
+async function writeAtomically(file: string, contents: string): Promise<void> {
+  const temp = `${file}.${String(process.pid)}.tmp`;
+  await writeFile(temp, contents, "utf8");
+  await rename(temp, file);
+}
+
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
   if (args === null) {
@@ -110,16 +126,22 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  const reserve = buildLandingReserve(bank);
+  const reserveOut = path.join(path.dirname(args.out), LANDING_RESERVE_FILE);
+
   await mkdir(path.dirname(args.out), { recursive: true });
-  const temp = `${args.out}.${String(process.pid)}.tmp`;
-  await writeFile(temp, serializeBank(bank), "utf8");
-  await rename(temp, args.out);
+  // Each file is replaced atomically; the pair is not. A crash between the
+  // two renames leaves a new bank next to an old reserve until the next
+  // build, and tests/unit/content/landing-reserve.test.ts catches that.
+  await writeAtomically(args.out, serializeBank(bank));
+  await writeAtomically(reserveOut, serializeLandingReserve(reserve));
 
   const excluded = result.questions.length - bank.questions.length;
   console.log(
     `content:build (${args.mode}): wrote ${args.out}: ` +
       `${String(bank.topics.length)} topics, ${String(bank.questions.length)} questions ` +
-      `(${String(excluded)} drafts excluded), contentVersion ${bank.contentVersion}`,
+      `(${String(excluded)} drafts excluded), contentVersion ${bank.contentVersion}; ` +
+      `wrote ${reserveOut}: ${String(reserve.eligibleTopicCount)} eligible topics`,
   );
   return 0;
 }
