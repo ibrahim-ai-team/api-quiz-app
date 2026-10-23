@@ -93,7 +93,8 @@ Hierarchy: h1 "Question k of N", topic line, prompt (`renderRichText`), code box
 - Submit (primary, `copy:question.submit`): before a selection it has `aria-disabled="true"`, the unavailable style (surface background, muted text, dashed border), and `aria-describedby` pointing at the visible hint `copy:question.submitHint`. Activating it while unavailable does nothing. Once an option is selected: normal primary style, and the hint is removed. On Submit the answer is locked (`fieldset disabled`, labels kept at full text contrast), Submit is removed, and Feedback is shown (§3). A double activation is ignored (US-2.5).
 - Exit quiz (secondary, `copy:question.exit`): returns to Landing and focuses its `h1`. Browser Back does the same (US-2.8). No confirmation (see DQ-1).
 - Focus order: Exit, code box(es), radio group, Submit. Entry focus: `h1` (from Start, Try again or Next).
-- Title: `copy:title.question` (for example "Question 3 of 10 - HTTP methods - ApiQuiz"). Live region: the feedback status region (§3) is mounted empty here.
+- Title: `copy:title.question` (for example "Question 3 of 10 - HTTP methods - ApiQuiz"); a retry quiz uses `copy:title.questionRetry` (§8). Live region: the feedback status region (§3) is mounted empty here.
+- Retry quiz (US-5, §8): a line `copy:question.retryLabel` sits between the `h1` and the topic line on every question; otherwise the view is unchanged.
 - States: unselected, selected, submitting (instant, no spinner), locked. If `#/quiz` is opened with no quiz in memory (refresh before US-6), redirect to `#/` and focus `h1`.
 - 640x360: about 4 rows fit on screen. Submit is reached by scrolling or Tab. 400%: code box scrolls inside itself; long options wrap.
 
@@ -130,7 +131,7 @@ Hierarchy: h1 "Question k of N", topic line, prompt (`renderRichText`), code box
 - Focus order after Submit: Next is focused. Shift+Tab reaches the report link, then the source link. The locked options are read in reading order and are not tab stops.
 - 640x360: the panel is taller than the viewport, so the second branch applies. Next is focused and visible, and nothing overlays it. 400%: same as 320.
 
-## 4. Results (T-15; US-4; US-5 slot)
+## 4. Results (T-15; US-4; US-5 in §8)
 
 ```
 320                                   768 / 1280
@@ -141,12 +142,15 @@ Hierarchy: h1 "Question k of N", topic line, prompt (`renderRichText`), code box
 | Good progress. A bit more      |    | Score by topic                         (h2) |
 | practice will make it solid.   |    |  - HTTP methods: 2 / 3                      |
 | Score by topic           (h2)  |    |  - Status codes: 3 / 4                      |
-|  - HTTP methods: 2 / 3         |    | [ Try again ] [ Choose another topic ]      |
-|  - Status codes: 3 / 4         |    | [Review / Retry missed slot - US-5]         |
+|  - HTTP methods: 2 / 3         |    | [v Review answers ]              (h2, §8)   |
+|  - Status codes: 3 / 4         |    | [ Try again ] [ Retry 3 missed questions ]  |
+| [v Review answers ] (h2, §8)   |    | [ Choose another topic ]                    |
 | [          Try again         ] |
+| [  Retry 3 missed questions  ] |
 | [    Choose another topic    ] |
-| [Review / Retry missed - US-5] |
 ```
+
+US-5 (§8) adds the Review disclosure above the buttons and "Retry N missed" between Try again and Choose another topic. At `sm` and above the buttons stay inline and wrap when they do not fit.
 
 - Score: `copy:results.score` ("X / N") and `copy:results.percent` (whole number, half-up; computed in T-14) in one `<p>`, bold `--font-size-3xl`. Band message `copy:results.band.*` (US-4.2). The scope line shows the topic name or "Mixed".
 - Breakdown (US-4.3): `h2` plus a `ul`, only when the quiz covered more than 1 topic. A list rather than a table, because it reflows at 320 without horizontal scroll.
@@ -195,3 +199,91 @@ Data error (in the Landing topic area)        App error (full view, error bounda
 
 - 7a: `h1` focused on entry (US-10.6). The home link uses `--target-min`. Title `copy:title.notFound`.
 - 7b: `#/topic/<unknown>` renders Landing with the `h1` replaced by `copy:notFound.topicHeading` plus `copy:notFound.topicBody`, followed by the normal topic group with nothing preselected. Focus `h1`. Title `copy:title.topicNotFound`. The unknown slug is **not** echoed back to the page (this avoids injection and confusing text).
+
+## 8. Review answers and Retry missed (US-5, GitHub #11; design US-5-DS01)
+
+Proposed design guidance, not user-tested. Extends §4 Results and §2 Question; no new route, colour, token or dependency.
+
+### 8.1 Decisions
+
+- **R1 Review is an in-page disclosure on Results, not a `#/review` route.** It keeps the score, the review and "Retry missed" on one view; it adds no route, redirect state, title or history entry, so Back, refresh (`#/results` redirect) and the session-clearing rules in §0/§4 stay unchanged. Collapsed by default, so the Results entry experience (US-4.5) is unchanged. Reversible: the item component (§8.3) can move to a route later without changes.
+- **R2 Order:** h1, [retry note], scope, score, band, breakdown, **Review (h2 disclosure)**, then the buttons. The review sits before the buttons so that, after reading it, the next actions follow in reading and Tab order (no duplicate buttons at the end of the list).
+- **R3 All questions, quiz order, no "missed only" filter** (US-5.1 says "each question"). Each item heading carries the verdict, so screen-reader users can skim by heading (H key) and sighted users by icon + verdict text. A filter is open question DQ-US5-1.
+- **R4 Missed = answered incorrectly.** Every question in a finished quiz has an answer (there is no skip), so there is no "not answered" state.
+
+### 8.2 Review disclosure
+
+```
+320 (collapsed)                       320 (expanded)
+| [v] Review answers       (h2)  |    | [^] Review answers               (h2) |
+| [          Try again         ] |    | 1. [v] Question 1: Correct       (h3) |
+                                      |    Topic: HTTP methods                |
+                                      |    Which request is idempotent ...    |
+                                      |    +--------------------------------+ |
+                                      |    | PUT /items/42 HTTP/1.1       ->| |
+                                      |    +--------------------------------+ |
+                                      |    +- solid success ---------------+ |
+                                      |    | [v] Your answer: PUT           | |
+                                      |    +--------------------------------+ |
+                                      |    +- solid success ---------------+ |
+                                      |    | [v] Correct answer: PUT        | |
+                                      |    +--------------------------------+ |
+                                      |    Explanation                  (h4) |
+                                      |    PUT replaces the resource; ...     |
+                                      |    Source: www.rfc-editor.org         |
+                                      |    (opens in new tab) [->]            |
+                                      | 2. [x] Question 2: Incorrect     (h3) |
+                                      |    ...                                |
+                                      |    +- dashed danger ---------------+ |
+                                      |    | [x] Your answer: POST          | |
+                                      |    +--------------------------------+ |
+                                      |    +- solid success ---------------+ |
+                                      |    | [v] Correct answer: PUT        | |
+                                      |    +--------------------------------+ |
+                                      | [          Try again             ] |
+```
+
+768 / 1280: same order in the 45rem column; the toggle is auto width (`min-width: 10rem`), like other buttons at `sm`.
+
+- Markup: `<h2><button type="button" aria-expanded="false|true" aria-controls="{listId}">` with label `copy:review.toggle` and a chevron icon (inline SVG, `aria-hidden`, points down when collapsed, up when expanded; no rotation animation). Secondary button style, `min-height: var(--target-min)`. The controlled element is an `ol` (no `role="region"`, so the page gets no extra landmark); when collapsed it is not rendered (or `hidden`), so its content is neither read nor focusable.
+- Keyboard: Tab reaches the toggle; Enter and Space toggle it. **Focus stays on the toggle** on expand and collapse (disclosure pattern); content appears after it in reading order. No live region: the `aria-expanded` change is announced by the button itself.
+- State: component state, collapsed each time a Results view is shown (a new quiz's results start collapsed). Survives resize, rotation and theme change (§0). Not persisted.
+- Tab order when expanded: toggle, then per item: prompt code box(es), explanation code box(es), source link; then the Results buttons. No keyboard traps; no element inside the list is focused by script.
+
+### 8.3 Review item (per question)
+
+- `li` in the `ol` (the list numbers are decorative: `list-style: none`, the number is in the heading). Spacing: `--space-5` between items, `--space-3` inside; `border-inline-start: 4px solid` `--color-success` (correct) or `--color-danger` (incorrect), `padding-inline-start: var(--space-3)`, no tinted item background. The border is decoration; meaning is in the heading.
+- `h3` `copy:review.itemHeading` ("Question 2: Incorrect", verdict from `copy:feedback.correct` / `.incorrect`) with the check or cross icon before it; wraps like the feedback verdict (`overflow-wrap: anywhere`, `hyphens: auto`, icon on the first line).
+- Topic line `copy:question.topic` (omitted for an unknown topic id, as in §2), prompt via `renderRichText` with code boxes as in §2, labelled `copy:review.promptCodeLabel` (question number included, so code regions on the page never share a name: axe `landmark-unique`).
+- Answer lines: two `<p>` boxes styled like the §3 option markers (`--radius-md`, `--border-width-state`), always both shown so US-5.1 is met literally:
+  - `copy:review.yourAnswer` ("Your answer: POST"): correct = check icon, solid `--color-success` border, `--color-success-bg`; incorrect = cross icon, **dashed** `--color-danger` border, `--color-danger-bg`.
+  - `copy:feedback.correctAnswer` ("Correct answer: PUT"): check icon, solid success border, success-bg.
+  - The text label carries the meaning; icon and border style back it up in forced colours (`border-color: CanvasText`, tokens.md §6). Option text goes through `renderInlineText`, `overflow-wrap: anywhere`. Contrast pairs #4, #5, #17, #19 (tokens.md §1) already cover this.
+  - Other options are not listed.
+- `h4` `copy:feedback.explanationHeading`, explanation via `renderRichText` with `copy:review.explanationCodeLabel`.
+- Source: identical to §3 (`copy:feedback.sourcePrefix` + hostname link + `copy:common.newTabCue` + external-link icon, `target="_blank" rel="noopener noreferrer"`; non-https = `copy:feedback.sourceUnlinked`, plain text). Reuse the `ExternalLink` component and `safeHttpsUrl`.
+- No report link in the review (keeps tab stops down; it is still on the feedback panel). Reversible.
+- Review shows the questions as they were played (session snapshot), even if the bank has since changed.
+
+### 8.4 Retry missed
+
+- Button (secondary) `copy:results.retryMissed` ("Retry 3 missed questions"; "Retry 1 missed question"), placed after the primary button and before Choose another topic. The count is the number of missed questions **still in the current bank** (§8.5). **Not rendered at all when 0 missed** (US-5.3); no placeholder, no disabled state.
+- Activation (single-click guard as for Try again): starts a quiz of exactly those questions, in their original relative order (assumption A-US5-1), single-choice options reshuffled, true/false kept "True, False" (§2). Like Try again it replaces `#/results` with `#/quiz` (Back leaves for Landing) and focuses the Question `h1`.
+- Retry quiz on the Question view: `h1` `copy:question.heading` as usual ("Question 1 of 3"), then the line `copy:question.retryLabel` ("Retry: missed questions", `--font-size-sm`, `--color-text-muted`, same style as the topic line), then the topic line. Title `copy:title.questionRetry`. The h1 itself is not changed, so each question is not announced with extra words; the user has just activated "Retry ... missed".
+- Retry Results (US-5.5): `h1` `copy:results.retryHeading` ("Retry results"), focused on entry, so the first thing announced says it is a retry. Directly below it: `copy:results.retryNote` (body text, `--color-text`). Scope line = the original quiz's scope. Title `copy:title.resultsRetry`. The score is not saved as best score (US-6 must check the quiz kind).
+- Retry Results buttons: primary `copy:results.startFull` ("Start a full quiz": fresh draw of the original scope, like Try again), secondary `copy:results.retryMissed` with the retry's own misses (US-5.4, repeatable), secondary Choose another topic. "Try again" is not used here because it would be ambiguous (repeat the retry set, or a full quiz?).
+- N = 1 (US-5.4): "Question 1 of 1", Next reads "See results", results "1 / 1 100%" or "0 / 1 0%", "Retry 1 missed question" when wrong, no breakdown (1 topic).
+
+### 8.5 Questions removed by a new deploy (US-5.6)
+
+- Availability is computed when Results renders, against the current bank, with the same function used on activation (so the label and the started quiz cannot differ). In Sprint 1 the bank does not change while a session is in memory, so this state is reachable only after US-6 persistence or in tests.
+- Some removed: the button count shows the remaining number, and `copy:results.retryPartial` is shown as a `<p>` right after the button group, referenced by the button's `aria-describedby`.
+- None remain: no button; `copy:results.retryNone` is shown as a `<p>` in its place (after the button group). Static text, no live region, focus unaffected (it is present on entry and read in order).
+- Fallback: if starting the retry still fails, stay on Results, render the `retryNone` text in place of the button with `tabindex="-1"` and focus it, so focus is never lost.
+
+### 8.6 Accessibility and responsive checks (proposed, not verified)
+
+- Headings: h1 > h2 (Score by topic, Review answers) > h3 (each item) > h4 (Explanation). One `h1`. No new landmarks.
+- 320 / 400% zoom: single column; only code boxes scroll horizontally; answer boxes and URLs wrap. 640x360: the list scrolls with the page; nothing is sticky. Targets at least `--target-min`; gap `--space-2` between buttons.
+- Reduced motion: no animation on expand. Forced colours: icons, text labels and solid/dashed borders remain.
+- Not colour-only (1.4.1): verdict text in each heading, "Your answer" / "Correct answer" labels, icons, border style.
