@@ -17,6 +17,13 @@
   margin-block-end: var(--space-4);
 }
 
+/* Retry quiz line between the h1 and the topic line (T-38, views.md §8.4). */
+.retryLabel {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
 .prompt {
   min-width: 0;
   font-size: var(--font-size-lg);

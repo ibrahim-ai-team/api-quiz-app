@@ -1,0 +1,120 @@
+/*
+ * Review answers (T-38; views.md §8.2, §8.3, §8.6; tokens.md §1-§6). The
+ * answer boxes repeat the §3 option-marker declarations (Question.module.css
+ * `.optionCorrect` / `.optionWrong`: same tokens, solid success vs dashed
+ * danger), because those rules are scoped to the radio rows.
+ */
+
+.heading {
+  margin-block: var(--space-5) var(--space-3);
+  font-size: var(--font-size-xl);
+}
+
+/* Secondary button; auto width from `sm`, like the other buttons. */
+.toggle {
+  composes: buttonSecondary from "../../components/common.module.css";
+  gap: var(--space-2);
+}
+
+.chevron {
+  flex: none;
+}
+
+/* The numbers are in the headings; the list markers are decorative. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+/* Decoration only; the h3 verdict carries the meaning. */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: 4px solid;
+}
+
+.itemCorrect {
+  border-color: var(--color-success);
+}
+
+.itemIncorrect {
+  border-color: var(--color-danger);
+}
+
+.itemHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-lg);
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.topic {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.prompt,
+.explanation {
+  min-width: 0;
+}
+
+/* Last paragraph of rich text: the item gap provides the spacing. */
+.prompt > :last-child,
+.explanation > :last-child {
+  margin-block-end: 0;
+}
+
+.answer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: calc(var(--space-3) - 1px);
+  border-width: var(--border-width-state);
+  border-radius: var(--radius-md);
+}
+
+.answerCorrect {
+  border-style: solid;
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.answerWrong {
+  border-style: dashed;
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.answerText {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.explanationHeading {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .item,
+  .answer {
+    border-color: CanvasText;
+  }
+}

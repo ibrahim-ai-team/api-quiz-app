@@ -33,3 +33,9 @@
   padding-inline-start: var(--space-5);
   overflow-wrap: anywhere;
 }
+
+/* Retry availability notes after the button group (T-38; views.md §8.5). */
+.retryNote {
+  margin-block: var(--space-3) 0;
+  overflow-wrap: anywhere;
+}

@@ -592,3 +592,43 @@ describe("T-US3-3 scroll rule on Submit (views.md §3)", () => {
     );
   });
 });
+
+describe("T-38 retry quiz label and title (US-5, views.md §8.4)", () => {
+  const RETRY: Quiz = { ...QUIZ, mode: "retry-missed" };
+
+  it("shows the retry line between the h1 and the topic line; the h1 is unchanged", () => {
+    renderQuestion(RETRY);
+    expect(h1().textContent).toBe(strings.question.heading(1, 2));
+    const label = screen.getByText(strings.question.retryLabel);
+    expect(label.textContent).toBe("Retry: missed questions");
+    expect(label.previousElementSibling).toBe(h1());
+    expect(label.nextElementSibling?.textContent).toBe(
+      strings.question.topic("Topic A"),
+    );
+    expect(document.title).toBe(strings.title.questionRetry(1, 2, "Mixed"));
+    expect(document.title).toBe("Question 1 of 2 - Retry - Mixed - ApiQuiz");
+  });
+
+  it("keeps the line on every question and updates the retry title", () => {
+    renderQuestion(RETRY);
+    fireEvent.click(screen.getByRole("radio", { name: "POST" }));
+    fireEvent.click(submitButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    );
+    expect(h1().textContent).toBe(strings.question.heading(2, 2));
+    expect(screen.getByText(strings.question.retryLabel)).toBeTruthy();
+    expect(document.title).toBe(strings.title.questionRetry(2, 2, "Mixed"));
+  });
+
+  it("has no retry line or retry title on a normal quiz", () => {
+    renderQuestion();
+    expect(screen.queryByText(strings.question.retryLabel)).toBe(null);
+    expect(document.title).not.toContain("Retry");
+  });
+
+  it("omits the scope segment of the retry title for an unknown topic", () => {
+    renderQuestion({ ...RETRY, scope: { kind: "topic", topicId: "gone" } });
+    expect(document.title).toBe("Question 1 of 2 - Retry - ApiQuiz");
+  });
+});
