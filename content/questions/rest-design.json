@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "conditional-put-if-match-mismatch-412",
+      "topic": "rest-design",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "To avoid a lost update, a client sends `PUT /docs/5` with `If-Match: \"v7\"`, but the document's current entity tag is now `\"v9\"` and the change has not already been applied. Which status code does RFC 9110 name for reporting that the conditional request failed?",
+      "options": [
+        { "id": "a", "text": "304 Not Modified" },
+        { "id": "b", "text": "409 Conflict" },
+        { "id": "c", "text": "412 Precondition Failed" },
+        { "id": "d", "text": "400 Bad Request" }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 says an origin server whose `If-Match` condition evaluates to false MUST NOT perform the method and MAY respond with 412 (Precondition Failed), the code for conditions in request header fields that evaluated to false. 304 is only for conditional GET or HEAD requests, 409 describes a conflict with resource state rather than a failed precondition, and the request itself is well-formed, so 400 does not apply.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "put-if-none-match-star-create-only",
+      "topic": "rest-design",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A client wants `PUT /users/alice` to create the resource only if it has no current representation, so that it never overwrites a profile another client created first. Which request header field does RFC 9110 describe for this?",
+      "options": [
+        { "id": "a", "text": "`If-Match: *`" },
+        { "id": "b", "text": "`If-None-Match: *`" },
+        { "id": "c", "text": "`If-Modified-Since` with an old date" },
+        { "id": "d", "text": "`Cache-Control: no-store`" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 says `If-None-Match: *` can prevent an unsafe method such as PUT from modifying an existing representation when the client believes none exists. If one does exist, the condition is false and the server responds with 412 for methods other than GET or HEAD. `If-Match: *` does the opposite (it is true only when a representation exists), `If-Modified-Since` applies only to GET and HEAD, and `Cache-Control` is a caching directive (RFC 9111), not a precondition.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-13.1.2",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "status-202-asynchronous-processing",
+      "topic": "rest-design",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "`POST /reports` queues a report for a nightly batch job. The server has accepted the request but has not processed it, and it might still be rejected later. Which status code fits this response?",
+      "options": [
+        { "id": "a", "text": "201 Created" },
+        { "id": "b", "text": "204 No Content" },
+        { "id": "c", "text": "200 OK" },
+        { "id": "d", "text": "202 Accepted" }
+      ],
+      "correct": "d",
+      "explanation": "RFC 9110 defines 202 Accepted as meaning the request has been accepted for processing but the processing has not been completed. Its representation ought to describe the request's current status and point to (or embed) a status monitor. 201 would claim a resource was already created, while 200 and 204 report that the request was already fulfilled.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.3.3",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "status-303-redirect-after-post",
+      "topic": "rest-design",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "After processing `POST /payments`, the server wants to send the user agent to a separate result resource that can be bookmarked and cached, and that the user agent retrieves with GET. Which redirect status code does RFC 9110 describe as primarily used for this?",
+      "options": [
+        { "id": "a", "text": "303 See Other" },
+        { "id": "b", "text": "307 Temporary Redirect" },
+        { "id": "c", "text": "304 Not Modified" },
+        { "id": "d", "text": "201 Created" }
+      ],
+      "correct": "a",
+      "explanation": "RFC 9110 says 303 See Other is primarily used to redirect the output of a POST action to a different resource, which the user agent retrieves with GET or HEAD and which can be separately identified, bookmarked, and cached. 307 forbids changing the method on automatic redirection, so an automatic redirect would repeat the POST. 304 applies only to conditional GET or HEAD, and 201 reports creation rather than a redirect.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "put-update-existing-200-or-204",
+      "topic": "rest-design",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "When a PUT successfully modifies a resource that already had a current representation, RFC 9110 requires the origin server to respond with 201 Created.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "RFC 9110 requires 201 Created only when the PUT creates a representation that did not exist before. When an existing representation is successfully modified, the origin server MUST send either 200 OK or 204 No Content.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-9.3.4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "content-location-equals-location-in-201",
+      "topic": "rest-design",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "`POST /orders` returns 201 Created with `Location: /orders/42` and `Content-Location: /orders/42`, plus content. What does RFC 9110 say this combination indicates about the content?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It is only a status report about the action, which can be fetched again later at `/orders/42`."
+        },
+        {
+          "id": "b",
+          "text": "`/orders/42` replaces `/orders` as the target URI of the original request."
+        },
+        {
+          "id": "c",
+          "text": "It is a current representation of the newly created resource."
+        },
+        {
+          "id": "d",
+          "text": "The client must send a GET to `/orders/42` before it can use the content."
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 says that in a 201 response to a state-changing method, a `Content-Location` value identical to the `Location` value means the content is a current representation of the newly created resource. Otherwise, a `Content-Location` that differs from the target URI indicates a status report about the action that is retrievable at that URI. `Content-Location` is representation metadata, not a replacement for the target URI, and nothing in RFC 9110 requires a follow-up GET before the content can be used.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.7",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "if-match-strong-comparison-weak-etag",
+      "topic": "rest-design",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A resource's current entity tag is `W/\"abc\"`. A client sends a PUT with `If-Match: W/\"abc\"`. How does RFC 9110 say the origin server evaluates this precondition?",
+      "options": [
+        {
+          "id": "a",
+          "text": "True, because the opaque-tags match character-by-character"
+        },
+        {
+          "id": "b",
+          "text": "True, because `If-Match` uses the weak comparison function"
+        },
+        {
+          "id": "c",
+          "text": "It is not evaluated, because `If-Match` only applies to GET requests"
+        },
+        {
+          "id": "d",
+          "text": "False, because `If-Match` uses strong comparison, which never treats a weak tag as a match"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 9110 requires strong comparison for `If-Match`, and strong comparison treats two entity tags as equivalent only if neither is weak and their opaque-tags match (`W/\"1\"` vs `W/\"1\"` is \"no match\" in its comparison table). Matching opaque-tags only satisfies weak comparison, which RFC 9110 assigns to `If-None-Match`. `If-Match` is most often used with state-changing methods such as PUT to prevent lost updates.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.8.3.2",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    },
+    {
+      "id": "proactive-negotiation-406-not-required",
+      "topic": "rest-design",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "If a client sends `Accept: application/xml` and the resource has only a JSON representation, RFC 9110 requires the origin server to respond with 406 Not Acceptable.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "RFC 9110 states that a user agent cannot rely on proactive negotiation preferences being consistently honored. The origin server might not implement negotiation for the resource, or might decide that sending a non-conforming response is better than sending 406. 406 is defined for the case where no acceptable representation exists and the server is unwilling to supply a default one.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-12.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-26-R01)"
+    }
+  ]
+}
