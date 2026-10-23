@@ -1,7 +1,10 @@
 /**
- * The committed seed content (content/**) passes in dev mode and fails
- * `--release` (too few reviewed questions). Also checks the CLI exit codes
- * and output format under Node's built-in type stripping.
+ * The committed content (content/**) passes in dev mode and, since US-8
+ * batches T-23..T-30 landed, in `--release` mode too: it meets the US-8.1
+ * thresholds, so a future change that drops below them fails here. The
+ * below-threshold path is covered by thresholds.test.ts and, for the CLI, by
+ * a small temporary content dir. Also checks the CLI exit codes and output
+ * format under Node's built-in type stripping.
  */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -26,26 +29,22 @@ function runCli(args: string[]) {
 }
 
 describe("seed content", () => {
-  // The bank grows batch by batch (US-8, T-23..T-30), so these checks stay
-  // independent of the exact counts and review states.
-  it("validates in dev mode with no errors over the 8 curated topics", async () => {
+  // Counts stay independent of the exact bank size as batches are added.
+  it("validates in dev mode with no errors or warnings over the 8 curated topics", async () => {
     const result = validateContent(await loadContentSources(CONTENT, REPO), {
       release: false,
     });
     expect(result.errors).toEqual([]);
-    expect(result.questions.length).toBeGreaterThanOrEqual(6);
+    expect(result.warnings).toEqual([]);
+    expect(result.questions.length).toBeGreaterThanOrEqual(60);
     expect(result.topics).toHaveLength(8);
-    expect(result.warnings.map((w) => w.field)).toContain("reviewed.total");
   });
 
-  it("fails in release mode while the bank is below the US-8.1 thresholds", async () => {
+  it("meets the US-8.1 release thresholds", async () => {
     const result = validateContent(await loadContentSources(CONTENT, REPO), {
       release: true,
     });
-    expect(result.errors.map((e) => e.field)).toContain("reviewed.total");
-    expect(result.errors.every((e) => e.field.startsWith("reviewed."))).toBe(
-      true,
-    );
+    expect(result.errors).toEqual([]);
   });
 });
 
@@ -55,16 +54,36 @@ describe("CLI", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("exits 0 in dev mode and 1 with --release on the seed content", () => {
+  it("exits 0 in dev mode and with --release on the committed content", () => {
     const dev = runCli([]);
-    expect(dev.status).toBe(0);
-    expect(dev.stderr).toContain(
-      "warning: content/questions › (bank) › reviewed.total:",
-    );
+    expect(dev.status, dev.stderr).toBe(0);
+    expect(dev.stderr).not.toContain("warning:");
     const release = runCli(["--release"]);
+    expect(release.status, release.stderr).toBe(0);
+  });
+
+  it("warns in dev mode and exits 1 with --release below the thresholds", () => {
+    const root = path.join(tmp, "small");
+    mkdirSync(path.join(root, "questions"), { recursive: true });
+    writeFileSync(path.join(root, "topics.json"), fixtureText("topics.json"));
+    writeFileSync(
+      path.join(root, "retired-ids.json"),
+      fixtureText("retired-ids.json"),
+    );
+    writeFileSync(
+      path.join(root, "questions/http-fundamentals.json"),
+      fixtureText("vfx/valid-minimal.json"),
+    );
+    const rel = path.relative(REPO, root).split(path.sep).join("/");
+    const dev = runCli(["--root", root]);
+    expect(dev.status, dev.stderr).toBe(0);
+    expect(dev.stderr).toContain(
+      `warning: ${rel}/questions › (bank) › reviewed.total:`,
+    );
+    const release = runCli(["--root", root, "--release"]);
     expect(release.status).toBe(1);
     expect(release.stderr).toContain(
-      "error: content/questions › (bank) › reviewed.total:",
+      `error: ${rel}/questions › (bank) › reviewed.total:`,
     );
   });
 
