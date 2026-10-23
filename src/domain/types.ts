@@ -43,7 +43,12 @@ export interface Quiz {
    */
   readonly scope: QuizScope;
   readonly mode: QuizMode;
-  /** `contentVersion` of the bank the quiz was built from. */
+  /**
+   * `contentVersion` of the bank the quiz was built from. After a restore it
+   * is the SAVED value, i.e. untrusted storage data (SEC-R13 finding 2): it
+   * may be compared with `bank.contentVersion`, but report links, titles and
+   * any other output must use `bank.contentVersion`, never this field.
+   */
   readonly contentVersion: string;
   /** Unsigned 32-bit seed that reproduces this quiz from the same bank. */
   readonly seed: number;
