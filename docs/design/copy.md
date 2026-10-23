@@ -70,5 +70,19 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | `results.breakdownItem` *fn* | {topic}: {x} / {n} | |
 | `results.tryAgain` | Try again | |
 | `results.chooseAnother` | Choose another topic | |
+| `title.questionRetry` *fn* | Question {k} of {n} - Retry - {scope} - ApiQuiz | US-5, views.md §8.4; `{scope}` = original topic or "Mixed"; omitted when unknown, as for `title.question` |
+| `title.resultsRetry` *fn* | Retry results - {scope} - ApiQuiz | US-5.5 |
+| `question.retryLabel` | Retry: missed questions | Line under the h1 on every question of a retry quiz |
+| `review.toggle` | Review answers | h2 disclosure button (`aria-expanded`); same label open and closed |
+| `review.itemHeading` *fn* | Question {k}: {verdict} | h3; `{verdict}` = `feedback.correct` / `feedback.incorrect` |
+| `review.yourAnswer` *fn* | Your answer: {option} | The correct-answer line reuses `feedback.correctAnswer` |
+| `review.promptCodeLabel` *fn* | Question {k} code example / Question {k} code example {i} of {count} | Numbered only when count > 1; unique per page (axe `landmark-unique`) |
+| `review.explanationCodeLabel` *fn* | Question {k} explanation code example / Question {k} explanation code example {i} of {count} | As above |
+| `results.retryMissed` *fn* | Retry 1 missed question / Retry {n} missed questions | Plural by n; n = missed questions still in the bank; not rendered when 0 (US-5.3) |
+| `results.retryPartial` *fn* | 1 missed question is no longer available and will be left out. / {n} missed questions are no longer available and will be left out. | US-5.6; `aria-describedby` of the Retry button |
+| `results.retryNone` *fn* | The question you missed is no longer available, so there is nothing to retry. / The questions you missed are no longer available, so there is nothing to retry. | US-5.6; singular when 1 missed; replaces the button |
+| `results.retryHeading` | Retry results | h1 of a retry quiz's results, focus target |
+| `results.retryNote` | This was a retry of your missed questions, so it does not count toward your best score. | US-5.5; directly under the h1 |
+| `results.startFull` | Start a full quiz | Primary on retry results: fresh draw of the original scope |
 
 Style: sentence case, no exclamation marks, no promises about interview outcomes. Use "..." (three dots), not a typographic ellipsis, so the source file stays plain ASCII; either reads the same to a screen reader.
