@@ -54,6 +54,8 @@ type ViewId =
   | "notFound";
 
 const LANDING_HREF = routeHref({ name: "landing" });
+const QUIZ_HREF = routeHref({ name: "quiz" });
+const RESULTS_HREF = routeHref({ name: "results" });
 
 /** Decorative code mark before the app name; hidden from assistive tech. */
 const BRAND_MARK = (
@@ -61,8 +63,6 @@ const BRAND_MARK = (
     {"</>"}
   </span>
 );
-const QUIZ_HREF = routeHref({ name: "quiz" });
-const RESULTS_HREF = routeHref({ name: "results" });
 
 /**
  * Views that only redirect (replacing the history entry, before paint):
@@ -298,7 +298,16 @@ export function App({ bankPromise, reloadBank }: AppProps) {
               </a>
             )}
             {/* Outside the link, so its accessible name stays the app name. */}
-            <span className={styles.brandTagline}>{strings.appTagline}</span>
+            {/* Quiz route: hidden below 40em to keep room for Exit. */}
+            <span
+              className={
+                route.name === "quiz"
+                  ? [styles.brandTagline, styles.brandTaglineQuiz].join(" ")
+                  : styles.brandTagline
+              }
+            >
+              {strings.appTagline}
+            </span>
           </div>
           {route.name === "quiz" && session !== null && (
             <button

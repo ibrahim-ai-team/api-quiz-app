@@ -38,10 +38,17 @@
   padding-inline: var(--page-padding-inline);
 }
 
+/* Wraps instead of squeezing: Exit moves to its own line when it does not
+   fit (HDR-D1). padding-block and the gaps exceed the focus ring's reach
+   (width + offset), so the brand ring stays inside the header. The
+   min-height (border-box) still equals one target plus that padding. */
 .headerInner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-2) var(--space-4);
   min-height: calc(var(--target-min) + var(--space-4));
+  padding-block: var(--space-2);
 }
 
 /* Brand (PR #86): code mark + app name, with a tagline underneath. */
@@ -49,6 +56,7 @@
   --brand-mark-size: 2.5rem;
   display: flex;
   flex-direction: column;
+  row-gap: var(--space-2);
   min-width: 0;
 }
 
@@ -92,6 +100,7 @@
   color: var(--color-on-primary);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
+  /* Component-local value for this decorative, aria-hidden glyph only. */
   letter-spacing: -0.08em;
 }
 
@@ -99,7 +108,19 @@
   margin-inline-start: calc(var(--brand-mark-size) + var(--space-2));
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
-  line-height: 1.2;
+  line-height: var(--line-height-heading);
+}
+
+/* Quiz route: below 40em the tagline is not rendered, so the narrow header
+   keeps room for Exit (views.md §0). */
+.brandTaglineQuiz {
+  display: none;
+}
+
+@media (min-width: 40em) {
+  .brandTaglineQuiz {
+    display: block;
+  }
 }
 
 .main {
@@ -116,11 +137,7 @@
 .headerInner .exit {
   width: auto;
   min-width: 0;
+  flex: none;
   margin-inline-start: auto;
-}
-
-@media (max-width: 24em) {
-  .brandBlock {
-    --brand-mark-size: 2.25rem;
-  }
+  white-space: nowrap;
 }

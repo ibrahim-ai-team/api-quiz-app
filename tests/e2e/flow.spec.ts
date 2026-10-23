@@ -177,6 +177,12 @@ test.describe("T-16 journey J1", () => {
 
     await openLanding(page);
     await expect(page).toHaveTitle(strings.title.landing);
+    // The mark is aria-hidden and the tagline is outside the link (views.md §0).
+    await expect(
+      page
+        .getByRole("banner")
+        .getByRole("link", { name: strings.appName, exact: true }),
+    ).toHaveAccessibleName(strings.appName);
     await startQuizByMouse(page, /^Fixture topic B/, 5);
     await playQuizByMouse(page, 5, (k) => k % 2 === 1);
     const main = page.locator("main");
@@ -299,6 +305,72 @@ test.describe("T-16 focus order and no keyboard trap (US-10.2)", () => {
     ];
     await expectTabCycle(page, browserName, order, "Tab");
     await expectTabCycle(page, browserName, order, "Shift+Tab");
+  });
+
+  test("T-US10-2 HDR-D1 brand link focus ring: inside the viewport and the header, clear of the tagline", async ({
+    page,
+  }) => {
+    await openLanding(page);
+    const banner = page.getByRole("banner");
+    const brand = banner.getByRole("link", {
+      name: strings.appName,
+      exact: true,
+    });
+    // A key press first sets keyboard modality, so the programmatic focus
+    // matches :focus-visible on every engine (WebKit skips links on Tab).
+    await page.keyboard.press("Tab");
+    await brand.focus();
+    await expectVisibleFocusIndicator(page);
+    const boxes = await brand.evaluate((link, taglineText) => {
+      const s = getComputedStyle(link);
+      const reach =
+        Number.parseFloat(s.outlineWidth) + Number.parseFloat(s.outlineOffset);
+      const r = link.getBoundingClientRect();
+      const header = link.closest("header")?.getBoundingClientRect();
+      const tagline = Array.from(
+        link.closest("header")?.querySelectorAll("span") ?? [],
+      ).find((el) => el.textContent === taglineText);
+      const t = tagline?.getBoundingClientRect();
+      const box = (b: {
+        top: number;
+        right: number;
+        bottom: number;
+        left: number;
+      }) => ({
+        top: b.top,
+        right: b.right,
+        bottom: b.bottom,
+        left: b.left,
+      });
+      return {
+        reach,
+        ring: {
+          top: r.top - reach,
+          right: r.right + reach,
+          bottom: r.bottom + reach,
+          left: r.left - reach,
+        },
+        header: header === undefined ? null : box(header),
+        tagline: t === undefined ? null : box(t),
+        viewportWidth: document.documentElement.clientWidth,
+      };
+    }, strings.appTagline);
+    const info = JSON.stringify(boxes);
+    expect(boxes.reach, info).toBeGreaterThan(0);
+    const { ring, header, tagline } = boxes;
+    expect(ring.top, info).toBeGreaterThanOrEqual(0);
+    expect(ring.left, info).toBeGreaterThanOrEqual(0);
+    expect(ring.right, info).toBeLessThanOrEqual(boxes.viewportWidth);
+    expect(header, info).not.toBeNull();
+    expect(ring.top, info).toBeGreaterThanOrEqual(header?.top ?? Infinity);
+    expect(tagline, info).not.toBeNull();
+    const intersects =
+      tagline !== null &&
+      ring.left < tagline.right &&
+      ring.right > tagline.left &&
+      ring.top < tagline.bottom &&
+      ring.bottom > tagline.top;
+    expect(intersects, `focus ring overlaps the tagline: ${info}`).toBe(false);
   });
 
   test("T-US10-2 question and feedback with code boxes: logical Tab and Shift+Tab order, visible focus, no trap", async ({
