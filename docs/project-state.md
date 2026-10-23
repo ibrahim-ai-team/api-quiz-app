@@ -1,10 +1,34 @@
 # Project state — ApiQuiz (idea-01)
 
-- **Last reconciled:** 2026-10-21 22:57 UTC (S2-PLAN-D01). Sources: GitHub REST reads of issues and PRs, `git log main`, the coordinator's Sprint 1 ledger (`docs/planning/sprint1-coordinator-state.md`), and the PR facts the coordinator verified on GitHub.
-- **Coordinator:** top-level Claude Code session following `workflows/orchestration-contract.md`.
-- **Last known commit:** `main` at `8dd6fef` (merge of PR #72, T-14/T-15).
-- **Current phase:** `DELIVERY`, Sprint 1 closed, Sprint 2 planned (`docs/planning/06-sprint1-review-retro-sprint2-plan.md`). Sprint 2 nominal dates 2026-11-09 to 2026-11-22; work started early (T-22).
-- **Sprint 2 goal:** a complete, accessible single quiz loop with real reviewed content, ready for a first GitHub Pages release candidate.
+- **Last reconciled:** 2026-10-23 UTC. Sources: GitHub reads of issues, PRs and Actions runs; `main` at `6698128`.
+- **Coordinator:** top-level Claude Code session following ai-software-team `workflows/orchestration-contract.md` and `workflows/sprint-governance.md`.
+- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 active 2026-10-24 to 2026-11-06 (`docs/sprints/S4.md`). Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
+- **Current sprint (S4) goal:** a returning learner can review answers, retry missed questions, keep a best score per topic and resume an unfinished quiz. US-5 and US-6 E2E pass in CI on main, and the release check passes with no deploy override.
+- The sections below the release criteria are kept as of 2026-10-21 for history. The sprint records under `docs/sprints/` are the current source for sprint scope and status.
+
+## Product goal and approved MVP scope
+
+- Product goal: a free, static API interview practice quiz (`docs/planning/01-product-brief.md`).
+- MVP scope: the P0 and P1 stories US-1 to US-10 and US-12. US-11 and US-13 are post-MVP.
+- Delivered on main (not yet accepted): US-3, US-4, US-8 (66 reviewed / 8 topics), US-9 and US-10 slices, US-5 feature (E2E pending), US-6 storage layer. US-1 and US-2 issues are closed.
+
+## Release criteria
+
+| ID | Criterion | Value | Decision | Mirrors |
+|---|---|---|---|---|
+| RC-1 | minReviewedQuestions | 60 | SD-REL-02 (sponsor 2026-10-23: keep the question bank and thresholds as they are) | scripts/content/rules.ts: minReviewedQuestions: {value}; docs/planning/01-product-brief.md: Question bank has at least {value} questions |
+| RC-2 | minTopics | 8 | SD-REL-02 | scripts/content/rules.ts: minTopics: {value}; docs/planning/01-product-brief.md: questions across at least {value} topics |
+| RC-3 | minPerTopic | 5 | SD-REL-02 | scripts/content/rules.ts: minPerTopic: {value} |
+| RC-4 | minMediumOrHardPercent | 20 | SD-REL-02 | scripts/content/rules.ts: minMediumOrHardPercent: {value} |
+
+Check with ai-software-team `python scripts/check_governance.py --state docs/project-state.md --repo . --release`. The bank on main (66 reviewed, 8 topics) meets these values. The release check still fails on the deploy override input until #39 removes it (Sprint 4).
+
+## Requirement conflicts
+
+| ID | Criterion | Sources | Status | Decision needed |
+|---|---|---|---|---|
+| RC-C1 | minReviewedQuestions | 24/3 MVP proposal (PR #91, closed unmerged 2026-10-22) vs US-8.1 60/8 | resolved | SD-REL-02 keeps 60/8; the bank already meets it |
+| RC-C2 | minTopics | same as RC-C1 | resolved | same |
 
 ## Decisions
 
@@ -112,3 +136,4 @@ SD-1 accept US-1/US-2; SD-2 confirm T-12-D01 / DQ-1; SD-3 DQ-5; SD-4 designer co
 | 2026-10-21 | BACKLOG_READY | DELIVERY | Repository provisioned; Sprint 1 started early at the sponsor's request | PR #1, issues #2–#48 |
 | 2026-10-21 ~22:52 | DELIVERY (Sprint 1) | DELIVERY (Sprint 1 closed) | All committed tasks merged; sponsor stop point after PR #72 | `docs/planning/sprint1-coordinator-state.md` |
 | 2026-10-21 22:57 | DELIVERY | DELIVERY (Sprint 2 planned) | Sprint 1 review, retro and Sprint 2 plan (S2-PLAN-D01) | `docs/planning/06-sprint1-review-retro-sprint2-plan.md` |
+| 2026-10-23 | DELIVERY (Sprint 3) | DELIVERY (Sprint 4) | Sprint 2 and Sprint 3 closed with records; Sprint 4 planned at the sponsor's request; release criteria SD-REL-02 recorded | `docs/sprints/S2.md`, `S3.md`, `S4.md` |
