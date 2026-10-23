@@ -1,4 +1,4 @@
-/** Public API of the pure quiz domain (T-07, T-11, T-37). */
+/** Public API of the pure quiz domain (T-07, T-11, T-37, T-41). */
 export {
   createSeededRng,
   normaliseSeed,
@@ -25,6 +25,12 @@ export {
   submitAnswer,
 } from "./answer";
 export {
+  isConsistentSavedSession,
+  restoreQuiz,
+  SAVED_SESSION_SCHEMA_VERSION,
+  toSavedSession,
+} from "./restore";
+export {
   bandFor,
   percentHalfUp,
   score,
@@ -34,6 +40,7 @@ export {
 } from "./score";
 export type {
   Answer,
+  BestScore,
   CreateQuizError,
   CreateQuizResult,
   CreateRetryQuizError,
@@ -47,4 +54,8 @@ export type {
   QuizQuestion,
   QuizScope,
   QuizSession,
+  RestoreQuizResult,
+  SavedAnswer,
+  SavedBest,
+  SavedSession,
 } from "./types";
