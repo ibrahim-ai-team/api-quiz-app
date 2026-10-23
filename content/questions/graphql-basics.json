@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "graphql-typename-concrete-type",
+      "topic": "graphql-basics",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "A field returns the interface type `Node`, and the query selects `__typename` inside it. What does `__typename` return?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Always the string \"Node\", the declared interface name"
+        },
+        {
+          "id": "b",
+          "text": "The name of the concrete Object type at that point during execution"
+        },
+        {
+          "id": "c",
+          "text": "A list of all possible types that implement `Node`"
+        },
+        {
+          "id": "d",
+          "text": "A validation error, because `__typename` is not declared in `Node`'s fields"
+        }
+      ],
+      "correct": "b",
+      "explanation": "The GraphQL specification (October 2021) defines `__typename: String!` as a meta-field on any Object, Interface, or Union that returns the name of the concrete Object type at that point during execution. So it does not return the interface name or a list of types. The specification also states that `__typename` is implicit and does not appear in the fields list of any type, so using it is not an error.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Type-Name-Introspection",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-leaf-field-no-subselection",
+      "topic": "graphql-basics",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "In a schema, `User.age` has type `Int`. Is the selection `{ user { age { value } } }` valid?",
+      "options": [
+        {
+          "id": "a",
+          "text": "No: a field whose type is a scalar or enum must have an empty subselection set"
+        },
+        {
+          "id": "b",
+          "text": "Yes: the server simply ignores the inner `{ value }` selection"
+        },
+        { "id": "c", "text": "Yes, but only if `age` is declared as `Int!`" },
+        {
+          "id": "d",
+          "text": "No, but only because `value` must be given an alias"
+        }
+      ],
+      "correct": "a",
+      "explanation": "Under the Leaf Field Selections rule in the GraphQL specification (October 2021), when a selection's type is a scalar or enum its subselection set must be empty, and the specification says field selections on scalars or enums are never allowed. Because `Int` is a scalar, the document fails validation rather than having the inner selection ignored. The rule is stated in terms of the selection's type being a scalar or enum and says nothing about nullability or aliases, so neither `Int!` nor an alias would make it valid.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Leaf-Field-Selections",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-id-serialized-as-string",
+      "topic": "graphql-basics",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "True or false: under the GraphQL specification, a field of type `ID` should serialize as a String even when the underlying identifier is numeric.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "true",
+      "explanation": "The GraphQL specification (October 2021) says the `ID` type is serialized in the same way as a `String` and, while it is often numeric, it should always serialize as a String. The specification describes GraphQL as agnostic to ID format and says it serializes to string to keep the formats an ID could represent consistent, so the statement is true.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-ID",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-mutation-root-fields-serial",
+      "topic": "graphql-basics",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A mutation operation selects two top-level fields, `createPost` followed by `publishPost`. How does the GraphQL specification say the executor runs these two fields?",
+      "options": [
+        {
+          "id": "a",
+          "text": "In parallel, exactly like the top-level fields of a query"
+        },
+        {
+          "id": "b",
+          "text": "Serially, starting with the first field textually, finishing each before the next"
+        },
+        { "id": "c", "text": "In whatever order the executor finds optimal" },
+        {
+          "id": "d",
+          "text": "Serially, in alphabetical order of the field names"
+        }
+      ],
+      "correct": "b",
+      "explanation": "The GraphQL specification (October 2021) states that when executing a mutation, the selections in the top most selection set are executed in serial order, starting with the first appearing field textually, and each entry is determined to completion before the next. The freedom to execute in any order, normally in parallel, applies to normal execution, and the specification ties it to fields other than top-level mutation fields being side effect-free and idempotent. The specification does not mention alphabetical ordering.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Normal-and-Serial-Execution",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-response-validation-error-no-data",
+      "topic": "graphql-basics",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A GraphQL request fails validation, so execution never starts. What does the specification require of the response map?",
+      "options": [
+        { "id": "a", "text": "`data` set to `null` and an `errors` list" },
+        {
+          "id": "b",
+          "text": "`data` set to an empty map and an empty `errors` list"
+        },
+        {
+          "id": "c",
+          "text": "No `data` entry, and an `errors` list containing at least one error"
+        },
+        {
+          "id": "d",
+          "text": "Only an `extensions` entry describing the failure"
+        }
+      ],
+      "correct": "c",
+      "explanation": "The GraphQL specification (October 2021) says that if the request failed before execution, for example due to a validation error, the `data` entry must not be present, and that when `data` is not present the `errors` entry must contain at least one error. A `data` value of `null` is described for errors raised during execution that prevented a valid response, not for requests that never executed. The specification also defines `errors` as a non-empty list and reserves `extensions` for implementors, so options b and d do not match.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Response-Format",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-unused-fragment-invalid",
+      "topic": "graphql-basics",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "True or false: a GraphQL document that defines a fragment that is never spread anywhere is still valid, as long as its operations are otherwise valid.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "The GraphQL specification (October 2021) has a validation rule, Fragments Must Be Used, which requires every defined fragment to be the target of at least one spread in the document. The specification shows a document with an unused fragment as an invalid document, so the statement is false.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Fragments-Must-Be-Used",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-variables-input-types",
+      "topic": "graphql-basics",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Which of the following can NOT be the declared type of an operation variable such as `$x`?",
+      "options": [
+        { "id": "a", "text": "`Boolean!`" },
+        { "id": "b", "text": "An enum type, such as `Color`" },
+        { "id": "c", "text": "An input object type, such as `PostFilter`" },
+        { "id": "d", "text": "An object type, such as `User`" }
+      ],
+      "correct": "d",
+      "explanation": "The GraphQL specification (October 2021) states that variables can only be input types, and that objects, unions, and interfaces cannot be used as inputs. In its Input and Output Types section, the `IsInputType` algorithm returns true for Scalar, Enum and Input Object types, and for a List or Non-Null wrapper of an input type, while Object, Interface and Union types can only be used as output types. That makes `Boolean!`, an enum and an input object all valid variable types.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Variables-Are-Input-Types",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-non-null-error-propagation",
+      "topic": "graphql-basics",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "Schema: `user: User` (nullable) and `User.name: String!`. A query selects `{ user { id name } }` and the `name` resolver raises an error. What does the response contain?",
+      "options": [
+        {
+          "id": "a",
+          "text": "`\"user\": { \"id\": \"1\", \"name\": null }` and one error"
+        },
+        { "id": "b", "text": "`\"data\": null` and one error" },
+        { "id": "c", "text": "`\"user\": null` and one error" },
+        {
+          "id": "d",
+          "text": "`\"user\": null` and two errors, one for `name` and one for `user`"
+        }
+      ],
+      "correct": "c",
+      "explanation": "According to the GraphQL specification (October 2021), `Non-Null` fields cannot be `null`, so field errors are propagated to be handled by the parent field, and if the parent field may be `null` it resolves to `null`. So `user` becomes `null` rather than holding a `null` `name`. The error is only propagated further when the parent is itself `Non-Null`; since `user` is nullable, the propagation stops there and `data` is not `null`. The specification also says the errors list must not be further affected by a `null` caused by an error already added, so only one error is reported.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Handling-Field-Errors",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    },
+    {
+      "id": "graphql-int-32-bit-input",
+      "topic": "graphql-basics",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "An argument `limit` has type `Int`. A client passes the literal value `2147483648` (that is, 2^31). What does the GraphQL specification say should happen?",
+      "options": [
+        { "id": "a", "text": "The value is clamped to 2147483647" },
+        { "id": "b", "text": "The value is coerced to a `Float`" },
+        {
+          "id": "c",
+          "text": "The value is accepted, because `Int` has no fixed size"
+        },
+        { "id": "d", "text": "A request error should be raised" }
+      ],
+      "correct": "d",
+      "explanation": "The GraphQL specification (October 2021) defines `Int` as a signed 32-bit numeric non-fractional value and says a request error should be raised when an integer input value is less than -2^31 or greater than or equal to 2^31. The specification describes no clamping and no conversion to `Float` for `Int` inputs. For integers larger than 32-bit, it suggests using String or a custom-defined Scalar type.",
+      "sourceUrl": "https://spec.graphql.org/October2021/#sec-Int",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-30-R01)"
+    }
+  ]
+}
