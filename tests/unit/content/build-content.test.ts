@@ -89,6 +89,19 @@ describe("scripts/build-content.ts", () => {
     expect(bank.topics.length).toBeGreaterThan(0);
     const raw = readFileSync(out, "utf8");
     for (const id of drafts) expect(raw).not.toContain(`"${id}"`);
+    // T-35: the Landing reserve is written next to --out in the same run.
+    const reserve = JSON.parse(
+      readFileSync(
+        path.join(path.dirname(out), "landing-reserve.json"),
+        "utf8",
+      ),
+    ) as { eligibleTopicCount: number; topicIds: string[] };
+    expect(reserve.topicIds).toEqual(
+      bank.topics
+        .filter((t) => bank.questions.some((q) => q.topic === t.id))
+        .map((t) => t.id),
+    );
+    expect(reserve.eligibleTopicCount).toBe(reserve.topicIds.length);
     expect(result.stdout).toMatch(
       new RegExp(
         `content:build \\(production\\).*${String(drafts.length)} drafts excluded`,
