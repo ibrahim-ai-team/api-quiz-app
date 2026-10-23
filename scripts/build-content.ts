@@ -130,6 +130,9 @@ async function main(): Promise<number> {
   const reserveOut = path.join(path.dirname(args.out), LANDING_RESERVE_FILE);
 
   await mkdir(path.dirname(args.out), { recursive: true });
+  // Each file is replaced atomically; the pair is not. A crash between the
+  // two renames leaves a new bank next to an old reserve until the next
+  // build, and tests/unit/content/landing-reserve.test.ts catches that.
   await writeAtomically(args.out, serializeBank(bank));
   await writeAtomically(reserveOut, serializeLandingReserve(reserve));
 

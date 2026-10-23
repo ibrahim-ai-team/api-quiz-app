@@ -6,14 +6,8 @@
  * DOM read, no extra request, and the CSP is unchanged.
  */
 import data from "./generated/landing-reserve.json";
+import type { LandingReserve } from "./types.ts";
 
-export interface LandingReserve {
-  /** Topics with at least one question in the emitted bank. */
-  readonly eligibleTopicCount: number;
-  /** Their names, in curated order. */
-  readonly topicNames: readonly string[];
-  /** Their ids, same order; only compared with a deep link, never shown. */
-  readonly topicIds: readonly string[];
-}
+export type { LandingReserve };
 
 export const landingReserve: LandingReserve = data;

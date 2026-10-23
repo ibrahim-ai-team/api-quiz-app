@@ -11,7 +11,12 @@
  *   emitted content changes.
  */
 import { createHash } from "node:crypto";
-import type { Bank, BankQuestion, BankTopic } from "../../src/content/types.ts";
+import type {
+  Bank,
+  BankQuestion,
+  BankTopic,
+  LandingReserve,
+} from "../../src/content/types.ts";
 import { CONTENT_SCHEMA_VERSION, type Question, type Topic } from "./schema.ts";
 
 export type BuildMode = "development" | "production";
@@ -105,24 +110,9 @@ export function serializeBank(bank: Bank): string {
 }
 
 /**
- * Landing loading reserve data (T-35, issue #84). The Landing view reserves
- * room for the topic group while the bank loads; it imports this file as a
- * module so the reserve holds as many rows, with the same names, as the
- * loaded group. A topic is eligible when the emitted bank has at least one
- * question for it, the same rule as `eligibleTopics` in `src/domain`
- * (a unit test keeps the two equal).
+ * Landing loading reserve (T-35): the Landing view imports it as a module so
+ * the reserve holds as many rows, with the same names, as the loaded group.
  */
-export interface LandingReserve {
-  readonly eligibleTopicCount: number;
-  /** Names of the eligible topics, in curated order. */
-  readonly topicNames: readonly string[];
-  /**
-   * Their ids, in the same order. Only compared with a `#/topic/:id` deep
-   * link, so the reserve can tell whether Start will show its hint.
-   */
-  readonly topicIds: readonly string[];
-}
-
 export function buildLandingReserve(bank: Bank): LandingReserve {
   const withQuestions = new Set(bank.questions.map((q) => q.topic));
   const eligible = bank.topics.filter((topic) => withQuestions.has(topic.id));
