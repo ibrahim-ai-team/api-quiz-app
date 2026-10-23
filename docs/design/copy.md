@@ -5,6 +5,7 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | Key | String | Notes |
 | --- | --- | --- |
 | `app.name` | ApiQuiz | Brand in header and title suffix |
+| `app.tagline` | API Interview Practice | Header, under the brand and outside the link (not part of its accessible name); hidden on the quiz route below 40em (views.md §0) |
 | `common.newTabCue` | (opens in new tab) | Visible and part of the link's accessible name |
 | `common.retry` | Retry | |
 | `common.home` | Go to the home page | |

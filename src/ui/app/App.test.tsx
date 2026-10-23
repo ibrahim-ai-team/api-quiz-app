@@ -545,11 +545,16 @@ describe("shell", () => {
     renderApp(Promise.resolve(OK));
     await flush();
     const banner = screen.getByRole("banner");
-    expect(
-      within(banner)
-        .getByRole("link", { name: strings.appName })
-        .getAttribute("href"),
-    ).toBe("#/");
+    const link = within(banner).getByRole("link", { name: strings.appName });
+    expect(link.getAttribute("href")).toBe("#/");
+    // A string `name` in getByRole matches the whole accessible name, so it
+    // is exactly the app name: the mark is aria-hidden and the tagline is
+    // outside the link (views.md §0).
+    const mark = link.querySelector("span");
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    const tagline = within(banner).getByText(strings.appTagline);
+    expect(link.contains(tagline)).toBe(false);
+    expect(link.textContent).not.toContain(strings.appTagline);
     await startQuiz();
     expect(window.location.hash).toBe("#/quiz");
     expect(within(banner).queryByRole("link")).toBe(null);

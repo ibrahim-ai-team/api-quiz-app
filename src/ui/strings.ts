@@ -20,7 +20,7 @@ function pageTitle(...parts: readonly string[]): string {
 export const strings = {
   /** copy:app.name */
   appName: APP_NAME,
-  /** Header tagline under the app name (PR #86). */
+  /** copy:app.tagline */
   appTagline: "API Interview Practice",
   pageTitle,
   /** Default label for `renderRichText` code boxes (copy:question.codeLabel). */

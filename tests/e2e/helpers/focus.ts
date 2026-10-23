@@ -29,6 +29,11 @@ interface FocusInfo {
  * Tab stop, so they are described by the group `name`. The option rows draw
  * the focus ring on the whole `label` (views.md §1 and §2; the radio's own
  * outline is removed there), so the label's style counts for a radio.
+ *
+ * The descriptor is an approximation of the accessible name: it drops
+ * `aria-hidden="true"` descendants (such as the brand mark) and honours
+ * `aria-label`, but it does not resolve `aria-labelledby` and does not skip
+ * descendants hidden with the `hidden` attribute or `display: none`.
  */
 export async function focusInfo(page: Page): Promise<FocusInfo> {
   return page.evaluate((): FocusInfo => {
