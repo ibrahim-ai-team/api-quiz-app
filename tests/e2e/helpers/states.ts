@@ -125,8 +125,20 @@ const loading: AppState = {
     });
     await page.goto("./");
     await expectBankStatus(page, "loading");
+    const status = page.getByRole("status");
+    // T-36: `data-bank-status="loading"` is in the DOM from the first commit,
+    // but BankStatus arms its 300 ms and 10 s timers in a passive effect that
+    // can run later (seen on WebKit). A single runFor(10_000) issued before
+    // that effect moves no timer, so the 10 s timer then needs 10 s of real
+    // time. Advance the fake clock in 300 ms steps (LOADING_DELAY_MS) until
+    // the loading text shows: the 300 ms timer has fired, so both timers are
+    // armed, and one more 10 s (STILL_LOADING_MS) reaches "Still loading".
+    await expect(async () => {
+      await page.clock.runFor(300);
+      await expect(status).not.toBeEmpty({ timeout: 100 });
+    }).toPass({ intervals: [0], timeout: 10_000 });
     await page.clock.runFor(10_000);
-    await expect(page.getByRole("status")).toHaveText(strings.loading.still);
+    await expect(status).toHaveText(strings.loading.still);
     const retry = page.getByRole("button", { name: strings.common.retry });
     await expect(retry).toBeVisible();
     return retry;

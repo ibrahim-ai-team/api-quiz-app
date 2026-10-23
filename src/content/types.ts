@@ -60,6 +60,23 @@ export interface Bank {
   readonly questions: readonly BankQuestion[];
 }
 
+/**
+ * Landing loading reserve data (T-35, issue #84), written next to the bank by
+ * `scripts/build-content.ts`. A topic is eligible when the emitted bank has at
+ * least one question for it, the same rule as `eligibleTopics` in
+ * `src/domain` (a unit test keeps the two equal).
+ */
+export interface LandingReserve {
+  readonly eligibleTopicCount: number;
+  /** Names of the eligible topics, in curated order. */
+  readonly topicNames: readonly string[];
+  /**
+   * Their ids, in the same order. Only compared with a `#/topic/:id` deep
+   * link, so the reserve can tell whether Start will show its hint.
+   */
+  readonly topicIds: readonly string[];
+}
+
 type UnknownRecord = Readonly<Record<string, unknown>>;
 
 function isRecord(value: unknown): value is UnknownRecord {
