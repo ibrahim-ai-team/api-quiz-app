@@ -38,6 +38,31 @@ const SRC_RESTRICTED_PATTERNS = [
   },
 ];
 
+/**
+ * Web Storage is reserved for src/storage (ADR-0001: the only localStorage
+ * user; T-40). Globals and the common `window.`/`globalThis.`/`self.` member
+ * forms are both banned; src/storage re-declares these lists minus
+ * localStorage, because flat config replaces rule options.
+ */
+const STORAGE_GLOBALS = ["localStorage", "sessionStorage"];
+const storageMessage = (name) =>
+  `Only src/storage may use Web Storage; use the ProgressStore from src/storage instead of ${name}.`;
+const restrictedStorageGlobals = (names) =>
+  names.map((name) => ({ name, message: storageMessage(name) }));
+const restrictedStorageProperties = (names) =>
+  ["window", "globalThis", "self"].flatMap((object) =>
+    names.map((property) => ({
+      object,
+      property,
+      message: storageMessage(property),
+    })),
+  );
+const MATH_RANDOM_RESTRICTION = {
+  object: "Math",
+  property: "random",
+  message: "Use the injected seeded Rng from src/domain/rng.ts (standard 7).",
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -116,14 +141,14 @@ export default tseslint.config(
       "no-implied-eval": "off",
       "@typescript-eslint/no-implied-eval": "error",
       "no-new-func": "error",
+      "no-restricted-globals": [
+        "error",
+        ...restrictedStorageGlobals(STORAGE_GLOBALS),
+      ],
       "no-restricted-properties": [
         "error",
-        {
-          object: "Math",
-          property: "random",
-          message:
-            "Use the injected seeded Rng from src/domain/rng.ts (standard 7).",
-        },
+        MATH_RANDOM_RESTRICTION,
+        ...restrictedStorageProperties(STORAGE_GLOBALS),
       ],
       "no-restricted-syntax": [
         "error",
@@ -157,6 +182,22 @@ export default tseslint.config(
   {
     files: [`${SRC}/domain/rng.ts`],
     rules: { "no-restricted-properties": "off" },
+  },
+  // src/storage is the only localStorage user (ADR-0001, T-40). It keeps the
+  // sessionStorage and Math.random bans.
+  {
+    files: [`${SRC}/storage/**/*.{ts,tsx}`],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...restrictedStorageGlobals(["sessionStorage"]),
+      ],
+      "no-restricted-properties": [
+        "error",
+        MATH_RANDOM_RESTRICTION,
+        ...restrictedStorageProperties(["sessionStorage"]),
+      ],
+    },
   },
 
   // Module boundaries (standard 2): domain is pure TypeScript.
