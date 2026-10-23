@@ -50,7 +50,13 @@ export async function focusInfo(page: Page): Promise<FocusInfo> {
           >
         )[el.tagName] ??
         el.tagName.toLowerCase();
-      descriptor = `${role} "${text(el.getAttribute("aria-label") ?? el.textContent)}"`;
+      // Text as assistive tech names it: aria-hidden parts (decorative marks)
+      // are not part of the accessible name.
+      const named = el.cloneNode(true) as Element;
+      for (const hidden of named.querySelectorAll('[aria-hidden="true"]')) {
+        hidden.remove();
+      }
+      descriptor = `${role} "${text(el.getAttribute("aria-label") ?? named.textContent)}"`;
     }
     const ring = (node: Element) => {
       const s = getComputedStyle(node);

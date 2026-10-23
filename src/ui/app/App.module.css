@@ -44,18 +44,62 @@
   min-height: calc(var(--target-min) + var(--space-4));
 }
 
+/* Brand (PR #86): code mark + app name, with a tagline underneath. */
+.brandBlock {
+  --brand-mark-size: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .brand,
 .brandLink {
   display: inline-flex;
   align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
   min-height: var(--target-min);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-heading);
   color: var(--color-text);
+  text-decoration: none;
 }
 
 .brandLink {
   color: var(--color-primary);
+}
+
+.brandLink:hover {
+  color: var(--color-primary-hover);
+}
+
+.brandLink:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}
+
+.brandMark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--brand-mark-size);
+  height: var(--brand-mark-size);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  letter-spacing: -0.08em;
+}
+
+.brandTagline {
+  margin-inline-start: calc(var(--brand-mark-size) + var(--space-2));
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
 }
 
 .main {
@@ -73,4 +117,10 @@
   width: auto;
   min-width: 0;
   margin-inline-start: auto;
+}
+
+@media (max-width: 24em) {
+  .brandBlock {
+    --brand-mark-size: 2.25rem;
+  }
 }

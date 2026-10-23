@@ -54,6 +54,13 @@ type ViewId =
   | "notFound";
 
 const LANDING_HREF = routeHref({ name: "landing" });
+
+/** Decorative code mark before the app name; hidden from assistive tech. */
+const BRAND_MARK = (
+  <span className={styles.brandMark} aria-hidden="true">
+    {"</>"}
+  </span>
+);
 const QUIZ_HREF = routeHref({ name: "quiz" });
 const RESULTS_HREF = routeHref({ name: "results" });
 
@@ -277,14 +284,22 @@ export function App({ bankPromise, reloadBank }: AppProps) {
       </a>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          {route.name === "quiz" ? (
-            // Plain text on the quiz route: Exit is explicit (views.md §0).
-            <span className={styles.brand}>{strings.appName}</span>
-          ) : (
-            <a className={styles.brandLink} href={LANDING_HREF}>
-              {strings.appName}
-            </a>
-          )}
+          <div className={styles.brandBlock}>
+            {route.name === "quiz" ? (
+              // Plain text on the quiz route: Exit is explicit (views.md §0).
+              <span className={styles.brand}>
+                {BRAND_MARK}
+                {strings.appName}
+              </span>
+            ) : (
+              <a className={styles.brandLink} href={LANDING_HREF}>
+                {BRAND_MARK}
+                {strings.appName}
+              </a>
+            )}
+            {/* Outside the link, so its accessible name stays the app name. */}
+            <span className={styles.brandTagline}>{strings.appTagline}</span>
+          </div>
           {route.name === "quiz" && session !== null && (
             <button
               type="button"
