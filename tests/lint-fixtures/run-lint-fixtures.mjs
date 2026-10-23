@@ -41,6 +41,11 @@ const expectations = {
     "no-restricted-globals": 6,
   },
   "tests/lint-fixtures/src/ui/mathRandom.ts": { "no-restricted-properties": 1 },
+  // T-40: Web Storage is reserved for src/storage (ADR-0001).
+  "tests/lint-fixtures/src/ui/usesStorage.ts": {
+    "no-restricted-globals": 2, // localStorage, sessionStorage
+    "no-restricted-properties": 2, // window.localStorage, globalThis.sessionStorage
+  },
   "tests/lint-fixtures/src/ui/consoleLog.ts": { "no-console": 1 },
 };
 
