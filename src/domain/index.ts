@@ -1,4 +1,4 @@
-/** Public API of the pure quiz domain (T-07, T-11). */
+/** Public API of the pure quiz domain (T-07, T-11, T-37). */
 export {
   createSeededRng,
   normaliseSeed,
@@ -12,6 +12,7 @@ export {
   eligibleTopics,
   MIXED_MIN_TOPICS,
 } from "./createQuiz";
+export { createRetryQuiz, missedQuestionIds } from "./retryQuiz";
 export {
   currentAnswer,
   currentQuestion,
@@ -35,9 +36,12 @@ export type {
   Answer,
   CreateQuizError,
   CreateQuizResult,
+  CreateRetryQuizError,
+  CreateRetryQuizResult,
   EligibleTopic,
   Quiz,
   QuizAction,
+  QuizMode,
   QuizOption,
   QuizPhase,
   QuizQuestion,

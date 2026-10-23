@@ -55,6 +55,8 @@ const SECOND = question("q-2", "topic-b", "Second prompt", [
 
 const QUIZ: Quiz = {
   scope: { kind: "mixed" },
+  mode: "normal",
+  contentVersion: "v-test",
   seed: 1,
   questions: [
     question("q-1", "topic-a", "Which method?\n\n```\nGET /x HTTP/1.1\n```", [
@@ -145,6 +147,8 @@ describe("T-US2-1 question, topic, progress and radio group", () => {
   it("omits the topic line and title segment for an unknown topic id (SEC-R07 N-3)", () => {
     const { container } = renderQuestion({
       scope: { kind: "topic", topicId: "topic-x" },
+      mode: "normal",
+      contentVersion: "v-test",
       seed: 1,
       questions: [{ ...SECOND, topicId: "topic-x" }],
     });

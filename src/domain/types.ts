@@ -29,9 +29,22 @@ export interface QuizQuestion {
   readonly sourceUrl: string;
 }
 
+/**
+ * How a quiz was built (US-5): `normal` from `createQuiz`, `retry-missed`
+ * from `createRetryQuiz` (only the questions missed in an earlier run).
+ */
+export type QuizMode = "normal" | "retry-missed";
+
 /** A started quiz. Question and option order are fixed at creation (FR-4). */
 export interface Quiz {
+  /**
+   * The scope the user originally chose. A retry quiz keeps the scope of
+   * the quiz it retries, so titles and scope names are unchanged.
+   */
   readonly scope: QuizScope;
+  readonly mode: QuizMode;
+  /** `contentVersion` of the bank the quiz was built from. */
+  readonly contentVersion: string;
   /** Unsigned 32-bit seed that reproduces this quiz from the same bank. */
   readonly seed: number;
   readonly questions: readonly QuizQuestion[];
@@ -50,6 +63,13 @@ export type CreateQuizError = "unknown-topic" | "empty-topic" | "empty-bank";
 export type CreateQuizResult =
   | { readonly ok: true; readonly quiz: Quiz }
   | { readonly ok: false; readonly error: CreateQuizError };
+
+/** `none-remaining`: no missed question still exists in the bank (US-5.6). */
+export type CreateRetryQuizError = "none-remaining";
+
+export type CreateRetryQuizResult =
+  | { readonly ok: true; readonly quiz: Quiz }
+  | { readonly ok: false; readonly error: CreateRetryQuizError };
 
 /*
  * Answer state (T-11; US-2.4, US-2.5, US-3.4, FR-6, FR-9). Consumed by the

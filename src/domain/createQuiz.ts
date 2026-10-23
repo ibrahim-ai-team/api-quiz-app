@@ -61,9 +61,10 @@ function trueFalseRank(option: BankOption): number {
 /**
  * Single-choice options are shuffled once with `rng`. True/false options are
  * never shuffled and are put in the canonical "true", "false" order without
- * consuming randomness.
+ * consuming randomness. Shared with `createRetryQuiz` (T-37); not part of the
+ * public domain API.
  */
-function toQuizQuestion(question: BankQuestion, rng: Rng): QuizQuestion {
+export function toQuizQuestion(question: BankQuestion, rng: Rng): QuizQuestion {
   const options =
     question.type === "true-false"
       ? question.options
@@ -178,6 +179,8 @@ export function createQuiz(
         scope.kind === "topic"
           ? { kind: "topic", topicId: scope.topicId }
           : { kind: "mixed" },
+      mode: "normal",
+      contentVersion: bank.contentVersion,
       seed: rng.seed,
       questions: drawn.map((question) => toQuizQuestion(question, rng)),
     },

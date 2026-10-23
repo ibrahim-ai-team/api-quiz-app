@@ -48,6 +48,8 @@ function question(id: string, correctOptionId = "b"): QuizQuestion {
 function quizOf(count: number): Quiz {
   return {
     scope: { kind: "topic", topicId: "http" },
+    mode: "normal",
+    contentVersion: "test",
     seed: 42,
     questions: Array.from({ length: count }, (_, i) =>
       question(`q${String(i + 1)}`),

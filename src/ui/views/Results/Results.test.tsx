@@ -48,7 +48,13 @@ function finished(
     correct,
   }));
   return {
-    quiz: { scope, seed: 1, questions },
+    quiz: {
+      scope,
+      mode: "normal",
+      contentVersion: "v-test",
+      seed: 1,
+      questions,
+    },
     index: Math.max(0, questions.length - 1),
     selected: null,
     answers,

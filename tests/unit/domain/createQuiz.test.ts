@@ -107,6 +107,15 @@ describe("createQuiz: topic quiz (T-US1-3)", () => {
     expect(quiz.scope).toEqual({ kind: "topic", topicId: "t" });
     expect(quiz.seed).toBe(2 ** 32 - 1);
   });
+
+  it("sets mode normal and the bank contentVersion (T-37)", () => {
+    const bank = { ...makeBank({ t: 3 }), contentVersion: "2026-10-01" };
+    for (const scope of [topic("t"), MIXED]) {
+      const quiz = create(bank, scope, 7);
+      expect(quiz.mode).toBe("normal");
+      expect(quiz.contentVersion).toBe("2026-10-01");
+    }
+  });
 });
 
 describe("createQuiz: Mixed (T-US1-4)", () => {
