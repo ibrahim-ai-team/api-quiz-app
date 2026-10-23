@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "auth-407-proxy-authenticate-challenge",
+      "topic": "authentication-authorization",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "A client's request goes through a forward proxy that requires the client to authenticate before it forwards anything. Which response does RFC 9110 define for the proxy to challenge the client?",
+      "options": [
+        {
+          "id": "a",
+          "text": "401 Unauthorized with a `WWW-Authenticate` header field"
+        },
+        {
+          "id": "b",
+          "text": "403 Forbidden with a `Proxy-Authorization` header field"
+        },
+        {
+          "id": "c",
+          "text": "407 Proxy Authentication Required with a `Proxy-Authenticate` header field"
+        },
+        {
+          "id": "d",
+          "text": "407 Proxy Authentication Required with an `Authorization` header field"
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 says 407 is similar to 401 but indicates that the client needs to authenticate itself to use a proxy, and the proxy MUST send a `Proxy-Authenticate` header field containing a challenge applicable to that proxy. The client MAY then repeat the request with a new or replaced `Proxy-Authorization` field. 401 with `WWW-Authenticate` is how an origin server challenges a user agent, and `Authorization` and `Proxy-Authorization` are request fields that carry credentials, not response challenges.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.8",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-basic-base64-not-encryption",
+      "topic": "authentication-authorization",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "A client sends `Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==` over plain HTTP. According to RFC 7617, what protection does the Basic scheme itself give the password?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It is encrypted with a key derived from the realm value"
+        },
+        {
+          "id": "b",
+          "text": "It is hashed, so the server never learns the actual password"
+        },
+        {
+          "id": "c",
+          "text": "It is protected because only the server that issued the realm can decode it"
+        },
+        {
+          "id": "d",
+          "text": "None: the user-id and password are only Base64-encoded and travel as cleartext"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 7617 builds Basic credentials by Base64-encoding the user-id, a colon and the password, and states that the user-id and password are passed over the network as cleartext. It says the scheme is not considered secure unless used with an external secure system such as TLS, and that it SHOULD NOT be used without enhancements such as HTTPS to protect sensitive or valuable information. Because RFC 7617 describes the transmission as cleartext, the options describing encryption, hashing or realm-based protection are wrong.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc7617.html#section-4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-scheme-name-case-insensitive",
+      "topic": "authentication-authorization",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "According to RFC 9110, `basic` and `Basic` as authentication scheme names in a `WWW-Authenticate` challenge identify the same authentication scheme.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "true",
+      "explanation": "RFC 9110 states that HTTP authentication uses a case-insensitive token to identify the authentication scheme. RFC 7617 repeats this for Basic, noting that both scheme and parameter names are matched case-insensitively.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-11.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-basic-colon-in-user-id",
+      "topic": "authentication-authorization",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A user agent builds Basic credentials for user-id `ops:admin` and password `s3cret` without checking for colons, so the decoded user-pass is `ops:admin:s3cret`. Per RFC 7617, how does the recipient split it?",
+      "options": [
+        {
+          "id": "a",
+          "text": "User-id `ops:admin`, password `s3cret`, because the last colon is the separator"
+        },
+        {
+          "id": "b",
+          "text": "User-id `ops`, password `admin:s3cret`, because the first colon is the separator"
+        },
+        {
+          "id": "c",
+          "text": "It cannot be sent, because Base64 cannot encode a colon character"
+        },
+        {
+          "id": "d",
+          "text": "User-id `ops`, password `admin`, and `s3cret` is discarded"
+        }
+      ],
+      "correct": "b",
+      "explanation": "RFC 7617 says a user-id containing a colon is invalid, because the first colon in a user-pass string separates the user-id from the password, and text after the first colon is part of the password. It warns that many user agents do not check for colons, so recipients will treat part of the username input as part of the password. The encoding is not the obstacle: RFC 7617's own example Base64-encodes the user-pass `Aladdin:open sesame`, colon included, so the problem is in how the string is split.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc7617.html#section-2",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-basic-charset-utf8-advisory",
+      "topic": "authentication-authorization",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A server sends `WWW-Authenticate: Basic realm=\"foo\", charset=\"UTF-8\"`. According to RFC 7617, what does the `charset` parameter mean?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It advises that the server expects the user-pass to be encoded with UTF-8 before Base64 encoding"
+        },
+        {
+          "id": "b",
+          "text": "It declares that the 401 response content is encoded in UTF-8"
+        },
+        {
+          "id": "c",
+          "text": "It requires the client to add `charset=\"UTF-8\"` to its `Authorization` field"
+        },
+        {
+          "id": "d",
+          "text": "It is mandatory, and any value such as `ISO-8859-1` may be used"
+        }
+      ],
+      "correct": "a",
+      "explanation": "RFC 7617 says servers can use `charset` in challenges to indicate the character encoding scheme they expect the user agent to use when generating the user-pass, and that this information is purely advisory. The only allowed value is \"UTF-8\", matched case-insensitively, and the parameter is OPTIONAL. It is defined only on challenges because Basic credentials use a single token68 value whose syntax isn't extensible, so the client does not echo it.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc7617.html#section-2.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-basic-credential-reuse-scope",
+      "topic": "authentication-authorization",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A client was authenticated with Basic for `http://example.com/docs/index.html`. Under RFC 7617's reuse rules, to which URI may it preemptively send the same `Authorization` field without a new challenge?",
+      "options": [
+        { "id": "a", "text": "https://example.com/docs/" },
+        { "id": "b", "text": "http://example.com/other/" },
+        { "id": "c", "text": "http://example.com/docs/test.doc" },
+        { "id": "d", "text": "http://example.com/" }
+      ],
+      "correct": "c",
+      "explanation": "RFC 7617 gets the authentication scope by removing all characters after the last slash of the authenticated request's path, which gives `http://example.com/docs/` here, and says a client SHOULD assume URIs with that prefix are in the same protection space and MAY preemptively send credentials to them. RFC 7617's own example treats `http://example.com/other/` and `https://example.com/docs/` as outside the scope. `http://example.com/` is not in RFC 7617's list, but applying the prefix-match rule shows it is outside this request's scope too, because it is shorter than `http://example.com/docs/` and so cannot begin with it.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc7617.html#section-2.2",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-protection-space-origin-realm",
+      "topic": "authentication-authorization",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "In the RFC 9110 authentication framework, what defines a protection space, the domain over which credentials can be automatically applied?",
+      "options": [
+        {
+          "id": "a",
+          "text": "The realm value alone, shared by every server that uses the same realm string"
+        },
+        {
+          "id": "b",
+          "text": "The authentication scheme name, such as Basic or Digest"
+        },
+        {
+          "id": "c",
+          "text": "The path prefix of the request URI, regardless of host"
+        },
+        {
+          "id": "d",
+          "text": "The origin of the server being accessed, combined with the realm value if present"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 9110 defines a protection space as the origin of the server being accessed combined with the realm value if present, and says that unless the scheme allows it, a single protection space cannot extend outside the scope of its server. So a realm string does not span servers, and RFC 7617 adds that a realm can only be compared for equality with other realms on that server. The path-prefix rule is Basic's specific credential-reuse rule in RFC 7617, not the framework's definition of a protection space.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-11.5",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    },
+    {
+      "id": "auth-www-authenticate-multiple-challenges",
+      "topic": "authentication-authorization",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A 401 response carries `WWW-Authenticate: Basic realm=\"simple\", Newauth realm=\"apps\", type=1, title=\"Login\"`. How does RFC 9110 say this field value is parsed?",
+      "options": [
+        {
+          "id": "a",
+          "text": "One Basic challenge with four parameters: realm, realm, type and title"
+        },
+        {
+          "id": "b",
+          "text": "Two challenges: Basic with realm \"simple\", and Newauth with realm \"apps\" plus type and title"
+        },
+        {
+          "id": "c",
+          "text": "Four challenges, one for each comma-separated item"
+        },
+        {
+          "id": "d",
+          "text": "It is invalid, because a `WWW-Authenticate` field can carry only one challenge"
+        }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 warns that a `WWW-Authenticate` value might contain more than one challenge, each with a comma-separated list of parameters. Its nearly identical example is read as two challenges, Basic with realm \"simple\" and Newauth with realm \"apps\", and it also contains two additional parameters, \"type\" and \"title\", which follow Newauth's realm in the list. A single challenge cannot hold two realm parameters, because RFC 9110 Section 11.2 says each parameter name MUST only occur once per challenge. The RFC also notes that some user agents do not recognize several challenges on one field line, so this form might not be interoperable.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-11.6.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-27-R01)"
+    }
+  ]
+}
