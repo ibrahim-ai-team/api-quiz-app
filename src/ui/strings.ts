@@ -55,6 +55,21 @@ export const strings = {
      */
     results: (scope: string | null): string =>
       scope === null ? pageTitle("Results") : pageTitle("Results", scope),
+    /**
+     * copy:title.questionRetry (US-5, views.md §8.4); `scope` is the original
+     * topic name or "Mixed"; `null` (unknown id) omits that segment.
+     */
+    questionRetry: (k: number, n: number, scope: string | null): string => {
+      const heading = `Question ${String(k)} of ${String(n)}`;
+      return scope === null
+        ? pageTitle(heading, "Retry")
+        : pageTitle(heading, "Retry", scope);
+    },
+    /** copy:title.resultsRetry (US-5.5); `null` scope omits that segment. */
+    resultsRetry: (scope: string | null): string =>
+      scope === null
+        ? pageTitle("Retry results")
+        : pageTitle("Retry results", scope),
   },
   landing: {
     heading: "Practise API interview questions",
@@ -90,6 +105,8 @@ export const strings = {
     submit: "Submit",
     submitHint: "Choose an answer to submit.",
     exit: "Exit quiz",
+    /** copy:question.retryLabel: line under the h1 of a retry quiz (US-5). */
+    retryLabel: "Retry: missed questions",
   },
   feedback: {
     correct: "Correct",
@@ -155,5 +172,49 @@ export const strings = {
       `${topic}: ${String(x)} / ${String(n)}`,
     tryAgain: "Try again",
     chooseAnother: "Choose another topic",
+    /** copy:results.retryMissed; n = missed questions still in the bank. */
+    retryMissed: (n: number): string =>
+      n === 1
+        ? "Retry 1 missed question"
+        : `Retry ${String(n)} missed questions`,
+    /** copy:results.retryPartial (US-5.6); n = missed questions removed. */
+    retryPartial: (n: number): string =>
+      n === 1
+        ? "1 missed question is no longer available and will be left out."
+        : `${String(n)} missed questions are no longer available and will be left out.`,
+    /** copy:results.retryNone (US-5.6); singular when 1 question was missed. */
+    retryNone: (missed: number): string =>
+      missed === 1
+        ? "The question you missed is no longer available, so there is nothing to retry."
+        : "The questions you missed are no longer available, so there is nothing to retry.",
+    /** copy:results.retryHeading: h1 of a retry quiz's results (US-5.5). */
+    retryHeading: "Retry results",
+    /**
+     * copy:results.retryNote (US-5.5). Not rendered until best scores exist
+     * (US-6, T-42): see `ResultsProps.showRetryBestScoreNote`.
+     */
+    retryNote:
+      "This was a retry of your missed questions, so it does not count toward your best score.",
+    /** copy:results.startFull: primary on retry results (US-5.5). */
+    startFull: "Start a full quiz",
+  },
+  review: {
+    /** copy:review.toggle: h2 disclosure button, same label open and closed. */
+    toggle: "Review answers",
+    /** copy:review.itemHeading; `verdict` = feedback.correct / .incorrect. */
+    itemHeading: (k: number, verdict: string): string =>
+      `Question ${String(k)}: ${verdict}`,
+    /** copy:review.yourAnswer */
+    yourAnswer: (option: string): string => `Your answer: ${option}`,
+    /** copy:review.promptCodeLabel; numbered only when count > 1. */
+    promptCodeLabel: (k: number, index: number, count: number): string =>
+      count > 1
+        ? `Question ${String(k)} code example ${String(index)} of ${String(count)}`
+        : `Question ${String(k)} code example`,
+    /** copy:review.explanationCodeLabel; numbered only when count > 1. */
+    explanationCodeLabel: (k: number, index: number, count: number): string =>
+      count > 1
+        ? `Question ${String(k)} explanation code example ${String(index)} of ${String(count)}`
+        : `Question ${String(k)} explanation code example`,
   },
 } as const;

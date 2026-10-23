@@ -2,7 +2,7 @@
  * App shell (T-08, issue #28; views.md §0): skip link, header with the brand,
  * `<main>` focus target, hash routes, bank loading state and error boundary.
  * T-12 adds the quiz session reducer, the Question view and Exit; T-15 the
- * Results route.
+ * Results route; T-38 Review answers and Retry missed (US-5).
  */
 import {
   useCallback,
@@ -26,7 +26,12 @@ import {
 } from "./bankState";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { parseRoute, routeHref, routeKey, type Route } from "./router";
-import { sessionReducer, type SessionState } from "./session";
+import {
+  buildRetryQuiz,
+  retryAvailability,
+  sessionReducer,
+  type SessionState,
+} from "./session";
 import { Landing } from "../views/Landing/Landing";
 import { Question } from "../views/Question/Question";
 import { Results } from "../views/Results/Results";
@@ -167,6 +172,18 @@ export function App({ bankPromise, reloadBank }: AppProps) {
     // it ever does, leave for Landing rather than keep stale results.
     if (!beginQuiz(session.quiz.scope, true)) exitQuiz();
   };
+  // Retry missed (US-5.4, views.md §8.4): like Try again, but a quiz of the
+  // finished run's missed questions still in the bank, original order,
+  // seeded option shuffle; replaces `#/results` with `#/quiz`. Returns
+  // false (Results then shows the "nothing to retry" notice) if none remain.
+  const retryMissed = (): boolean => {
+    if (session?.phase !== "finished" || bank.status !== "ready") return false;
+    const result = buildRetryQuiz(bank.bank, session, randomSeed());
+    if (!result.ok) return false;
+    dispatchSession({ type: "started", quiz: result.quiz });
+    window.location.replace(QUIZ_HREF);
+    return true;
+  };
   useEffect(() => {
     const onHashChange = (event: HashChangeEvent) => {
       const from = routeOfUrl(event.oldURL).name;
@@ -263,6 +280,8 @@ export function App({ bankPromise, reloadBank }: AppProps) {
             topics={bank.bank.topics}
             onTryAgain={tryAgain}
             onChooseAnother={exitQuiz}
+            retry={retryAvailability(bank.bank, session)}
+            onRetryMissed={retryMissed}
           />
         ) : null;
       break;

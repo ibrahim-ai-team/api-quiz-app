@@ -504,6 +504,192 @@ describe("T-15 results route (US-4, views.md §4)", () => {
   });
 });
 
+/** Answers the current question (True = correct in the test banks). */
+function answer(correct: boolean, last: boolean): void {
+  fireEvent.click(
+    screen.getByRole("radio", { name: correct ? "True" : "False" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: strings.question.submit }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: last ? strings.feedback.seeResults : strings.feedback.next,
+    }),
+  );
+}
+
+function currentQuestionId(): string | null {
+  return (
+    main()
+      .querySelector("[data-question-id]")
+      ?.getAttribute("data-question-id") ?? null
+  );
+}
+
+async function expectRetryQuestion(k: number, n: number): Promise<void> {
+  await waitFor(() => {
+    expect(window.location.hash).toBe("#/quiz");
+    expect(h1().textContent).toBe(strings.question.heading(k, n));
+    expect(document.activeElement).toBe(h1());
+  });
+  expect(screen.getByText(strings.question.retryLabel)).toBeTruthy();
+}
+
+describe("T-38 Review answers and Retry missed in the app (US-5, views.md §8)", () => {
+  const topicName = TEST_BANK.topics[0]?.name ?? "";
+
+  it("T-US5-1 the Review disclosure starts collapsed on every Results view", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    const toggle = screen.getByRole("button", { name: strings.review.toggle });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.tryAgain }),
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+    });
+    finishQuiz();
+    await expectResultsFocused();
+    expect(
+      screen
+        .getByRole("button", { name: strings.review.toggle })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+  });
+
+  it("T-US5-3 no Retry button after a perfect run", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(screen.queryByRole("button", { name: /^Retry/ })).toBe(null);
+  });
+
+  it("T-US5-4/5 N = 1: retry replaces #/results, labels the quiz, retry results repeat, Start a full quiz", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    answer(false, true);
+    await expectResultsFocused();
+    const before = window.history.length;
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    expect(window.history.length).toBe(before);
+    expect(document.title).toBe(strings.title.questionRetry(1, 1, topicName));
+    expect(screen.queryByRole("radio", { checked: true })).toBe(null);
+
+    // Missed again: retry results with the retry's own misses (repeatable).
+    answer(false, true);
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/results");
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(document.title).toBe(strings.title.resultsRetry(topicName));
+    expect(main().textContent).toContain(strings.results.score(0, 1));
+    expect(screen.queryByText(strings.results.retryNote)).toBe(null);
+    expect(
+      screen.queryByRole("button", { name: strings.results.tryAgain }),
+    ).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    expect(window.history.length).toBe(before);
+
+    // Correct this time: nothing left to retry; Start a full quiz.
+    answer(true, true);
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+    });
+    expect(screen.queryByRole("button", { name: /^Retry/ })).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.startFull }),
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(screen.queryByText(strings.question.retryLabel)).toBe(null);
+    expect(document.title).toBe(strings.title.question(1, 1, topicName));
+    expect(window.history.length).toBe(before);
+    finishQuiz();
+    await expectResultsFocused();
+  });
+
+  it("T-US5-4 the retry quiz holds exactly the missed questions in their original order", async () => {
+    const base = TEST_BANK.questions[0];
+    if (base === undefined) throw new Error("no test question");
+    const bank = {
+      ...TEST_BANK,
+      questions: [1, 2, 3, 4].map((n) => ({
+        ...base,
+        id: `q-${String(n)}`,
+        prompt: `Prompt ${String(n)}`,
+      })),
+    };
+    renderApp(Promise.resolve({ ok: true, bank }));
+    await flush();
+    fireEvent.click(screen.getByRole("radio"));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.start }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 4));
+    });
+    const played: (string | null)[] = [];
+    for (let i = 0; i < 4; i += 1) {
+      played.push(currentQuestionId());
+      answer(i % 2 === 1, i === 3);
+    }
+    await expectResultsFocused();
+    const missed = [played[0], played[2]];
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(2) }),
+    );
+    await expectRetryQuestion(1, 2);
+    const retried = [currentQuestionId()];
+    answer(true, false);
+    await expectRetryQuestion(2, 2);
+    retried.push(currentQuestionId());
+    expect(retried).toEqual(missed);
+  });
+
+  it("Choose another topic from retry results clears the session", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    answer(false, true);
+    await expectResultsFocused();
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    answer(true, true);
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.chooseAnother }),
+    );
+    await expectLandingFocused();
+    navigate("#/results");
+    await expectLandingFocused();
+  });
+});
+
 describe("T-US10-6 per-view title and focus", () => {
   it.each([
     ["", strings.landing.heading, strings.title.landing],

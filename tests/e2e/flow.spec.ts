@@ -237,13 +237,23 @@ test.describe("T-16 journey J1", () => {
 
     await playTopicCByKeyboard(page, browserName);
 
-    // Results: Tab order Try again, Choose another topic; Shift+Tab back.
+    // Results: Tab order Review answers (collapsed), Try again, Retry 1
+    // missed question (1 of 3 was wrong), Choose another topic (T-38,
+    // views.md §8.1 R2, §8.4); Shift+Tab back.
+    await page.keyboard.press("Tab");
+    await expect(button(page, strings.review.toggle)).toBeFocused();
+    await expectVisibleFocusIndicator(page);
     await page.keyboard.press("Tab");
     await expect(button(page, strings.results.tryAgain)).toBeFocused();
     await expectVisibleFocusIndicator(page);
     await page.keyboard.press("Tab");
+    await expect(button(page, strings.results.retryMissed(1))).toBeFocused();
+    await expectVisibleFocusIndicator(page);
+    await page.keyboard.press("Tab");
     await expect(button(page, strings.results.chooseAnother)).toBeFocused();
     await expectVisibleFocusIndicator(page);
+    await page.keyboard.press("Shift+Tab");
+    await expect(button(page, strings.results.retryMissed(1))).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await expect(button(page, strings.results.tryAgain)).toBeFocused();
     await page.keyboard.press("Space");
@@ -251,7 +261,8 @@ test.describe("T-16 journey J1", () => {
     await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
 
     await playTopicCByKeyboard(page, browserName);
-    await tabUntil(page, "Tab", `button "${strings.results.chooseAnother}"`, 3);
+    // T-38: Review answers and Retry 1 missed question come first.
+    await tabUntil(page, "Tab", `button "${strings.results.chooseAnother}"`, 4);
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/#\/$/);
     await expect(h1(page, strings.landing.heading)).toBeFocused();
@@ -416,6 +427,9 @@ test.describe("T-16 focus order and no keyboard trap (US-10.2)", () => {
     const results = [
       SKIP,
       BRAND,
+      // T-38 (views.md §8.1 R2): the collapsed Review toggle precedes the
+      // buttons; all answers correct, so there is no Retry button (US-5.3).
+      `button "${strings.review.toggle}"`,
       `button "${strings.results.tryAgain}"`,
       `button "${strings.results.chooseAnother}"`,
     ];

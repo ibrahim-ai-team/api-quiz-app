@@ -86,7 +86,12 @@ export function Question({
     quiz.scope.kind === "mixed"
       ? strings.landing.mixedLabel
       : topicName(topics, quiz.scope.topicId);
-  useDocumentTitle(strings.title.question(current, total, scopeName));
+  const isRetry = quiz.mode === "retry-missed";
+  useDocumentTitle(
+    isRetry
+      ? strings.title.questionRetry(current, total, scopeName)
+      : strings.title.question(current, total, scopeName),
+  );
 
   const headingRef = useRef<HTMLHeadingElement>(null);
   const nextRef = useRef<HTMLButtonElement>(null);
@@ -173,6 +178,10 @@ export function Question({
       <h1 ref={headingRef} tabIndex={-1} className={common.heading}>
         {strings.question.heading(current, total)}
       </h1>
+      {/* Retry quiz (US-5, views.md §8.4): the h1 itself is unchanged. */}
+      {isRetry && (
+        <p className={styles.retryLabel}>{strings.question.retryLabel}</p>
+      )}
       {/* An unknown topic id omits the line instead of showing "Topic: ". */}
       {questionTopic !== null && (
         <p className={styles.topic}>{strings.question.topic(questionTopic)}</p>
