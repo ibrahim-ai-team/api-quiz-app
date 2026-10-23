@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "media-type-case-insensitive-parts",
+      "topic": "api-versioning",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "A client selects API version 2 with `Accept: Application/Vnd.Example+JSON; Version=2`. Under RFC 9110's media type rules, which parts of this media type are case-insensitive?",
+      "options": [
+        { "id": "a", "text": "All of it, including every parameter value" },
+        {
+          "id": "b",
+          "text": "None of it; media types are compared octet by octet"
+        },
+        {
+          "id": "c",
+          "text": "Only the type and subtype; parameter names are case-sensitive"
+        },
+        {
+          "id": "d",
+          "text": "The type, subtype and parameter name; whether a parameter value is case-sensitive depends on that parameter's semantics"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 9110 Section 8.3.1 states that the type and subtype tokens are case-insensitive, and Section 5.6.6 (which media type parameters follow) states that parameter names are case-insensitive. For parameter values, both sections say they might or might not be case-sensitive, depending on the semantics of the parameter name. So neither 'everything' nor 'nothing' is right, and parameter names are not case-sensitive.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.3.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "accept-most-specific-media-range-weight",
+      "topic": "api-versioning",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A client sends `Accept: application/*;q=0.2, application/json;q=0.5, application/json;version=2`. Under RFC 9110, what quality value is associated with `application/json;version=2`?",
+      "options": [
+        { "id": "a", "text": "0.5" },
+        { "id": "b", "text": "1" },
+        { "id": "c", "text": "0.2" },
+        { "id": "d", "text": "0.35, the average of the matching ranges" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 says the quality value for a type is found from the matching media range with the highest precedence, and the most specific reference has precedence. Here that is `application/json;version=2`, which has no `q` parameter, so it gets the default weight of 1. The less specific ranges (0.5 and 0.2) are overridden, and RFC 9110 does not average weights.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-12.5.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "media-type-parameter-named-q-disallowed",
+      "topic": "api-versioning",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "An API team plans to signal the version through a media type parameter named `q`, as in `Accept: application/vnd.example+json;q=2`. What does RFC 9110 say about this?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It is fine, because each media type defines its own parameters"
+        },
+        {
+          "id": "b",
+          "text": "`q` is reserved only in `Accept-Encoding`, not in `Accept`"
+        },
+        {
+          "id": "c",
+          "text": "The media type registry disallows parameters named `q`, and recipients SHOULD process any parameter named `q` as a weight"
+        },
+        {
+          "id": "d",
+          "text": "It works as long as the value is quoted, as in `q=\"2\"`"
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 says using the `q` parameter name for content negotiation would interfere with any media type parameter of the same name, so the media type registry disallows parameters named `q`. It also says recipients SHOULD process any parameter named `q` as weight, regardless of parameter ordering. Quoting does not help, because RFC 9110 Section 5.6.6 says quoted and unquoted parameter values are equivalent.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-12.5.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "vary-custom-version-request-header",
+      "topic": "api-versioning",
+      "difficulty": "medium",
+      "type": "true-false",
+      "prompt": "An API chooses the response representation from a custom `Api-Version` request header. Because `Api-Version` is not defined in RFC 9110, it cannot be listed in a `Vary` response header field.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "RFC 9110 defines `Vary` as listing the request field names (the selecting header fields) that might have had a role in selecting the representation. It states that potential selecting header fields are not limited to fields defined by this specification. It also says an origin server SHOULD generate `Vary` on a cacheable response when it wishes that response to be selectively reused.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-12.5.5",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "status-308-permanent-move-keeps-post",
+      "topic": "api-versioning",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "`/v1/orders` has been permanently replaced by `/v2/orders`. Clients POST to it, and the server wants user agents that follow the redirect automatically to keep using POST. Which status code does RFC 9110 point to for this?",
+      "options": [
+        { "id": "a", "text": "308 Permanent Redirect" },
+        { "id": "b", "text": "301 Moved Permanently" },
+        { "id": "c", "text": "307 Temporary Redirect" },
+        { "id": "d", "text": "302 Found" }
+      ],
+      "correct": "a",
+      "explanation": "RFC 9110 says 307 and 308 were added to unambiguously indicate method-preserving redirects, while 301 and 302 were adjusted to allow a POST to be redirected as GET; its 301 definition adds that 308 can be used instead if changing POST to GET is undesired. 308 means the target resource has a new permanent URI. 307 and 302 describe temporary relocation, where the client ought to keep using the original URI.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "content-location-negotiated-representation",
+      "topic": "api-versioning",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "`GET /reports/7` with `Accept: application/vnd.example.v2+json` returns 200 OK with `Content-Location: /reports/7/v2`. According to RFC 9110, what does this `Content-Location` indicate?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Clients must send future requests to `/reports/7/v2`, as with a 301"
+        },
+        {
+          "id": "b",
+          "text": "`/reports/7/v2` replaces the target URI of this request"
+        },
+        {
+          "id": "c",
+          "text": "`/reports/7` is subject to content negotiation, and `/reports/7/v2` is a more specific identifier for the selected representation"
+        },
+        {
+          "id": "d",
+          "text": "The content is a report on the request's status, kept at `/reports/7/v2`"
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 says that when a GET or HEAD response's `Content-Location` differs from the target URI, the target URI refers to a resource subject to content negotiation, and the field value is a more specific identifier for the selected representation. It also says `Content-Location` is not a replacement for the target URI but representation metadata, so it is neither a redirect nor a new target. The 'status report' reading applies to responses to state-changing requests, not to GET.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-8.7",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "unrecognized-header-fields-ignored",
+      "topic": "api-versioning",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "A new API release adds a response header field that older clients do not recognize. Under RFC 9110, a client (a recipient that is not a proxy) SHOULD ignore such an unrecognized header field.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "true",
+      "explanation": "RFC 9110 states that a proxy MUST forward unrecognized header fields unless the field name is listed in `Connection` or the proxy is specifically configured to block or otherwise transform such fields, and that other recipients SHOULD ignore unrecognized header and trailer fields. The RFC says this lets HTTP's functionality be extended without updating or removing deployed intermediaries.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-5.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "link-extension-relation-type-absolute-uri",
+      "topic": "api-versioning",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "An API wants to link a v1 resource to its v2 counterpart using its own relation type, which it has not registered. Under RFC 8288, how must that extension relation type appear in a `Link` header field?",
+      "options": [
+        {
+          "id": "a",
+          "text": "As a relative reference such as `rel=\"/rels/successor\"`, resolved against the target URI"
+        },
+        {
+          "id": "b",
+          "text": "As an absolute URI such as `rel=\"https://api.example.com/rels/successor\"`, quoted when it contains characters not allowed in tokens"
+        },
+        {
+          "id": "c",
+          "text": "As a token with an `x-` prefix, such as `rel=x-successor`"
+        },
+        { "id": "d", "text": "In the `anchor` parameter instead of `rel`" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 8288 says applications that don't wish to register a relation type can use an extension relation type, which is a URI that uniquely identifies it. In `Link` header fields, extension relation types are REQUIRED to be absolute URIs and MUST be quoted when they contain characters not allowed in tokens, such as `;` or `,`. Relative references are therefore not allowed, RFC 8288 defines no `x-` convention, and the `anchor` parameter overrides the link context (Section 3.2) rather than conveying the relation type, which is carried in `rel`.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc8288.html#section-3.3",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    },
+    {
+      "id": "link-type-attribute-is-only-hint",
+      "topic": "api-versioning",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A v1 response carries `Link: </v2/orders/9>; rel=\"alternate\"; type=\"application/vnd.example.v2+json\"`. Following the link returns `Content-Type: application/json`. How does RFC 8288 say the `type` attribute relates to that response?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It overrides the `Content-Type` of the followed response"
+        },
+        {
+          "id": "b",
+          "text": "The mismatch makes the followed response invalid, so it must be discarded"
+        },
+        {
+          "id": "c",
+          "text": "The server MUST return exactly the media type advertised in `type`"
+        },
+        {
+          "id": "d",
+          "text": "It is only a hint about the expected media type and does not override the response's `Content-Type`"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 8288 says the `type` attribute, when present, is a hint indicating what the media type of the result of dereferencing the link should be. It notes that this is only a hint and does not override the `Content-Type` header field of an HTTP response obtained by actually following the link. RFC 8288 places no MUST on the server to match it and does not say a mismatch invalidates the response.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc8288.html#section-3.4.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-28-R01)"
+    }
+  ]
+}
