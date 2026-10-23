@@ -10,3 +10,4 @@ export {
 export { LocalStorageStore } from "./LocalStorageStore";
 export { MemoryStore } from "./MemoryStore";
 export { createProgressStore } from "./createProgressStore";
+export * from "./codec";

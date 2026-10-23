@@ -43,7 +43,12 @@ export interface Quiz {
    */
   readonly scope: QuizScope;
   readonly mode: QuizMode;
-  /** `contentVersion` of the bank the quiz was built from. */
+  /**
+   * `contentVersion` of the bank the quiz was built from. After a restore it
+   * is the SAVED value, i.e. untrusted storage data (SEC-R13 finding 2): it
+   * may be compared with `bank.contentVersion`, but report links, titles and
+   * any other output must use `bank.contentVersion`, never this field.
+   */
   readonly contentVersion: string;
   /** Unsigned 32-bit seed that reproduces this quiz from the same bank. */
   readonly seed: number;
@@ -127,3 +132,72 @@ export type QuizAction =
   | { readonly type: "select"; readonly optionId: string }
   | { readonly type: "submit" }
   | { readonly type: "next" };
+
+/*
+ * Saved progress (T-41; US-6, US-6.8; tech-lead proposal S3-TL01). Plain data
+ * that `src/storage` encodes as JSON. Only IDs, scores, versions and
+ * timestamps are stored: no question text, no `correct` flags (they are
+ * recomputed from the current bank on restore). Timestamps are epoch
+ * milliseconds (integers), not ISO strings: smaller and trivially validated.
+ */
+
+/** One locked answer as saved: question ID `q`, chosen option ID `o`. */
+export interface SavedAnswer {
+  readonly q: string;
+  readonly o: string;
+}
+
+/**
+ * An in-progress quiz as saved under `apiquiz:v1:session`. Built by
+ * `toSavedSession` and rebuilt by `restoreQuiz` (`src/domain/restore.ts`).
+ * `optionOrder[i]` is the display order of the options of `questionIds[i]`;
+ * `answers[i]` belongs to `questionIds[i]`.
+ */
+export interface SavedSession {
+  readonly schemaVersion: 1;
+  readonly contentVersion: string;
+  readonly mode: QuizMode;
+  readonly scope: QuizScope;
+  readonly seed: number;
+  readonly questionIds: readonly string[];
+  readonly optionOrder: readonly (readonly string[])[];
+  readonly answers: readonly SavedAnswer[];
+  /** Current question index, 0-based. */
+  readonly index: number;
+  /** Epoch milliseconds when the session was saved. */
+  readonly savedAt: number;
+}
+
+/** One best score (US-6.1): `percent` is `percentHalfUp(correct, total)`. */
+export interface BestScore {
+  readonly percent: number;
+  readonly correct: number;
+  readonly total: number;
+  /** Epoch milliseconds when the score was achieved. */
+  readonly at: number;
+}
+
+/**
+ * Best scores keyed by topic ID or `"mixed"`, as saved under
+ * `apiquiz:v1:best`. Decoded values are null-prototype objects; look keys up
+ * with `Object.hasOwn`.
+ */
+export interface SavedBest {
+  readonly schemaVersion: 1;
+  readonly scores: Readonly<Record<string, BestScore>>;
+}
+
+/**
+ * `stale`: the saved session no longer matches the bank (a question, option
+ * or topic is gone, an option set changed, or, for the same
+ * `contentVersion`, the order does not reproduce from the seed), or its
+ * index/answers are inconsistent. The caller discards it (FR-20).
+ */
+export type RestoreQuizResult =
+  | {
+      readonly ok: true;
+      readonly session: QuizSession;
+      /** True when the saved `contentVersion` differs from the bank's (A4). */
+      readonly contentChanged: boolean;
+    }
+  | { readonly ok: false; readonly reason: "stale" };
