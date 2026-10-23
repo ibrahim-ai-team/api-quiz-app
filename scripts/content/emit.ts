@@ -11,7 +11,12 @@
  *   emitted content changes.
  */
 import { createHash } from "node:crypto";
-import type { Bank, BankQuestion, BankTopic } from "../../src/content/types.ts";
+import type {
+  Bank,
+  BankQuestion,
+  BankTopic,
+  LandingReserve,
+} from "../../src/content/types.ts";
 import { CONTENT_SCHEMA_VERSION, type Question, type Topic } from "./schema.ts";
 
 export type BuildMode = "development" | "production";
@@ -102,4 +107,26 @@ export function buildBank(
 /** File contents of the emitted bank (compact JSON plus a newline). */
 export function serializeBank(bank: Bank): string {
   return `${JSON.stringify(bank)}\n`;
+}
+
+/**
+ * Landing loading reserve (T-35): the Landing view imports it as a module so
+ * the reserve holds as many rows, with the same names, as the loaded group.
+ */
+export function buildLandingReserve(bank: Bank): LandingReserve {
+  const withQuestions = new Set(bank.questions.map((q) => q.topic));
+  const eligible = bank.topics.filter((topic) => withQuestions.has(topic.id));
+  return {
+    eligibleTopicCount: eligible.length,
+    topicNames: eligible.map((topic) => topic.name),
+    topicIds: eligible.map((topic) => topic.id),
+  };
+}
+
+/** File name of the reserve data, written next to the bank. */
+export const LANDING_RESERVE_FILE = "landing-reserve.json";
+
+/** File contents of the reserve data (compact JSON plus a newline). */
+export function serializeLandingReserve(reserve: LandingReserve): string {
+  return `${JSON.stringify(reserve)}\n`;
 }

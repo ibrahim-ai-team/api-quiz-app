@@ -22,24 +22,26 @@ CI (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `mai
 
 Commands (Node 22, see `.nvmrc`):
 
-| Command                                   | Purpose                                                                            |
-| ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| `npm ci`                                  | Install the exact dependency versions from `package-lock.json`                     |
-| `npm run dev`                             | `content:build:dev` (keeps drafts), then the Vite dev server (no CSP), port 5173   |
-| `npm run build`                           | `content:build`, `tsc -b`, `vite build` to `dist/`; the CSP `<meta>` is added here |
-| `npm run preview`                         | Serve the build at `http://localhost:4173/api-quiz-app/`                           |
-| `npm run check`                           | `lint`, `lint:fixtures`, `typecheck`, `content:validate` and `test`                |
-| `npm run lint`                            | ESLint with `--max-warnings 0`                                                     |
-| `npm run lint:fixtures`                   | Asserts that the negative fixtures in `tests/lint-fixtures/` fail lint             |
-| `npm run typecheck`                       | `tsc -b` over the app, tooling and test projects                                   |
-| `npm run test`                            | Vitest unit tests                                                                  |
-| `npm run format` / `npm run format:check` | Prettier write / check                                                             |
-| `npm run content:validate`                | Validates the question bank; `content:validate:release` adds US-8.1 thresholds     |
-| `npm run content:build`                   | Writes the bank to `src/content/generated/`, no drafts; `:dev` keeps drafts        |
-| `npm run e2e`                             | Playwright PR set on the production build; `E2E_FULL=1` adds Firefox and devices   |
-| `npm run e2e:chromium`                    | Only the Chromium projects (for machines without WebKit)                           |
-| `npm run e2e:install`                     | Install the Playwright Chromium and WebKit browsers with system dependencies       |
-| `npm run e2e:fixtures`                    | Validate E2E fixture banks with the content validator (drift guard)                |
+| Command                                   | Purpose                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `npm ci`                                  | Install the exact dependency versions from `package-lock.json`                                  |
+| `npm run dev`                             | `content:build:dev` (keeps drafts), then the Vite dev server (no CSP), port 5173                |
+| `npm run build`                           | `content:build`, `tsc -b`, `vite build` to `dist/`; the CSP `<meta>` is added here              |
+| `npm run preview`                         | Serve the build at `http://localhost:4173/api-quiz-app/`                                        |
+| `npm run check`                           | `lint`, `lint:fixtures`, `typecheck`, `content:validate` and `test`                             |
+| `npm run lint`                            | `content:build`, then ESLint with `--max-warnings 0`                                            |
+| `npm run lint:fixtures`                   | Asserts that the negative fixtures in `tests/lint-fixtures/` fail lint                          |
+| `npm run typecheck`                       | `content:build`, then `tsc -b` over the app, tooling and test projects                          |
+| `npm run test`                            | `content:build`, then Vitest unit tests                                                         |
+| `npm run format` / `npm run format:check` | Prettier write / check                                                                          |
+| `npm run content:validate`                | Validates the question bank; `content:validate:release` adds US-8.1 thresholds                  |
+| `npm run content:build`                   | Writes the bank and Landing reserve to `src/content/generated/`, no drafts; `:dev` keeps drafts |
+| `npm run e2e`                             | Playwright PR set on the production build; `E2E_FULL=1` adds Firefox and devices                |
+| `npm run e2e:chromium`                    | Only the Chromium projects (for machines without WebKit)                                        |
+| `npm run e2e:install`                     | Install the Playwright Chromium and WebKit browsers with system dependencies                    |
+| `npm run e2e:fixtures`                    | Validate E2E fixture banks with the content validator (drift guard)                             |
+
+`lint`, `typecheck` and `test` regenerate `src/content/generated/` in production mode (no drafts). If `npm run dev` is running, its drafts disappear until you restart it.
 
 ## Testing
 

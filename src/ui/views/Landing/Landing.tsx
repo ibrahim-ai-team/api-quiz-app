@@ -6,6 +6,7 @@
  * is only compared against bank ids and never rendered (security I-3).
  */
 import { useId, useRef, useState } from "react";
+import { landingReserve } from "../../../content/landingReserve";
 import { eligibleTopics, type QuizScope } from "../../../domain";
 import type { BankState } from "../../app/bankState";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
@@ -15,7 +16,7 @@ import common from "../../components/common.module.css";
 import { generalReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import styles from "./Landing.module.css";
-import { RESERVE_TOPICS } from "./reserve";
+import { reserveChoices, reserveHasSelection, type Choice } from "./reserve";
 
 export interface LandingProps {
   readonly bank: BankState;
@@ -28,36 +29,8 @@ export interface LandingProps {
   readonly onStart: (scope: QuizScope) => boolean;
 }
 
-interface Choice {
-  readonly key: string;
-  readonly scope: QuizScope;
-  readonly name: string;
-  readonly count: number;
-  readonly description?: string;
-}
-
-/**
- * Stand-in rows for the loading reserve (T-34): the shipped bank shows 3
- * topics plus Mixed. Names are one non-breaking space, so each row is one
- * line, like a short topic name. A unit test keeps `RESERVE_TOPICS` equal to
- * the shipped topic count; a mismatch would move later content by the
- * difference only.
- */
-const RESERVE_CHOICES: readonly Choice[] = [
-  ...Array.from({ length: RESERVE_TOPICS }, (_, index) => ({
-    key: `reserve-${String(index)}`,
-    scope: { kind: "topic", topicId: `reserve-${String(index)}` } as const,
-    name: "\u00a0",
-    count: 8,
-  })),
-  {
-    key: "reserve-mixed",
-    scope: { kind: "mixed" },
-    name: strings.landing.mixedLabel,
-    count: RESERVE_TOPICS * 8,
-    description: strings.landing.mixedDescription,
-  },
-];
+/** Stand-in rows for the loading reserve (T-34, T-35): real names and count. */
+const RESERVE_CHOICES: readonly Choice[] = reserveChoices(landingReserve);
 
 function sameScope(a: QuizScope | null, b: QuizScope): boolean {
   if (a?.kind !== b.kind) return false;
@@ -140,7 +113,9 @@ export function Landing({
    */
   const topicGroup = (list: readonly Choice[], placeholder: boolean) => {
     const prefix = placeholder ? `${id}-reserve` : id;
-    const showHint = placeholder ? selected === null : selection === null;
+    const showHint = placeholder
+      ? !reserveHasSelection(landingReserve, selected)
+      : selection === null;
     return (
       <>
         <fieldset className={styles.group} disabled={placeholder || undefined}>

@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "questions": [
+    {
+      "id": "rate-limit-429-too-many-requests",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "Which status code does RFC 6585 define for a user who has sent too many requests in a given amount of time?",
+      "options": [
+        { "id": "a", "text": "503 Service Unavailable" },
+        { "id": "b", "text": "413 Content Too Large" },
+        { "id": "c", "text": "429 Too Many Requests" },
+        { "id": "d", "text": "431 Request Header Fields Too Large" }
+      ],
+      "correct": "c",
+      "explanation": "RFC 6585 defines 429 Too Many Requests for a user who has sent too many requests in a given amount of time (\"rate limiting\"); the response SHOULD explain the condition and MAY include a `Retry-After` header. 503 (RFC 9110) means the server itself is temporarily overloaded or under maintenance, 413 means the request content is too large, and 431 means the request header fields are too large.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc6585.html#section-4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "rate-limit-429-not-cacheable",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "easy",
+      "type": "true-false",
+      "prompt": "RFC 6585 allows a cache to store a 429 Too Many Requests response and reuse it for later requests.",
+      "options": [
+        { "id": "true", "text": "True" },
+        { "id": "false", "text": "False" }
+      ],
+      "correct": "false",
+      "explanation": "RFC 6585 Section 4 states that responses with the 429 status code MUST NOT be stored by a cache, so a cache is not allowed to store a 429 response and reuse it for later requests.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc6585.html#section-4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "retry-after-delay-seconds-format",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "easy",
+      "type": "single-choice",
+      "prompt": "A rate-limited API wants to tell clients to wait two minutes. Which of these is a valid `Retry-After` field according to RFC 9110?",
+      "options": [
+        { "id": "a", "text": "Retry-After: 2 minutes" },
+        { "id": "b", "text": "Retry-After: 120" },
+        { "id": "c", "text": "Retry-After: 1.5e2" },
+        { "id": "d", "text": "Retry-After: -120" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 9110 defines `Retry-After` as either an HTTP-date or delay-seconds, and delay-seconds is a non-negative decimal integer number of seconds (1*DIGIT), so `120` is valid. Units such as \"minutes\", exponent or decimal notation, and negative numbers do not match that grammar.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "rate-limit-429-counting-unspecified",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "What does RFC 6585 say about how an origin server sending 429 Too Many Requests identifies the user and counts requests?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It must count requests per client IP address"
+        },
+        {
+          "id": "b",
+          "text": "It must count requests separately for each resource"
+        },
+        {
+          "id": "c",
+          "text": "It must identify the user from the `Authorization` header field"
+        },
+        {
+          "id": "d",
+          "text": "The RFC does not define either; it gives per-resource, server-wide or multi-server counting as examples"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 6585 explicitly does not define how the origin server identifies the user or counts requests. It lists counting per resource, across the entire server or among a set of servers as examples, and identifying the user by authentication credentials or a stateful cookie. None of these is a requirement, so options that say \"must\" misstate the RFC.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc6585.html#section-4",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "link-header-multiple-links-comma",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "A paginated response carries `Link: </items?page=3>; rel=\"next\", </items?page=1>; rel=\"first\"`. According to RFC 8288, what does this field mean?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It is equivalent to two separate `Link` header field lines, one for each link"
+        },
+        {
+          "id": "b",
+          "text": "It is invalid, because a `Link` field can carry only one link"
+        },
+        {
+          "id": "c",
+          "text": "Only the first link is processed; anything after the comma is ignored"
+        },
+        {
+          "id": "d",
+          "text": "The second URI becomes a target attribute of the first link"
+        }
+      ],
+      "correct": "a",
+      "explanation": "RFC 8288 defines the `Link` field value as a comma-separated list of link-values (`Link = #link-value`), and its examples show one field with two comma-separated links as equivalent to two separate `Link` fields. Multiple links in one field are therefore valid, and this field conveys both the `next` and the `first` link. Target attributes are `;`-separated parameters inside a single link-value, not further URIs.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc8288.html#section-3.5",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "uri-query-case-sensitive-comparison",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "medium",
+      "type": "single-choice",
+      "prompt": "Under RFC 9110's normalization rules for http(s) URIs, are `https://API.example.com/orders?status=open` and `https://api.example.com/orders?status=OPEN` equivalent?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Yes, because every URI component is compared case-insensitively"
+        },
+        {
+          "id": "b",
+          "text": "Yes, because the query component does not help identify the target resource"
+        },
+        {
+          "id": "c",
+          "text": "No; the host is case-insensitive, but the query is compared case-sensitively"
+        },
+        {
+          "id": "d",
+          "text": "No, because the host component is compared case-sensitively"
+        }
+      ],
+      "correct": "c",
+      "explanation": "RFC 9110 Section 4.2.3 says the scheme and host are case-insensitive and all other components are compared in a case-sensitive manner, so the query components `status=open` and `status=OPEN` are not equivalent. Section 4.2.2 says the path and optional query component identify the target resource, so the query is not ignored. Different host casing alone would not make the URIs differ.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9110.html#section-4.2.3",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "link-header-relative-target-resolution",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A response to `GET https://api.example.com/v1/orders?page=2` contains `Link: </v1/orders?page=3>; rel=\"next\"`, and its HTML body declares a different base URI. How does RFC 8288 say the relative link target is handled?",
+      "options": [
+        {
+          "id": "a",
+          "text": "It is invalid, because Link targets must be absolute URIs"
+        },
+        {
+          "id": "b",
+          "text": "It is resolved against the base URI declared in the body"
+        },
+        {
+          "id": "c",
+          "text": "It is an opaque token that clients must not resolve"
+        },
+        {
+          "id": "d",
+          "text": "Parsers MUST resolve it per RFC 3986 Section 5; a base IRI in the message content is not applied"
+        }
+      ],
+      "correct": "d",
+      "explanation": "RFC 8288 Section 3.1 says that if the target URI-Reference is relative, parsers MUST resolve it as per RFC 3986 Section 5, and any base IRI in the message's content is not applied. Relative targets are therefore valid and are not resolved against the body's base. The absolute-URI requirement in Section 3.3 applies to extension relation types, not to link targets.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc8288.html#section-3.1",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    },
+    {
+      "id": "link-header-duplicate-rel-ignored",
+      "topic": "pagination-filtering-rate-limiting",
+      "difficulty": "hard",
+      "type": "single-choice",
+      "prompt": "A server sends `Link: </items?page=9>; rel=\"last\"; rel=\"next\"`. According to RFC 8288, how must a parser treat the two `rel` parameters?",
+      "options": [
+        {
+          "id": "a",
+          "text": "As two links to the same target, one with each relation type"
+        },
+        {
+          "id": "b",
+          "text": "Only `rel=\"last\"` counts; the second `rel` occurrence is ignored"
+        },
+        {
+          "id": "c",
+          "text": "The later occurrence wins, so the link's relation type is `next`"
+        },
+        { "id": "d", "text": "The whole link-value is discarded as invalid" }
+      ],
+      "correct": "b",
+      "explanation": "RFC 8288 says the `rel` parameter MUST be present but MUST NOT appear more than once in a link-value, and occurrences after the first MUST be ignored by parsers, so only `last` applies. To give one target several relation types, a sender puts them in a single space-separated value such as `rel=\"last next\"`, which establishes multiple links sharing the same context, target and attributes.",
+      "sourceUrl": "https://www.rfc-editor.org/rfc/rfc8288.html#section-3.3",
+      "reviewStatus": "reviewed",
+      "reviewedBy": "product-owner-agent (T-29-R01)"
+    }
+  ]
+}
