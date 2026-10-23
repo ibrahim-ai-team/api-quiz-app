@@ -130,9 +130,17 @@ jobs:
   e2e-shard:
     name: E2E shard ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
-    # Browser OS-dependency installation can be slow on GitHub-hosted runners.
-    # Keep enough headroom for setup plus the sharded E2E suite.
-    timeout-minutes: 35
+    # Playwright's own image already holds every browser and its OS packages,
+    # so no shard runs `playwright install --with-deps`. That apt step usually
+    # took about 40 s but sometimes stalled on the Ubuntu mirror for 20+ min
+    # and was cancelled (runs 39850615050 and 39855221361). The tag must match
+    # @playwright/test in package-lock.json; the first step checks it. Pinned
+    # by digest like the actions. --user 1001 is the runner user, so the
+    # checkout stays writable and Firefox does not run as root.
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+      options: --user 1001
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -157,12 +165,11 @@ jobs:
       - name: Validate E2E fixture banks (T-EC-US7-c drift guard)
         run: npm run e2e:fixtures
 
-      - name: Install Playwright browsers (Chromium, WebKit)
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Install Playwright Firefox (full set only)
-        if: env.E2E_FULL == '1'
-        run: npx playwright install --with-deps firefox
+      - name: Playwright image matches @playwright/test
+        run: |
+          locked=$(node -p 'require("./node_modules/@playwright/test/package.json").version')
+          echo "@playwright/test $locked, image v1.56.1"
+          [ "$locked" = "1.56.1" ] || { echo "::error::Update the container image in ci.yml to mcr.microsoft.com/playwright:v$locked-noble (with its digest)."; exit 1; }
 
       - name: E2E (Playwright, shard ${{ matrix.shard }}/4)
         run: npm run e2e -- --shard=${{ matrix.shard }}/4
