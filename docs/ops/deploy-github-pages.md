@@ -26,9 +26,8 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
 1. Check that CI is green on the `main` commit you want to publish: Actions > CI > the latest run on `main`. This covers E2E (Chromium and WebKit) and Lighthouse. **The deploy workflow does not repeat them and does not enforce this check**, so a commit whose CI failed could still be deployed. Do not skip this step.
 2. Go to Actions > **Deploy to GitHub Pages (manual)** > **Run workflow**.
 3. Leave **Use workflow from** set to `main`. Any other branch skips every job.
-4. Leave **accept_below_release_thresholds** unticked for a normal release.
-   - Until the bank reaches 60 reviewed questions over 8 topics (US-8.1), the build job stops at "Release content thresholds".
-   - Tick the box only as an explicit sponsor go/no-go to publish early. The run summary then records the override.
+4. The workflow has no inputs. The build job runs `npm run content:validate:release` and stops at "Release content thresholds" if the bank misses the release criteria (US-8.1: at least 60 reviewed questions over 8 topics, at least 5 per topic, at least 20% medium or hard; RC-1 to RC-4 in `docs/project-state.md`) or fails validation for any other reason.
+   - There is no override (sponsor decision SD-REL-03). To publish, fix the content on `main` through a pull request, then run a new deployment.
 5. The run has three jobs:
    - **Build and validate:** `npm ci`, `npm audit`, `npm run check`, the release-threshold gate, `npm run build`, size budgets, the CSP check, the reviewed-content check, and the subpath and artifact checks. It then uploads `dist/`.
    - **Deploy:** publishes the artifact. This is the only job with `pages: write` and `id-token: write`.
@@ -50,14 +49,14 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
   2. Open the last good run.
   3. Choose **Re-run all jobs**.
 
-  A re-run builds and publishes the same commit as that run, with the **same `accept_below_release_thresholds` value**: re-running an override run applies the override again. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
+  A re-run builds and publishes the same commit as that run and applies every gate again, including the release-threshold gate. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
 - **Bad commit on main:** revert it through a pull request, then run a new deployment.
 - **Emergency:** Settings > Pages > **Unpublish site**. Publishing again later needs a new manual run.
 
 ## 5. Security notes
 
 - The workflow has no `push`, `pull_request`, `release` or `schedule` trigger. It only runs on an explicit manual dispatch or a re-run by someone with write access to Actions, which can also be done through the API. No event publishes automatically.
-- Every run's summary records the release-threshold result, the override value, the commit and who started the run.
+- Every run's summary records the release-threshold result, the commit and who started the run. A threshold miss cannot be overridden at deploy time.
 - The default token is `contents: read`. Only the deploy job gets Pages write access and an OIDC token. The verify job has no permissions at all.
 - Every action is pinned by commit SHA, following the repository convention:
   - `actions/configure-pages` v6.0.0
