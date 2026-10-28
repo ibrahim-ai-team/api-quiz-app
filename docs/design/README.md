@@ -32,8 +32,10 @@
 | Question (§2) | `#/quiz` | US-2.1-2.9 | **T-12** (code box with **T-10**) |
 | Feedback (§3) | `#/quiz` (in place) | US-3.1-3.5 | **T-13** |
 | Results (§4) | `#/results` | US-4.1-4.5 | **T-15** (score data from T-14) |
+| Review answers, Retry missed (§8) | `#/results` (in place) | US-5.1-5.6 | US-5 tasks (#11) |
+| Best score, resume card, load notice, replace and reset confirmations (§9) | `#/`, `#/topic/<slug>` | US-6.1-6.8 | **T-42**, **T-43**, **T-44** (E2E T-45) |
 
-Reserved slots (layout space only, not specified here): US-6 resume banner and best scores on Landing, and US-5 Review / Retry missed on Results. T-16/T-17 verify the responsive and contrast rules end to end.
+US-5 (Review / Retry missed) is specified in views.md §8 and US-6 (best score, resume, reset) in §9. T-16/T-17 verify the responsive and contrast rules end to end.
 
 ## Assumptions (routine, reversible)
 
