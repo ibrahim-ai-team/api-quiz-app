@@ -49,14 +49,18 @@ ApiQuiz is a static single-page app built with Vite 8, React 19 and TypeScript. 
   2. Open the last good run.
   3. Choose **Re-run all jobs**.
 
-  A re-run builds and publishes the same commit as that run and applies every gate again, including the release-threshold gate. GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
+  A re-run builds and publishes the same commit as that run, using **that run's workflow file and dispatch inputs**, not the current `main`. It therefore applies today's gates only if the original run was started after the release-threshold override was removed (SD-REL-03). GitHub only allows re-runs for about 30 days. A re-run also checks `npm audit` against today's advisories, so an old commit may no longer pass. In either case, use the next option.
+
+  > **Warning (SEC-R14):** do not re-run any deployment started before the override was removed. Runs 39847942745, 39916746207 and 39922278097 (22–23 October 2026) ran with `accept_below_release_thresholds` set to `true`. Re-running one of them would publish a below-threshold bank with the override again, until its re-run window ends (about 21–22 November 2026). To roll back to a version from that period, revert on `main` and run a new deployment instead.
+  >
+  > Mitigations (owner decision, in the GitHub UI): delete those three runs (Actions > the run > **Delete workflow run**), or enable **Required reviewers** on the `github-pages` environment at least until the re-run window ends, so any re-run waits for an explicit approval.
 - **Bad commit on main:** revert it through a pull request, then run a new deployment.
 - **Emergency:** Settings > Pages > **Unpublish site**. Publishing again later needs a new manual run.
 
 ## 5. Security notes
 
 - The workflow has no `push`, `pull_request`, `release` or `schedule` trigger. It only runs on an explicit manual dispatch or a re-run by someone with write access to Actions, which can also be done through the API. No event publishes automatically.
-- Every run's summary records the release-threshold result, the commit and who started the run. A threshold miss cannot be overridden at deploy time.
+- Every run's summary records the release-threshold result, the commit and who started the run. A threshold miss cannot be overridden at deploy time, except by re-running a run started before the override was removed (see the warning in section 4).
 - The default token is `contents: read`. Only the deploy job gets Pages write access and an OIDC token. The verify job has no permissions at all.
 - Every action is pinned by commit SHA, following the repository convention:
   - `actions/configure-pages` v6.0.0
