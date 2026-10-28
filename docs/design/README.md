@@ -47,7 +47,7 @@ US-5 (Review / Retry missed) is specified in views.md §8 and US-6 (best score, 
 
 ## Open design questions
 
-- **DQ-1** Exit quiz and browser Back without US-6 discard in-memory progress, and there is no confirmation. That matches US-2.8 / FR-26, but it is lossy until US-6 resume ships. Should Sprint 1 add a confirmation? Default: no, because it is a scope change (PO).
+- **DQ-1** Exit quiz and browser Back without US-6 discard in-memory progress, and there is no confirmation. That matches US-2.8 / FR-26, but it is lossy until US-6 resume ships. Should Sprint 1 add a confirmation? Default: no, because it is a scope change (PO). **Superseded by views.md §9.1 U3** when storage is persistent: Exit and Back keep the quiz saved and Landing offers Resume.
 - **DQ-2** Group name: the legend is "Choose one answer", and the prompt sits outside the fieldset because prompts may contain block code. This needs the US-10.3 screen-reader pass; the alternative is `aria-describedby` pointing at the prompt.
 - **DQ-3** The live-region wording follows US-3.3 ("verdict and the correct option": "Correct: X." / "Incorrect. Correct answer: X."), not the BA's shorter "Correct." (PO/BA to confirm).
 - **DQ-4** Do the hand-computed ratios hold when checked with a tool? To be verified in T-08/T-17 and by axe in T-16.
