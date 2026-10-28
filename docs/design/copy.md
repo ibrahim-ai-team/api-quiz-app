@@ -82,7 +82,26 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | `results.retryPartial` *fn* | 1 missed question is no longer available and will be left out. / {n} missed questions are no longer available and will be left out. | US-5.6; `aria-describedby` of the Retry button |
 | `results.retryNone` *fn* | The question you missed is no longer available, so there is nothing to retry. / The questions you missed are no longer available, so there is nothing to retry. | US-5.6; singular when 1 missed; replaces the button |
 | `results.retryHeading` | Retry results | h1 of a retry quiz's results, focus target |
-| `results.retryNote` | This was a retry of your missed questions, so it does not count toward your best score. | US-5.5; directly under the h1 |
+| `results.retryNote` | This was a retry of your missed questions, so it does not count toward your best score. | US-5.5; directly under the h1; rendered only when storage is persistent (views.md §9.1 U2) |
 | `results.startFull` | Start a full quiz | Primary on retry results: fresh draw of the original scope |
+| `landing.bestScore` *fn* | Best score: {pct}% | US-6.1, views.md §9.3; own line in the topic row; appended to the row's accessible name after a comma; not rendered when there is no best score |
+| `landing.replaceMessage` | This will discard your unfinished quiz. | US-6.4, §9.6; focused when the confirmation opens under Start |
+| `landing.replaceConfirm` | Start new quiz | Primary confirm button of the replace confirmation |
+| `common.cancel` | Cancel | Secondary button of both inline confirmations (§9.6) |
+| `resume.heading` | Unfinished quiz | h2 of the resume card (§9.4) |
+| `resume.summary` *fn* | {scope} quiz: {answered} of 1 question answered. / {scope} quiz: {answered} of {n} questions answered. | Plural by n; `{scope}` = topic name or `landing.mixedLabel`; `{answered}` = locked answers |
+| `resume.summaryRetry` *fn* | {scope} retry of missed questions: {answered} of 1 question answered. / {scope} retry of missed questions: {answered} of {n} questions answered. | As above, for a saved retry-missed quiz |
+| `resume.resume` | Resume quiz | Primary; US-6.2 "Resume" (DQ-US6-6) |
+| `resume.discard` | Discard quiz | Secondary; US-6.2 "Discard" (DQ-US6-6) |
+| `resume.discarded` | Unfinished quiz discarded. | Replaces the card after Discard; focused (`tabindex="-1"`) |
+| `progress.sessionRemoved` | Your unfinished quiz could not be restored, so it was removed. | US-6.3 load notice (`role="status"`, §9.5); corrupt, unknown version or stale saved quiz |
+| `progress.bestRemoved` | Your saved best scores could not be read, so they were removed. | US-6.3 load notice; follows `progress.sessionRemoved` in the same paragraph when both apply |
+| `progress.heading` | Your progress | h2 of the section after "About the questions" (§9.6) |
+| `progress.description` | Best scores and your unfinished quiz are saved only in this browser on this device. | US-6.8 transparency; body text |
+| `progress.reset` | Reset progress | US-6.6 trigger (secondary) |
+| `progress.resetMessage` | This will delete your best scores and any unfinished quiz from this browser. This cannot be undone. | Focused when the reset confirmation opens |
+| `progress.resetConfirm` | Yes, reset progress | Primary confirm button; distinct from the trigger's name |
+| `progress.resetDone` | Your progress has been reset. | Replaces the confirmation; focused |
+| `progress.resetFailed` | Your progress could not be reset. Try again. | `clearAppKeys` returned `ok: false`; focused |
 
 Style: sentence case, no exclamation marks, no promises about interview outcomes. Use "..." (three dots), not a typographic ellipsis, so the source file stays plain ASCII; either reads the same to a screen reader.
