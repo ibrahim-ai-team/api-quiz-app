@@ -11,7 +11,12 @@
  * null-prototype object.
  */
 import type { Bank } from "../../content/types";
-import { percentHalfUp, type BestScore, type SavedBest } from "../../domain";
+import {
+  MIXED_BEST_KEY,
+  percentHalfUp,
+  type BestScore,
+  type SavedBest,
+} from "../../domain";
 import {
   failure,
   isId,
@@ -26,8 +31,8 @@ import {
 
 export const BEST_SCHEMA_VERSION = 1;
 
-/** Key for the mixed-scope best score. */
-export const MIXED_BEST_KEY = "mixed";
+/** Key for the mixed-scope best score; defined in the domain (T-42). */
+export { MIXED_BEST_KEY };
 
 /** At most this many score entries (topics + mixed). */
 export const MAX_BEST_ENTRIES = 256;

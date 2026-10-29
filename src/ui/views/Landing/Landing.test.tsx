@@ -334,3 +334,78 @@ describe("states and structure", () => {
     ]).toEqual(["template"]);
   });
 });
+
+describe("T-US6-1 best score in topic rows (T-42, views.md §9.3)", () => {
+  const at = 1761200000000;
+  const best = {
+    "topic-a": { percent: 50, correct: 1, total: 2, at },
+    mixed: { percent: 67, correct: 2, total: 3, at },
+  };
+
+  it("shows each topic's and Mixed's own best as a line and in the accessible name", () => {
+    renderLanding({ bestScores: best });
+    expect(
+      screen.getByRole("radio", {
+        name: `Topic A, ${strings.landing.topicCount(2)}, ${strings.landing.bestScore(50)}`,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("radio", {
+        name: `${strings.landing.mixedLabel}, ${strings.landing.topicCount(3)}, ${strings.landing.bestScore(67)}`,
+      }),
+    ).toBeTruthy();
+    // A row with no best score shows nothing (DQ-US6-2).
+    const topicB = screen.getByRole("radio", {
+      name: `Topic B, ${strings.landing.topicCount(1)}`,
+    });
+    expect(topicB.closest("label")?.textContent).not.toContain("Best score");
+    const mixedRow = screen
+      .getByRole("radio", {
+        name: new RegExp(`^${strings.landing.mixedLabel}`),
+      })
+      .closest("label");
+    expect(mixedRow?.textContent).toContain(strings.landing.bestScore(67));
+    // Mixed keeps its description in aria-describedby.
+    expect(
+      screen
+        .getByRole("radio", {
+          name: new RegExp(`^${strings.landing.mixedLabel}`),
+        })
+        .getAttribute("aria-describedby"),
+    ).not.toBeNull();
+  });
+
+  it("shows no best-score text without best scores (null: storage not persistent)", () => {
+    renderLanding({ bestScores: null });
+    expect(document.body.textContent).not.toContain("Best score");
+    expect(
+      screen.getByRole("radio", {
+        name: `Topic A, ${strings.landing.topicCount(2)}`,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("ignores inherited keys such as toString", () => {
+    renderLanding({
+      bank: ready({
+        ...BANK,
+        topics: [{ id: "toString", name: "Odd" }],
+        questions: [question("q-1", "toString")],
+      }),
+      bestScores: {},
+    });
+    expect(document.body.textContent).not.toContain("Best score");
+  });
+
+  it("reserves the best-score line of a stored topic while loading (no shift)", () => {
+    const firstId = landingReserve.topicIds[0] ?? "";
+    renderLanding({
+      bank: { status: "loading", attempt: 0, userRetry: false },
+      bestScores: { [firstId]: { percent: 75, correct: 3, total: 4, at } },
+    });
+    const reserve = document.querySelector('[aria-hidden="true"]');
+    const rows = reserve?.querySelectorAll("label") ?? [];
+    expect(rows[0]?.textContent).toContain(strings.landing.bestScore(75));
+    expect(reserve?.textContent.match(/Best score/g)).toHaveLength(1);
+  });
+});

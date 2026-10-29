@@ -1,4 +1,4 @@
-/** Public API of the pure quiz domain (T-07, T-11, T-37, T-41). */
+/** Public API of the pure quiz domain (T-07, T-11, T-37, T-41, T-42). */
 export {
   createSeededRng,
   normaliseSeed,
@@ -30,6 +30,13 @@ export {
   SAVED_SESSION_SCHEMA_VERSION,
   toSavedSession,
 } from "./restore";
+export {
+  bestFor,
+  bestKeyFor,
+  countsTowardBest,
+  MIXED_BEST_KEY,
+  updateBest,
+} from "./best";
 export {
   bandFor,
   percentHalfUp,

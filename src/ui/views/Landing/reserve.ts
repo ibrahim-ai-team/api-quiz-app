@@ -41,10 +41,18 @@ export function reserveHasSelection(
     : reserve.topicIds.includes(selected.topicId);
 }
 
+/**
+ * Rows carry the real topic ID (T-42), so a row with a decoded best score
+ * reserves its best-score line too and nothing shifts when the bank arrives
+ * (views.md §9). The scope is never started: the reserve is disabled.
+ */
 export function reserveChoices(reserve: LandingReserve): Choice[] {
   const rows: Choice[] = reserve.topicNames.map((name, index) => ({
     key: `reserve-${String(index)}`,
-    scope: { kind: "topic", topicId: `reserve-${String(index)}` },
+    scope: {
+      kind: "topic",
+      topicId: reserve.topicIds[index] ?? `reserve-${String(index)}`,
+    },
     name,
     count: RESERVE_COUNT,
   }));

@@ -2,19 +2,39 @@
  * App shell (T-08, issue #28; views.md §0): skip link, header with the brand,
  * `<main>` focus target, hash routes, bank loading state and error boundary.
  * T-12 adds the quiz session reducer, the Question view and Exit; T-15 the
- * Results route; T-38 Review answers and Retry missed (US-5).
+ * Results route; T-38 Review answers and Retry missed (US-5); T-42 the best
+ * score per topic and Mixed (US-6.1, US-5.5, views.md §9.3).
  */
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useReducer,
   useRef,
+  useState,
   type MouseEvent,
   type ReactNode,
 } from "react";
 import type { LoadBankResult } from "../../content/loader";
-import { createQuiz, randomSeed, type QuizScope } from "../../domain";
+import {
+  countsTowardBest,
+  createQuiz,
+  randomSeed,
+  score,
+  updateBest,
+  type Quiz,
+  type QuizScope,
+  type SavedBest,
+} from "../../domain";
+import {
+  createProgressStore,
+  decodeBest,
+  encodeBest,
+  KEYS,
+  pruneUnknownTopics,
+  type ProgressStore,
+} from "../../storage";
 import { strings } from "../strings";
 import common from "../components/common.module.css";
 import styles from "./App.module.css";
@@ -44,6 +64,11 @@ export interface AppProps {
   readonly bankPromise: Promise<LoadBankResult>;
   /** Starts a new bank request for Retry (FR-25). */
   readonly reloadBank: () => Promise<LoadBankResult>;
+  /**
+   * Progress storage; created once with `createProgressStore()` when
+   * omitted. Injectable for tests.
+   */
+  readonly store?: ProgressStore;
 }
 
 type ViewId =
@@ -97,6 +122,16 @@ function viewFor(route: Route, bank: BankState, session: SessionState): ViewId {
     : "topic";
 }
 
+/**
+ * Saved best scores, or null when nothing valid is stored or storage is not
+ * persistent (then no best-score UI exists, views.md §9.1 U2). Never throws.
+ */
+function readBest(store: ProgressStore): SavedBest | null {
+  if (!store.persistent) return null;
+  const decoded = decodeBest(store.get(KEYS.best));
+  return decoded.ok ? decoded.value : null;
+}
+
 function focusHeading(main: HTMLElement | null): void {
   main?.querySelector<HTMLElement>("h1")?.focus();
 }
@@ -107,8 +142,12 @@ function routeOfUrl(url: string): Route {
   return parseRoute(hash === -1 ? "" : url.slice(hash));
 }
 
-export function App({ bankPromise, reloadBank }: AppProps) {
+export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   const route = useHashRoute();
+  // One store per app (TL01). Best scores are decoded synchronously at
+  // startup, so the loading reserve already has their lines (no shift).
+  const [store] = useState(() => storeProp ?? createProgressStore());
+  const [best, setBest] = useState(() => readBest(store));
   const [bank, dispatch] = useReducer(bankReducer, initialBankState);
   const mainRef = useRef<HTMLElement>(null);
   const focusAfterRetry = useRef(false);
@@ -194,12 +233,46 @@ export function App({ bankPromise, reloadBank }: AppProps) {
       ) {
         dispatchSession({ type: "exited" });
       }
+      // Landing reflects the last write, also from another tab (U9).
+      if (to === "landing" || to === "topic") setBest(readBest(store));
     };
     window.addEventListener("hashchange", onHashChange);
     return () => {
       window.removeEventListener("hashchange", onHashChange);
     };
-  }, []);
+  }, [store]);
+
+  // Best score (US-6.1, US-5.5, SEC-R13): written once per finished quiz,
+  // only for a normal quiz built from the loaded bank. The ref is keyed on
+  // the quiz object, so re-renders of Results never write twice. A failed
+  // read counts as no best scores; a failed write is silent (U2). Every way
+  // back to Landing is a hashchange, which re-reads storage (see above).
+  const recordedQuiz = useRef<Quiz | null>(null);
+  useEffect(() => {
+    if (session?.phase !== "finished" || bank.status !== "ready") return;
+    if (recordedQuiz.current === session.quiz) return;
+    recordedQuiz.current = session.quiz;
+    if (!store.persistent) return;
+    if (!countsTowardBest(session.quiz, bank.bank.contentVersion)) return;
+    const current = readBest(store);
+    const next = updateBest(
+      current === null ? null : pruneUnknownTopics(current, bank.bank),
+      session.quiz.scope,
+      score(session),
+      Date.now(),
+    );
+    // Result ignored: Landing re-reads storage when it is shown again.
+    store.set(KEYS.best, encodeBest(next));
+  }, [session, bank, store]);
+
+  // Rows show only scores of topics the bank still has (SEC-R13 finding 4).
+  // While loading, the reserve uses the decoded value as is.
+  const bestScores = useMemo(() => {
+    if (best === null) return null;
+    return bank.status === "ready"
+      ? pruneUnknownTopics(best, bank.bank).scores
+      : best.scores;
+  }, [best, bank]);
 
   const retry = useCallback(() => {
     focusAfterRetry.current = true;
@@ -255,6 +328,7 @@ export function App({ bankPromise, reloadBank }: AppProps) {
           topicId={route.name === "topic" ? route.topicId : null}
           topicNotFound={view === "topicNotFound"}
           onStart={startQuiz}
+          bestScores={bestScores}
         />
       );
       break;
@@ -282,6 +356,7 @@ export function App({ bankPromise, reloadBank }: AppProps) {
             onChooseAnother={exitQuiz}
             retry={retryAvailability(bank.bank, session)}
             onRetryMissed={retryMissed}
+            showRetryBestScoreNote={store.persistent}
           />
         ) : null;
       break;

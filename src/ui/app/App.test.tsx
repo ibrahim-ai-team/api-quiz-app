@@ -10,6 +10,15 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoadBankResult } from "../../content/loader";
+import { landingReserve } from "../../content/landingReserve";
+import {
+  createProgressStore,
+  decodeBest,
+  KEYS,
+  MemoryStore,
+  type ProgressStore,
+  type WriteResult,
+} from "../../storage";
 import { strings } from "../strings";
 import { App } from "./App";
 import { LOADING_DELAY_MS, STILL_LOADING_MS } from "../components/BankStatus";
@@ -82,9 +91,16 @@ async function flush(): Promise<void> {
 function renderApp(
   bankPromise: Promise<LoadBankResult>,
   reloadBank: () => Promise<LoadBankResult> = () => Promise.resolve(OK),
+  store?: ProgressStore,
 ) {
   const reload = vi.fn(reloadBank);
-  const view = render(<App bankPromise={bankPromise} reloadBank={reload} />);
+  const view = render(
+    <App
+      bankPromise={bankPromise}
+      reloadBank={reload}
+      {...(store === undefined ? {} : { store })}
+    />,
+  );
   return { ...view, reload };
 }
 
@@ -99,6 +115,8 @@ function h1(): HTMLElement {
 beforeEach(() => {
   setHash("");
   document.title = "";
+  // jsdom has Web Storage, so the default store is persistent: clear it.
+  createProgressStore().clearAppKeys();
 });
 
 afterEach(() => {
@@ -598,7 +616,8 @@ describe("T-38 Review answers and Retry missed in the app (US-5, views.md §8)",
     });
     expect(document.title).toBe(strings.title.resultsRetry(topicName));
     expect(main().textContent).toContain(strings.results.score(0, 1));
-    expect(screen.queryByText(strings.results.retryNote)).toBe(null);
+    // Persistent storage (jsdom): the note is shown (T-42, views.md §9.1 U2).
+    expect(screen.getByText(strings.results.retryNote)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: strings.results.tryAgain }),
     ).toBe(null);
@@ -687,6 +706,268 @@ describe("T-38 Review answers and Retry missed in the app (US-5, views.md §8)",
     await expectLandingFocused();
     navigate("#/results");
     await expectLandingFocused();
+  });
+});
+
+describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)", () => {
+  const topicName = TEST_BANK.topics[0]?.name ?? "";
+  const at = 1761200000000;
+
+  function storeBest(scores: Record<string, unknown>): void {
+    createProgressStore().set(
+      KEYS.best,
+      JSON.stringify({ schemaVersion: 1, scores }),
+    );
+  }
+
+  function storedScores(): Record<string, unknown> | null {
+    const decoded = decodeBest(createProgressStore().get(KEYS.best));
+    return decoded.ok ? { ...decoded.value.scores } : null;
+  }
+
+  function topicRadio(best: number | null): HTMLElement {
+    const base = `${topicName}, ${strings.landing.topicCount(1)}`;
+    return screen.getByRole("radio", {
+      name:
+        best === null ? base : `${base}, ${strings.landing.bestScore(best)}`,
+    });
+  }
+
+  /** A persistent store over memory that counts best-score writes. */
+  function countingStore(result?: WriteResult): {
+    store: ProgressStore;
+    writes: () => number;
+  } {
+    const inner = new MemoryStore();
+    const set = vi.fn(
+      (key: string, value: string) => result ?? inner.set(key, value),
+    );
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set,
+      remove: (key) => inner.remove(key),
+      clearAppKeys: () => inner.clearAppKeys(),
+    };
+    return {
+      store,
+      writes: () => set.mock.calls.filter(([key]) => key === KEYS.best).length,
+    };
+  }
+
+  async function backToLanding(): Promise<void> {
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.chooseAnother }),
+    );
+    await expectLandingFocused();
+  }
+
+  it("T-US6-1 a finished normal quiz writes the best score, shown in the row and its name", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    expect(main().textContent).not.toContain("Best score");
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    const stored = storedScores();
+    expect(Object.keys(stored ?? {})).toEqual(["topic-a"]);
+    expect(stored?.["topic-a"]).toMatchObject({
+      percent: 100,
+      correct: 1,
+      total: 1,
+    });
+    await backToLanding();
+    const radio = topicRadio(100);
+    expect(radio.closest("label")?.textContent).toContain(
+      strings.landing.bestScore(100),
+    );
+  });
+
+  it("T-US6-1 a lower or equal score keeps the stored best; a higher one replaces it", async () => {
+    storeBest({ "topic-a": { percent: 100, correct: 1, total: 1, at } });
+    renderApp(Promise.resolve(OK));
+    await flush();
+    expect(topicRadio(100)).toBeTruthy();
+    await startQuiz();
+    answer(false, true);
+    await expectResultsFocused();
+    expect(storedScores()?.["topic-a"]).toEqual({
+      percent: 100,
+      correct: 1,
+      total: 1,
+      at,
+    });
+    cleanup();
+    createProgressStore().clearAppKeys();
+    setHash("");
+    storeBest({ "topic-a": { percent: 0, correct: 0, total: 1, at } });
+    renderApp(Promise.resolve(OK));
+    await flush();
+    expect(topicRadio(0)).toBeTruthy();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    await backToLanding();
+    expect(topicRadio(100)).toBeTruthy();
+  });
+
+  it("T-US5-5 a retry-missed quiz never updates the best score", async () => {
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await startQuiz();
+    answer(false, true);
+    await expectResultsFocused();
+    expect(storedScores()?.["topic-a"]).toMatchObject({ percent: 0 });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    answer(true, true);
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+    });
+    expect(screen.getByText(strings.results.retryNote)).toBeTruthy();
+    expect(storedScores()?.["topic-a"]).toMatchObject({ percent: 0 });
+    await backToLanding();
+    expect(topicRadio(0)).toBeTruthy();
+  });
+
+  it("Mixed has its own best score, separate from the topics", async () => {
+    const base = TEST_BANK.questions[0];
+    if (base === undefined) throw new Error("no test question");
+    const bank = {
+      ...TEST_BANK,
+      topics: [
+        { id: "topic-a", name: "Topic A" },
+        { id: "topic-b", name: "Topic B" },
+      ],
+      questions: [
+        { ...base, id: "q-a" },
+        { ...base, id: "q-b", topic: "topic-b" },
+      ],
+    };
+    storeBest({ "topic-a": { percent: 0, correct: 0, total: 1, at } });
+    renderApp(Promise.resolve({ ok: true, bank }));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Mixed/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.start }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 2));
+    });
+    answer(true, false);
+    answer(true, true);
+    await expectResultsFocused();
+    await backToLanding();
+    expect(
+      screen.getByRole("radio", {
+        name: `${strings.landing.mixedLabel}, ${strings.landing.topicCount(2)}, ${strings.landing.bestScore(100)}`,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("radio", {
+        name: `Topic A, ${strings.landing.topicCount(1)}, ${strings.landing.bestScore(0)}`,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("radio", {
+        name: `Topic B, ${strings.landing.topicCount(1)}`,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("SEC-R13 prunes scores of topics the bank no longer has (also on write)", async () => {
+    storeBest({
+      "topic-a": { percent: 0, correct: 0, total: 1, at },
+      gone: { percent: 90, correct: 9, total: 10, at },
+    });
+    renderApp(Promise.resolve(OK));
+    await flush();
+    expect(main().textContent.match(/Best score/g)).toHaveLength(1);
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(Object.keys(storedScores() ?? {})).toEqual(["topic-a"]);
+  });
+
+  it("corrupt stored best scores are treated as empty and replaced on finish", async () => {
+    createProgressStore().set(KEYS.best, "{not json");
+    renderApp(Promise.resolve(OK));
+    await flush();
+    expect(main().textContent).not.toContain("Best score");
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(storedScores()?.["topic-a"]).toMatchObject({ percent: 100 });
+  });
+
+  it("writes once per finished quiz, even when Results re-renders", async () => {
+    const { store, writes } = countingStore();
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.review.toggle }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.review.toggle }),
+    );
+    expect(writes()).toBe(1);
+    // Try again is a new quiz: one more write.
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.tryAgain }),
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+    });
+    finishQuiz();
+    await expectResultsFocused();
+    expect(writes()).toBe(2);
+  });
+
+  it("a failed write is silent: Results shows, Landing shows no best score", async () => {
+    const { store, writes } = countingStore({ ok: false, reason: "quota" });
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(writes()).toBe(1);
+    expect(screen.queryByRole("alert")).toBe(null);
+    await backToLanding();
+    expect(topicRadio(null)).toBeTruthy();
+  });
+
+  it("US-6.5 storage not persistent: no best-score text, no retry note, nothing written", async () => {
+    const store = new MemoryStore();
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    await startQuiz();
+    answer(false, true);
+    await expectResultsFocused();
+    expect(store.get(KEYS.best)).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    answer(true, true);
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+    });
+    expect(screen.queryByText(strings.results.retryNote)).toBe(null);
+    await backToLanding();
+    expect(main().textContent).not.toContain("Best score");
+  });
+
+  it("T-42 layout reserve: the loading reserve already has the best-score line", () => {
+    const firstId = landingReserve.topicIds[0] ?? "";
+    storeBest({ [firstId]: { percent: 75, correct: 3, total: 4, at } });
+    renderApp(deferred<LoadBankResult>().promise);
+    const reserve = main().querySelector('[aria-hidden="true"]');
+    expect(reserve?.textContent).toContain(strings.landing.bestScore(75));
   });
 });
 
