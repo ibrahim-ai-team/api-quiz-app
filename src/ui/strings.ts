@@ -81,6 +81,8 @@ export const strings = {
       n === 1 ? "1 question" : `${String(n)} questions`,
     mixedLabel: "Mixed",
     mixedDescription: "Questions from several topics",
+    /** copy:landing.bestScore (US-6.1, views.md §9.3). */
+    bestScore: (pct: number): string => `Best score: ${String(pct)}%`,
     start: "Start quiz",
     startHint: "Choose a topic to start.",
     /** Not in copy.md (T-09-D01): production bank with 0 questions. */
@@ -190,8 +192,8 @@ export const strings = {
     /** copy:results.retryHeading: h1 of a retry quiz's results (US-5.5). */
     retryHeading: "Retry results",
     /**
-     * copy:results.retryNote (US-5.5). Not rendered until best scores exist
-     * (US-6, T-42): see `ResultsProps.showRetryBestScoreNote`.
+     * copy:results.retryNote (US-5.5). Rendered only when storage is
+     * persistent (T-42, views.md §9.1 U2): `ResultsProps.showRetryBestScoreNote`.
      */
     retryNote:
       "This was a retry of your missed questions, so it does not count toward your best score.",

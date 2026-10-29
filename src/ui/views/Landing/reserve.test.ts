@@ -19,6 +19,19 @@ describe("reserveChoices (T-35 Landing loading reserve)", () => {
     expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
   });
 
+  it("gives each topic row its real topic ID, so best scores can be reserved (T-42)", () => {
+    const rows = reserveChoices({
+      eligibleTopicCount: 2,
+      topicNames: ["A", "B"],
+      topicIds: ["a", "b"],
+    });
+    expect(rows.map((row) => row.scope)).toEqual([
+      { kind: "topic", topicId: "a" },
+      { kind: "topic", topicId: "b" },
+      { kind: "mixed" },
+    ]);
+  });
+
   it("omits Mixed when only one topic is eligible (US-1.2)", () => {
     const rows = reserveChoices({
       eligibleTopicCount: 1,

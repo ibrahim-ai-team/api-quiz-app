@@ -36,6 +36,7 @@
 
 .optionCount,
 .optionDescription,
+.optionBest,
 .hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -104,6 +105,11 @@
 
   .optionCount {
     margin-inline-start: auto;
+  }
+
+  /* Best score (T-42, views.md §9.3): end-aligned under the count. */
+  .optionBest {
+    text-align: end;
   }
 
   .start {

@@ -2,12 +2,18 @@
  * Landing view (T-09, issue #29; views.md §1, §7b; US-1, US-12.1, US-12.2).
  * Topic radio group in curated order with counts, Mixed last, and Start.
  * T-13 adds the general "Report a problem" link to "About the questions".
+ * T-42 adds the best score line to each row (US-6.1, views.md §9.3).
  * Displayed names come from the bank topic objects; `topicId` from the route
  * is only compared against bank ids and never rendered (security I-3).
  */
 import { useId, useRef, useState } from "react";
 import { landingReserve } from "../../../content/landingReserve";
-import { eligibleTopics, type QuizScope } from "../../../domain";
+import {
+  bestFor,
+  eligibleTopics,
+  type BestScore,
+  type QuizScope,
+} from "../../../domain";
 import type { BankState } from "../../app/bankState";
 import { useDocumentTitle } from "../../app/useDocumentTitle";
 import { BankStatus } from "../../components/BankStatus";
@@ -27,6 +33,12 @@ export interface LandingProps {
   readonly topicNotFound: boolean;
   /** Creates the quiz and navigates; returns false when it failed. */
   readonly onStart: (scope: QuizScope) => boolean;
+  /**
+   * Best scores keyed by topic ID or `"mixed"` (US-6.1, views.md §9.3),
+   * already pruned to the bank's topics. `null` hides every best-score line
+   * (storage not persistent, U2). Also used by the loading reserve.
+   */
+  readonly bestScores?: Readonly<Record<string, BestScore>> | null;
 }
 
 /** Stand-in rows for the loading reserve (T-34, T-35): real names and count. */
@@ -43,6 +55,7 @@ export function Landing({
   topicId,
   topicNotFound,
   onStart,
+  bestScores = null,
 }: LandingProps) {
   const id = useId();
   const [selected, setSelected] = useState<QuizScope | null>(
@@ -124,6 +137,14 @@ export function Landing({
           </legend>
           {list.map((choice, index) => {
             const count = strings.landing.topicCount(choice.count);
+            const best =
+              bestScores === null
+                ? undefined
+                : bestFor(bestScores, choice.scope);
+            const bestText =
+              best === undefined
+                ? null
+                : strings.landing.bestScore(best.percent);
             const descId = `${prefix}-desc-${String(index)}`;
             const hasDescription = choice.description !== undefined;
             return (
@@ -138,8 +159,13 @@ export function Landing({
                     setSelected(choice.scope);
                     setFailed(false);
                   }}
-                  // One name in every engine: "Status codes, 12 questions".
-                  aria-label={`${choice.name}, ${count}`}
+                  // One name in every engine: "Status codes, 12 questions",
+                  // plus ", Best score: 75%" when there is one (§9.3).
+                  aria-label={
+                    bestText === null
+                      ? `${choice.name}, ${count}`
+                      : `${choice.name}, ${count}, ${bestText}`
+                  }
                   aria-describedby={hasDescription ? descId : undefined}
                 />
                 <span className={styles.optionText}>
@@ -151,6 +177,9 @@ export function Landing({
                     <span id={descId} className={styles.optionDescription}>
                       {choice.description}
                     </span>
+                  )}
+                  {bestText !== null && (
+                    <span className={styles.optionBest}>{bestText}</span>
                   )}
                 </span>
               </label>
