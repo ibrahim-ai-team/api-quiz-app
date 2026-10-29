@@ -17,6 +17,7 @@ import { expectNoAxeSeriousOrCritical } from "./helpers/a11y.ts";
 import { useFixtureBank } from "./helpers/fixture-bank.ts";
 import { expectNoHorizontalScroll } from "./helpers/layout.ts";
 import {
+  FIXTURE,
   TOPIC_NAME,
   answerByMouse,
   breakdownHeading,
@@ -34,9 +35,37 @@ import {
 const TOPIC_B = TOPIC_NAME.get("topic-b") ?? "";
 const TOPIC_C = TOPIC_NAME.get("topic-c") ?? "";
 
-/** Any "Retry N missed question(s)" button (US-5.2, US-5.3). */
-const retryMissedButton = (page: Page): Locator =>
-  page.getByRole("button", { name: /^Retry \d+ missed questions?$/ });
+/**
+ * Fixture prompt and explanation text (plain text in the fixture), for the
+ * Review content checks (US-5.1).
+ */
+const FIXTURE_TEXT = new Map(
+  (
+    FIXTURE.questions as unknown as {
+      id: string;
+      prompt: string;
+      explanation: string;
+    }[]
+  ).map((q) => [q.id, q]),
+);
+
+/**
+ * Asserts the exact buttons in `main`, in order. Used where no Retry button
+ * may exist: unlike a count of a pattern, it also fails if the button comes
+ * back under changed copy (T-39-TL01 note 1).
+ */
+async function expectMainButtons(
+  page: Page,
+  names: readonly string[],
+): Promise<void> {
+  await expect(page.locator("main button")).toHaveText([...names]);
+}
+/** Retry results with 0 missed (US-5.3 on a retry, views.md §8.4). */
+const RETRY_RESULTS_NO_RETRY = [
+  strings.review.toggle,
+  strings.results.startFull,
+  strings.results.chooseAnother,
+] as const;
 const reviewToggle = (page: Page): Locator =>
   button(page, strings.review.toggle);
 
@@ -179,6 +208,10 @@ test.describe("T-39 Review answers (US-5.1)", () => {
           name: strings.feedback.explanationHeading,
         }),
       ).toBeVisible();
+      const text = FIXTURE_TEXT.get(q.id);
+      expect(text, `fixture text for ${q.id}`).toBeDefined();
+      await expect(item).toContainText(text?.prompt ?? "");
+      await expect(item).toContainText(text?.explanation ?? "");
       await expect(item).toContainText(strings.feedback.sourcePrefix);
       const source = item.getByRole("link");
       await expect(source).toHaveCount(1);
@@ -250,9 +283,9 @@ test.describe("T-39 Retry missed (US-5.2 to US-5.4)", () => {
     await expect(page.locator("main")).toContainText(TOPIC_B);
     await expectScore(page, 2, 2, 100);
     await expect(breakdownHeading(page)).toHaveCount(0);
-    // 0 missed in the retry: no Retry button (US-5.3 on retry results).
-    await expect(retryMissedButton(page)).toHaveCount(0);
-    await expect(button(page, strings.results.tryAgain)).toHaveCount(0);
+    // 0 missed in the retry: no Retry button (US-5.3 on retry results), and
+    // "Start a full quiz" replaces Try again.
+    await expectMainButtons(page, RETRY_RESULTS_NO_RETRY);
     // Review on the retry results lists only the retried questions.
     const list = await openReview(page);
     await expect(list.locator(":scope > li")).toHaveCount(2);
@@ -294,17 +327,20 @@ test.describe("T-39 Retry missed (US-5.2 to US-5.4)", () => {
     await expect(breakdownHeading(page)).toHaveCount(0);
 
     // Repeat on its own results (US-5.4).
-    await expect(retryMissedButton(page)).toHaveText(
+    await expectMainButtons(page, [
+      strings.review.toggle,
+      strings.results.startFull,
       strings.results.retryMissed(1),
-    );
-    await retryMissedButton(page).click();
+      strings.results.chooseAnother,
+    ]);
+    await button(page, strings.results.retryMissed(1)).click();
     const second = await playRetryByMouse(page, 1, TOPIC_B, () => true);
     expect(ids(second)).toEqual([missedId]);
     await expectScore(page, 1, 1, 100);
     await expect(page.locator("main")).toContainText(
       strings.results.band.perfect,
     );
-    await expect(retryMissedButton(page)).toHaveCount(0);
+    await expectMainButtons(page, RETRY_RESULTS_NO_RETRY);
   });
 
   test("T-US5-4 Mixed: Retry 3 missed, then repeat the retry with its own 1 miss", async ({
@@ -326,7 +362,7 @@ test.describe("T-39 Retry missed (US-5.2 to US-5.4)", () => {
     const second = await playRetryByMouse(page, 1, mixed, () => true);
     expect(ids(second)).toEqual([missed[0]?.id]);
     await expectScore(page, 1, 1, 100);
-    await expect(retryMissedButton(page)).toHaveCount(0);
+    await expectMainButtons(page, RETRY_RESULTS_NO_RETRY);
   });
 
   test("T-US5-3 0 missed: no Retry missed button and no retry notice", async ({
@@ -335,16 +371,16 @@ test.describe("T-39 Retry missed (US-5.2 to US-5.4)", () => {
     await startQuizByMouse(page, /^Fixture topic B/, 5);
     await playQuizByMouse(page, 5, () => true);
     await expectScore(page, 5, 5, 100);
-    await expect(retryMissedButton(page)).toHaveCount(0);
-    await expect(page.locator("main")).not.toContainText(/missed question/);
-    await expect(page.locator("main")).not.toContainText(
-      strings.results.retryNone(1),
-    );
-    await expect(page.locator("main button")).toHaveText([
+    await expectMainButtons(page, [
       strings.review.toggle,
       strings.results.tryAgain,
       strings.results.chooseAnother,
     ]);
+    // No retry notice either (§8.5 texts, built from the copy).
+    const main = page.locator("main");
+    await expect(main).not.toContainText(strings.results.retryNone(1));
+    await expect(main).not.toContainText(strings.results.retryNone(2));
+    await expect(main).not.toContainText(strings.results.retryPartial(1));
   });
 });
 
@@ -355,6 +391,12 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.beforeEach(async ({ page }) => {
       await useFixtureBank(page);
       await openLanding(page);
+      // The emulated scheme is really applied (as in flow.spec.ts).
+      expect(
+        await page.evaluate(
+          () => matchMedia("(prefers-color-scheme: dark)").matches,
+        ),
+      ).toBe(colorScheme === "dark");
     });
 
     test(`T-US10-1 T-US13-1 expanded Review on topic-C results and on the retry results: axe 0 serious/critical (${colorScheme})`, async ({
