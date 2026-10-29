@@ -142,7 +142,8 @@ function readBest(store: ProgressStore): SavedBest | null {
 
 /**
  * The saved quiz Landing offers (US-6.2). `startup` is true until Landing
- * has been shown and left: until then the startup decode stands (load
+ * has been shown with a ready bank and then left (T-43-TL01 L1: leaving it
+ * while the bank loads keeps the reserve): until then the startup decode stands (load
  * notice and CLS reserve, views.md §9.2, §9.5) and re-reads are ignored;
  * afterwards Landing re-reads storage each time it is shown (U3, U9).
  */
@@ -274,6 +275,8 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     window.location.replace(QUIZ_HREF);
     return true;
   };
+  // Set once Landing has rendered with a ready bank (read by the listener).
+  const landingReadySeen = useRef(false);
   useEffect(() => {
     const onHashChange = (event: HashChangeEvent) => {
       const fromRoute = routeOfUrl(event.oldURL);
@@ -283,8 +286,10 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
       if ((from === "quiz" || from === "results") && toLanding) {
         dispatchSession({ type: "exited" });
       }
-      // The startup notice and reserve end when Landing is left (§9.5).
-      if (isLandingRoute(fromRoute) && !toLanding) {
+      // The startup notice and reserve end when Landing is left (§9.5),
+      // but only once it has been shown with a ready bank: leaving it while
+      // the bank loads keeps the reserve and the notice (T-43-TL01 L1).
+      if (landingReadySeen.current && isLandingRoute(fromRoute) && !toLanding) {
         dispatchSaved({ type: "left" });
       }
       // Landing reflects the last write, also from another tab (U9), and
@@ -460,6 +465,12 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   const view = viewFor(route, bank, session);
   const viewKey = `${routeKey(route)}|${view}`;
   const shownViewKey = useRef<string | null>(null);
+  const landingReady =
+    bank.status === "ready" &&
+    (view === "landing" || view === "topic" || view === "topicNotFound");
+  useEffect(() => {
+    if (landingReady) landingReadySeen.current = true;
+  }, [landingReady]);
   useEffect(() => {
     const previous = shownViewKey.current;
     shownViewKey.current = viewKey;

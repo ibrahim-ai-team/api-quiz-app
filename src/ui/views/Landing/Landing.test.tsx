@@ -7,13 +7,15 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { landingReserve } from "../../../content/landingReserve";
 import type { Bank, BankQuestion } from "../../../content/types";
-import type { QuizScope } from "../../../domain";
+import { startSession, type QuizScope } from "../../../domain";
 import type { BankState } from "../../app/bankState";
 import { strings } from "../../strings";
 import { Landing, type LandingProps } from "./Landing";
+import type { LandingProgress } from "./progress";
 
 function question(id: string, topic: string): BankQuestion {
   return {
@@ -407,5 +409,63 @@ describe("T-US6-1 best score in topic rows (T-42, views.md §9.3)", () => {
     const rows = reserve?.querySelectorAll("label") ?? [];
     expect(rows[0]?.textContent).toContain(strings.landing.bestScore(75));
     expect(reserve?.textContent.match(/Best score/g)).toHaveLength(1);
+  });
+});
+
+describe("T-43 replace confirmation when starting fails (views.md §9.6; T-43-TL01 L3)", () => {
+  it("closes the group, shows the start error, focuses Start, and the card stays gone", () => {
+    const resumable = startSession({
+      scope: { kind: "topic", topicId: "topic-a" },
+      mode: "normal",
+      contentVersion: "landing-test",
+      seed: 1,
+      questions: [],
+    });
+    function Harness() {
+      // Like the app: the saved quiz is removed first, then starting fails.
+      const [saved, setSaved] = useState<typeof resumable | null>(resumable);
+      const progress: LandingProgress = {
+        resumable: saved,
+        notice: { session: false, best: false },
+        reserve: null,
+        onResume: () => false,
+        onDiscard: () => undefined,
+        onReplaceStart: () => {
+          setSaved(null);
+          return false;
+        },
+      };
+      return (
+        <Landing
+          bank={ready()}
+          onRetry={() => undefined}
+          topicId={null}
+          topicNotFound={false}
+          onStart={() => true}
+          progress={progress}
+        />
+      );
+    }
+    render(<Harness />);
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(startButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.replaceConfirm }),
+    );
+    expect(screen.getByRole("alert").textContent).toBe(
+      strings.landing.startError,
+    );
+    expect(document.activeElement).toBe(startButton());
+    expect(
+      screen.queryByRole("group", { name: strings.landing.replaceMessage }),
+    ).toBe(null);
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+    // No card any more: Start is a plain Start again.
+    expect(startButton().hasAttribute("aria-expanded")).toBe(false);
   });
 });

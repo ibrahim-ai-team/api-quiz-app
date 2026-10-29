@@ -1423,6 +1423,90 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     expect(stored(KEYS.session)).toBe(null);
   });
 
+  it("T-43-TL01 L3 pressing Start again while the confirmation is open refocuses the message", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(startButton());
+    const message = screen.getByText(strings.landing.replaceMessage);
+    startButton().focus();
+    fireEvent.click(startButton());
+    expect(document.activeElement).toBe(message);
+    expect(startButton().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("T-43-TL01 L3 a stale quiz found on a later re-read is removed silently", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    submit(true);
+    // Another tab (or a new deploy) leaves a quiz this bank cannot restore.
+    const stale = savedSession({
+      questionIds: ["gone"],
+      optionOrder: [["a", "b"]],
+    });
+    createProgressStore().set(KEYS.session, stale);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    await waitFor(() => {
+      expect(stored(KEYS.session)).toBe(null);
+    });
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    expect(slotStatus().textContent).toBe("");
+  });
+
+  it("T-43-TL01 L1 leaving Landing and coming back while the bank loads keeps the reserve and the notice", async () => {
+    const reserveTopicId = landingReserve.topicIds[0] ?? "";
+    const reserveTopicName = landingReserve.topicNames[0] ?? "";
+    // In the reserve (card copy), but not in OK's bank: stale when ready.
+    createProgressStore().set(
+      KEYS.session,
+      savedSession({ scope: { kind: "topic", topicId: reserveTopicId } }),
+    );
+    const bank = deferred<LoadBankResult>();
+    renderApp(bank.promise);
+    const summary = strings.resume.summary(reserveTopicName, 0, 1);
+    const reserve = () =>
+      [...main().querySelectorAll('[aria-hidden="true"]')]
+        .map((el) => el.textContent)
+        .join("|");
+    expect(reserve()).toContain(summary);
+    navigate("#/zzz");
+    expect(h1().textContent).toBe(strings.notFound.heading);
+    navigate("#/");
+    expect(main().getAttribute("data-bank-status")).toBe("loading");
+    expect(reserve()).toContain(summary);
+    bank.resolve(OK);
+    await waitFor(() => {
+      expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+    });
+    expect(reserve()).toContain(summary);
+    expect(stored(KEYS.session)).toBe(null);
+  });
+
+  it("T-43-TL01 L1 a valid quiz still gets its card after leaving Landing while the bank loads", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    const bank = deferred<LoadBankResult>();
+    renderApp(bank.promise);
+    navigate("#/zzz");
+    navigate("#/");
+    // Slot (with its reserve) still mounted while loading.
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+    bank.resolve(OK);
+    await flush();
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }),
+    ).toBeTruthy();
+  });
+
   describe("CLS reserve (views.md §9.2, TL N1, N2)", () => {
     const reserveTopicId = landingReserve.topicIds[0] ?? "";
     const reserveTopicName = landingReserve.topicNames[0] ?? "";
