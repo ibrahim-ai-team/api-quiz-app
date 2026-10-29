@@ -524,8 +524,26 @@ test.describe("T-16 offline and deep links", () => {
     await expect(page).toHaveURL(/#\/$/);
     await expect(h1(page, strings.landing.heading)).toBeFocused();
     await expect(page.locator("[data-question-id]")).toHaveCount(0);
+    // US-6.2: the saved quiz is offered for resuming after the reload.
+    await expect(
+      page.getByRole("region", { name: strings.resume.heading }),
+    ).toBeVisible();
 
-    await startQuizByMouse(page, /^Fixture topic B/, 5);
+    // US-6.4 (views.md §9.6): with a saved quiz, Start asks before replacing
+    // it; confirming starts a new quiz with question 1 focused.
+    await page.getByRole("radio", { name: /^Fixture topic B/ }).click();
+    await button(page, strings.landing.start).click();
+    const confirm = page.getByRole("group", {
+      name: strings.landing.replaceMessage,
+    });
+    await expect(confirm).toBeVisible();
+    await expect(
+      confirm.getByRole("button", { name: strings.common.cancel }),
+    ).toBeVisible();
+    await confirm
+      .getByRole("button", { name: strings.landing.replaceConfirm })
+      .click();
+    await expect(h1(page, strings.question.heading(1, 5))).toBeFocused();
     await playQuizByMouse(page, 5, () => true);
     await page.reload();
     await expect(page).toHaveURL(/#\/$/);
