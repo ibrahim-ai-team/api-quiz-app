@@ -30,6 +30,8 @@ export const strings = {
     newTabCue: "(opens in new tab)",
     retry: "Retry",
     home: "Go to the home page",
+    /** copy:common.cancel: secondary button of the inline confirmations (§9.6). */
+    cancel: "Cancel",
   },
   shell: {
     /** Delegation T-08-D01 asks for a skip link (deviates from design A-D3). */
@@ -85,6 +87,10 @@ export const strings = {
     bestScore: (pct: number): string => `Best score: ${String(pct)}%`,
     start: "Start quiz",
     startHint: "Choose a topic to start.",
+    /** copy:landing.replaceMessage (US-6.4, views.md §9.6). */
+    replaceMessage: "This will discard your unfinished quiz.",
+    /** copy:landing.replaceConfirm */
+    replaceConfirm: "Start new quiz",
     /** Not in copy.md (T-09-D01): production bank with 0 questions. */
     noTopics: "No questions are available yet.",
     /** Not in copy.md (T-09-D01): createQuiz returned an error. */
@@ -94,6 +100,30 @@ export const strings = {
       "Every question is written for ApiQuiz and checked against a primary source, such as an RFC or an official specification. Each answer links to its source.",
     /** Followed by copy:common.newTabCue (US-12.1). */
     report: "Report a problem",
+  },
+  /** Resume card (US-6.2, views.md §9.4). */
+  resume: {
+    heading: "Unfinished quiz",
+    /** copy:resume.summary; `scope` = topic name or "Mixed", plural by n. */
+    summary: (scope: string, answered: number, n: number): string =>
+      n === 1
+        ? `${scope} quiz: ${String(answered)} of 1 question answered.`
+        : `${scope} quiz: ${String(answered)} of ${String(n)} questions answered.`,
+    /** copy:resume.summaryRetry: a saved retry-missed quiz. */
+    summaryRetry: (scope: string, answered: number, n: number): string =>
+      n === 1
+        ? `${scope} retry of missed questions: ${String(answered)} of 1 question answered.`
+        : `${scope} retry of missed questions: ${String(answered)} of ${String(n)} questions answered.`,
+    resume: "Resume quiz",
+    discard: "Discard quiz",
+    discarded: "Unfinished quiz discarded.",
+  },
+  /** Load notice (US-6.3, views.md §9.5). */
+  progress: {
+    sessionRemoved:
+      "Your unfinished quiz could not be restored, so it was removed.",
+    bestRemoved:
+      "Your saved best scores could not be read, so they were removed.",
   },
   question: {
     /** copy:question.heading */

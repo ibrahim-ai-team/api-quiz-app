@@ -11,11 +11,15 @@
  * Focus (views.md §0, §3): Submit announces the verdict in the always-mounted
  * polite status region, then focuses Next; Next clears it and focuses the
  * new h1. Entry focus on the h1 comes from the app's route focus rule.
+ * T-43 (US-6.2, views.md §9.4, F3): a quiz resumed in `feedback` mounts with
+ * the panel and Next but an empty status region; only a Submit seen inside
+ * the view announces the verdict.
  */
 import {
   useEffect,
   useId,
   useRef,
+  useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import type { BankTopic } from "../../../content/types";
@@ -128,6 +132,11 @@ export function Question({
       view.removeEventListener("keydown", endSequence);
     };
   }, []);
+  // The question that was already locked when the view mounted (Resume into
+  // feedback): its verdict is in the panel and is not announced again (F3).
+  const [mountedLocked] = useState(() =>
+    phase === "answering" ? null : questionId,
+  );
   const shown = useRef({ questionId, phase });
   useEffect(() => {
     const previous = shown.current;
@@ -153,7 +162,7 @@ export function Question({
       ?.text ?? "";
   // Only the short verdict is announced, so nothing is read twice (§3).
   const liveText =
-    answer === undefined
+    answer === undefined || questionId === mountedLocked
       ? ""
       : answer.correct
         ? strings.feedback.liveCorrect(correctText)
@@ -295,7 +304,8 @@ export function Question({
           </>
         )}
       </div>
-      {/* Mounted empty from the start (G4); text set on Submit, cleared on Next. */}
+      {/* Mounted empty from the start (G4); text set on Submit, cleared on
+          Next; empty after Resume into feedback (F3). */}
       <div role="status" className={common.visuallyHidden}>
         {renderInlineText(liveText)}
       </div>
