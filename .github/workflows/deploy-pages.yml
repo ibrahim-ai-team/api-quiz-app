@@ -16,14 +16,6 @@ name: Deploy to GitHub Pages (manual)
 
 on:
   workflow_dispatch:
-    inputs:
-      accept_below_release_thresholds:
-        description: >-
-          Sponsor go/no-go: publish even if the question bank is below the
-          US-8.1 release thresholds (content:validate:release). Leave unticked
-          for a normal release.
-        type: boolean
-        default: false
 
 # Least privilege by default; the deploy job alone gets Pages write access.
 permissions:
@@ -65,36 +57,25 @@ jobs:
         run: npm run check
 
       - name: Release content thresholds (US-8.1)
-        env:
-          ACCEPT_BELOW_THRESHOLDS: ${{ inputs.accept_below_release_thresholds }}
+        # No override exists (SD-REL-03): if the bank is below the release
+        # thresholds, or validation fails for any other reason, nothing is
+        # published.
         run: |
-          record() {
-            {
-              echo "### Release content thresholds: $1"
-              echo "- accept_below_release_thresholds: $ACCEPT_BELOW_THRESHOLDS"
-              echo "- commit: $GITHUB_SHA"
-              echo "- started by: $GITHUB_ACTOR (this attempt: $GITHUB_TRIGGERING_ACTOR)"
-            } >> "$GITHUB_STEP_SUMMARY"
-          }
           status=0
           npm run --silent content:validate:release > release.log 2>&1 || status=$?
           cat release.log
           if [ "$status" -eq 0 ]; then
-            record "met"
-            exit 0
-          fi
-          # Only a pure threshold miss (exit 1, every error on a bank-level
-          # "reviewed.*" field) can be overridden; any other failure stops here.
-          if [ "$status" -ne 1 ] || ! grep -q '^error: ' release.log || grep '^error: ' release.log | grep -vq '› reviewed\.'; then
-            echo "::error::content:validate:release failed for a reason other than the US-8.1 thresholds."
-            exit 1
-          fi
-          if [ "$ACCEPT_BELOW_THRESHOLDS" = "true" ]; then
-            echo "::warning title=Release thresholds not met::Publishing below the US-8.1 release thresholds because the sponsor ticked accept_below_release_thresholds."
-            record "NOT met, sponsor override"
+            result="met"
           else
-            echo "::error title=Release thresholds not met::The question bank is below the US-8.1 release thresholds. Add content, or run again with accept_below_release_thresholds ticked if the sponsor approves."
-            record "NOT met, deployment stopped"
+            result="NOT met, deployment stopped"
+          fi
+          {
+            echo "### Release content thresholds: $result"
+            echo "- commit: $GITHUB_SHA"
+            echo "- started by: $GITHUB_ACTOR (this attempt: $GITHUB_TRIGGERING_ACTOR)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=Release content validation failed::content:validate:release failed (exit $status). The question bank does not meet the US-8.1 release criteria or is invalid; fix the content on main and run the deployment again."
             exit 1
           fi
 
