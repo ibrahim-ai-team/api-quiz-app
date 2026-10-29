@@ -378,6 +378,41 @@ describe("T-US3-3 live region and focus", () => {
   });
 });
 
+describe("T-43 resumed in feedback (US-6.2, views.md §9.4, F3)", () => {
+  /** A session restored on question 1 with its answer already locked. */
+  function ResumedHarness() {
+    const [session, dispatch] = useReducer(recording, QUIZ, (quiz) =>
+      quizReducer(
+        quizReducer(startSession(quiz), { type: "select", optionId: "b" }),
+        { type: "submit" },
+      ),
+    );
+    return (
+      <Question
+        session={session}
+        topics={TOPICS}
+        contentVersion="v-test"
+        dispatch={dispatch}
+      />
+    );
+  }
+
+  it("mounts with the panel and Next but an empty status region; the next Submit announces", () => {
+    render(<ResumedHarness />);
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    expect(screen.getByText(strings.feedback.incorrect)).toBeTruthy();
+    const next = screen.getByRole("button", { name: strings.feedback.next });
+    // Focus is left to the app (h1); the view does not move it to Next.
+    expect(document.activeElement).not.toBe(next);
+    fireEvent.click(next, { detail: 1 });
+    expect(h1().textContent).toBe(strings.question.heading(2, 2));
+    expect(status.textContent).toBe("");
+    submitOption("One");
+    expect(status.textContent).toBe(strings.feedback.liveCorrect("One"));
+  });
+});
+
 describe("T-US3-2 T-US3-5 source and report links", () => {
   it("links the https source by hostname and the report with only id and version", () => {
     renderQuestion();

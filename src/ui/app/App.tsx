@@ -3,7 +3,9 @@
  * `<main>` focus target, hash routes, bank loading state and error boundary.
  * T-12 adds the quiz session reducer, the Question view and Exit; T-15 the
  * Results route; T-38 Review answers and Retry missed (US-5); T-42 the best
- * score per topic and Mixed (US-6.1, US-5.5, views.md §9.3).
+ * score per topic and Mixed (US-6.1, US-5.5, views.md §9.3); T-43 saving,
+ * Resume, Discard, the load notice and replacing a saved quiz (US-6.2 to
+ * US-6.4, views.md §9.2, §9.4 to §9.6).
  */
 import {
   useCallback,
@@ -26,6 +28,7 @@ import {
   type Quiz,
   type QuizScope,
   type SavedBest,
+  type SavedSession,
 } from "../../domain";
 import {
   createProgressStore,
@@ -48,11 +51,16 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { parseRoute, routeHref, routeKey, type Route } from "./router";
 import {
   buildRetryQuiz,
+  checkSavedSession,
+  persistSession,
+  readSavedSession,
+  readStartupProgress,
   retryAvailability,
   sessionReducer,
   type SessionState,
 } from "./session";
 import { Landing } from "../views/Landing/Landing";
+import type { LandingProgress } from "../views/Landing/progress";
 import { Question } from "../views/Question/Question";
 import { Results } from "../views/Results/Results";
 import { useHashRoute } from "./useHashRoute";
@@ -132,6 +140,37 @@ function readBest(store: ProgressStore): SavedBest | null {
   return decoded.ok ? decoded.value : null;
 }
 
+/**
+ * The saved quiz Landing offers (US-6.2). `startup` is true until Landing
+ * has been shown with a ready bank and then left (T-43-TL01 L1: leaving it
+ * while the bank loads keeps the reserve): until then the startup decode stands (load
+ * notice and CLS reserve, views.md §9.2, §9.5) and re-reads are ignored;
+ * afterwards Landing re-reads storage each time it is shown (U3, U9).
+ */
+interface SavedState {
+  readonly saved: SavedSession | null;
+  readonly startup: boolean;
+}
+
+type SavedAction =
+  | { readonly type: "left" }
+  | { readonly type: "reread"; readonly saved: SavedSession | null }
+  | { readonly type: "cleared" };
+
+function savedReducer(state: SavedState, action: SavedAction): SavedState {
+  switch (action.type) {
+    case "left":
+      return state.startup ? { ...state, startup: false } : state;
+    case "reread":
+      return state.startup ? state : { saved: action.saved, startup: false };
+    case "cleared":
+      return state.saved === null ? state : { ...state, saved: null };
+  }
+}
+
+const isLandingRoute = (route: Route) =>
+  route.name === "landing" || route.name === "topic";
+
 function focusHeading(main: HTMLElement | null): void {
   main?.querySelector<HTMLElement>("h1")?.focus();
 }
@@ -144,10 +183,21 @@ function routeOfUrl(url: string): Route {
 
 export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   const route = useHashRoute();
-  // One store per app (TL01). Best scores are decoded synchronously at
-  // startup, so the loading reserve already has their lines (no shift).
+  // One store per app (TL01). Best scores and the saved quiz are decoded
+  // synchronously at startup, so the loading reserve already has their
+  // lines and the resume slot its final height (no shift, views.md §9.2).
   const [store] = useState(() => storeProp ?? createProgressStore());
-  const [best, setBest] = useState(() => readBest(store));
+  const [startup] = useState(() => readStartupProgress(store));
+  const [best, setBest] = useState(startup.best);
+  const [savedState, dispatchSaved] = useReducer(savedReducer, {
+    saved: startup.saved,
+    startup: true,
+  });
+  // Unusable saved data is removed once (US-6.3); the notice reports it.
+  useEffect(() => {
+    if (startup.sessionRemoved) store.remove(KEYS.session);
+    if (startup.bestRemoved) store.remove(KEYS.best);
+  }, [startup, store]);
   const [bank, dispatch] = useReducer(bankReducer, initialBankState);
   const mainRef = useRef<HTMLElement>(null);
   const focusAfterRetry = useRef(false);
@@ -195,7 +245,9 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     [beginQuiz],
   );
   // Exit and browser Back both leave the quiz for Landing (US-2.8, views.md
-  // §2) and both clear the session, so `#/quiz` never shows a stale quiz.
+  // §2) and both clear the in-memory session, so `#/quiz` never shows a
+  // stale quiz. With persistent storage the quiz stays saved and Landing
+  // offers it again (U3, FR-26).
   // Leaving the results for Landing (Choose another topic, Back, the brand
   // link) clears it too; quiz -> results keeps it.
   const exitQuiz = () => {
@@ -223,18 +275,29 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     window.location.replace(QUIZ_HREF);
     return true;
   };
+  // Set once Landing has rendered with a ready bank (read by the listener).
+  const landingReadySeen = useRef(false);
   useEffect(() => {
     const onHashChange = (event: HashChangeEvent) => {
-      const from = routeOfUrl(event.oldURL).name;
-      const to = routeOfUrl(event.newURL).name;
-      if (
-        (from === "quiz" || from === "results") &&
-        (to === "landing" || to === "topic")
-      ) {
+      const fromRoute = routeOfUrl(event.oldURL);
+      const toRoute = routeOfUrl(event.newURL);
+      const from = fromRoute.name;
+      const toLanding = isLandingRoute(toRoute);
+      if ((from === "quiz" || from === "results") && toLanding) {
         dispatchSession({ type: "exited" });
       }
-      // Landing reflects the last write, also from another tab (U9).
-      if (to === "landing" || to === "topic") setBest(readBest(store));
+      // The startup notice and reserve end when Landing is left (§9.5),
+      // but only once it has been shown with a ready bank: leaving it while
+      // the bank loads keeps the reserve and the notice (T-43-TL01 L1).
+      if (landingReadySeen.current && isLandingRoute(fromRoute) && !toLanding) {
+        dispatchSaved({ type: "left" });
+      }
+      // Landing reflects the last write, also from another tab (U9), and
+      // offers the quiz that Exit or Back just left saved (U3, FR-26).
+      if (toLanding) {
+        setBest(readBest(store));
+        dispatchSaved({ type: "reread", saved: readSavedSession(store) });
+      }
     };
     window.addEventListener("hashchange", onHashChange);
     return () => {
@@ -248,11 +311,15 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   // read counts as no best scores; a failed write is silent (U2). Every way
   // back to Landing is a hashchange, which re-reads storage (see above).
   const recordedQuiz = useRef<Quiz | null>(null);
+  // SEC-R15 N1: a quiz resumed across a content change never counts, also
+  // without relying on `restoreQuiz` keeping the saved contentVersion.
+  const contentChangedQuiz = useRef<Quiz | null>(null);
   useEffect(() => {
     if (session?.phase !== "finished" || bank.status !== "ready") return;
     if (recordedQuiz.current === session.quiz) return;
     recordedQuiz.current = session.quiz;
     if (!store.persistent) return;
+    if (contentChangedQuiz.current === session.quiz) return;
     if (!countsTowardBest(session.quiz, bank.bank.contentVersion)) return;
     const current = readBest(store);
     const next = updateBest(
@@ -264,6 +331,113 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     // Result ignored: Landing re-reads storage when it is shown again.
     store.set(KEYS.best, encodeBest(next));
   }, [session, bank, store]);
+
+  // Saving (FR-15, views.md §9.4): after every Submit and Next, keyed on the
+  // answer count, index and phase (a selection alone is not saved). A
+  // finished quiz is removed, independently of the best-score write.
+  const persisted = useRef<{
+    quiz: Quiz;
+    answered: number;
+    index: number;
+    phase: string;
+  } | null>(null);
+  useEffect(() => {
+    if (session === null) return;
+    const last = persisted.current;
+    if (
+      last?.quiz === session.quiz &&
+      last.answered === session.answers.length &&
+      last.index === session.index &&
+      last.phase === session.phase
+    ) {
+      return;
+    }
+    persisted.current = {
+      quiz: session.quiz,
+      answered: session.answers.length,
+      index: session.index,
+      phase: session.phase,
+    };
+    persistSession(store, session, Date.now());
+  }, [session, store]);
+
+  // Restore check, once the bank is ready (U4). Derived, not stored: a
+  // stale or unrestorable quiz is removed below and reported only while the
+  // startup decode stands (§9.5); a re-read one is removed silently.
+  const { saved } = savedState;
+  const checked = useMemo(
+    () =>
+      saved === null || bank.status !== "ready"
+        ? null
+        : checkSavedSession(bank.bank, saved),
+    [saved, bank],
+  );
+  const stale = checked !== null && !checked.ok;
+  const removedStale = useRef<SavedSession | null>(null);
+  useEffect(() => {
+    if (!stale || removedStale.current === saved) return;
+    removedStale.current = saved;
+    store.remove(KEYS.session);
+  }, [stale, saved, store]);
+  const resumable = checked?.ok === true ? checked : null;
+
+  // Resume (US-6.2): the session as restored, then the quiz route, whose
+  // h1 the focus rule focuses. Landing guards double activation.
+  const resumeQuiz = useCallback((): boolean => {
+    if (resumable === null) return false;
+    if (resumable.contentChanged) {
+      contentChangedQuiz.current = resumable.session.quiz;
+    }
+    dispatchSession({ type: "restored", session: resumable.session });
+    window.location.hash = QUIZ_HREF;
+    return true;
+  }, [resumable]);
+  // Discard (§9.4): best scores untouched; a failed remove still drops the
+  // card (the next load re-validates).
+  const discardSaved = useCallback(() => {
+    store.remove(KEYS.session);
+    dispatchSaved({ type: "cleared" });
+  }, [store]);
+  // Replace (US-6.4, F4): remove the saved quiz first, then start.
+  const replaceAndStart = useCallback(
+    (scope: QuizScope): boolean => {
+      store.remove(KEYS.session);
+      dispatchSaved({ type: "cleared" });
+      return beginQuiz(scope, false);
+    },
+    [store, beginQuiz],
+  );
+
+  const landingProgress = useMemo((): LandingProgress | null => {
+    if (!store.persistent) return null;
+    const { startup: shown } = savedState;
+    return {
+      resumable: resumable?.session ?? null,
+      notice: {
+        session: shown && (startup.sessionRemoved || stale),
+        best: shown && startup.bestRemoved,
+      },
+      reserve: shown
+        ? {
+            saved: startup.saved,
+            sessionFailed: startup.sessionRemoved,
+            bestFailed: startup.bestRemoved,
+          }
+        : null,
+      onResume: resumeQuiz,
+      onDiscard: discardSaved,
+      onReplaceStart: replaceAndStart,
+    };
+  }, [
+    store,
+    savedState,
+    resumable,
+    startup,
+    stale,
+    resumeQuiz,
+    discardSaved,
+    replaceAndStart,
+  ]);
 
   // Rows show only scores of topics the bank still has (SEC-R13 finding 4).
   // While loading, the reserve uses the decoded value as is.
@@ -291,6 +465,12 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   const view = viewFor(route, bank, session);
   const viewKey = `${routeKey(route)}|${view}`;
   const shownViewKey = useRef<string | null>(null);
+  const landingReady =
+    bank.status === "ready" &&
+    (view === "landing" || view === "topic" || view === "topicNotFound");
+  useEffect(() => {
+    if (landingReady) landingReadySeen.current = true;
+  }, [landingReady]);
   useEffect(() => {
     const previous = shownViewKey.current;
     shownViewKey.current = viewKey;
@@ -329,6 +509,7 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
           topicNotFound={view === "topicNotFound"}
           onStart={startQuiz}
           bestScores={bestScores}
+          progress={landingProgress}
         />
       );
       break;

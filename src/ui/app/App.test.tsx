@@ -129,8 +129,12 @@ describe("T-US12-4 loading indicator", () => {
     vi.useFakeTimers();
   });
 
+  // Memory-only storage: no resume slot, so the bank status is the only
+  // status region (the slot's own region is tested in the T-43 block).
+  const noProgress = () => new MemoryStore();
+
   it("shows nothing before 300 ms, then the loading text in a status region", () => {
-    renderApp(deferred<LoadBankResult>().promise);
+    renderApp(deferred<LoadBankResult>().promise, undefined, noProgress());
     const status = screen.getByRole("status");
     expect(main().getAttribute("data-bank-status")).toBe("loading");
     act(() => {
@@ -148,7 +152,7 @@ describe("T-US12-4 loading indicator", () => {
 
   it("never shows the indicator when data arrives within 300 ms", async () => {
     const bank = deferred<LoadBankResult>();
-    renderApp(bank.promise);
+    renderApp(bank.promise, undefined, noProgress());
     act(() => {
       vi.advanceTimersByTime(200);
     });
@@ -166,6 +170,7 @@ describe("T-US12-4 loading indicator", () => {
     const { reload } = renderApp(
       deferred<LoadBankResult>().promise,
       () => retryBank.promise,
+      noProgress(),
     );
     act(() => {
       vi.advanceTimersByTime(STILL_LOADING_MS - 1);
@@ -968,6 +973,624 @@ describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)",
     renderApp(deferred<LoadBankResult>().promise);
     const reserve = main().querySelector('[aria-hidden="true"]');
     expect(reserve?.textContent).toContain(strings.landing.bestScore(75));
+  });
+});
+
+describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views.md §9)", () => {
+  const base = TEST_BANK.questions[0];
+  if (base === undefined) throw new Error("no test question");
+  /** Three true/false questions in Topic A (True is correct). */
+  const BANK3 = {
+    ...TEST_BANK,
+    questions: [
+      { ...base, id: "q-1" },
+      { ...base, id: "q-2" },
+      { ...base, id: "q-3" },
+    ],
+  };
+  const OK3: LoadBankResult = { ok: true, bank: BANK3 };
+  const at = 1761200000000;
+  const resumeButton = () =>
+    screen.getByRole("button", { name: strings.resume.resume });
+  const discardButton = () =>
+    screen.getByRole("button", { name: strings.resume.discard });
+  const startButton = () =>
+    screen.getByRole("button", { name: strings.landing.start });
+  const stored = (key: string) => createProgressStore().get(key);
+
+  /** The load notice region of the resume slot (not the bank status). */
+  function slotStatus(): HTMLElement {
+    const region = screen
+      .getAllByRole("status")
+      .find((el) => el.closest('[aria-hidden="true"]') === null);
+    if (region === undefined) throw new Error("no status region");
+    return region;
+  }
+
+  /** Radio labels in display order, e.g. ["True", "False"]. */
+  function optionOrder(): string[] {
+    return screen
+      .getAllByRole("radio")
+      .map((radio) => radio.closest("label")?.textContent ?? "");
+  }
+
+  /** Simulates a reload: a new App over the same storage at `#/`. */
+  async function reload(result: LoadBankResult = OK3): Promise<void> {
+    cleanup();
+    setHash("");
+    renderApp(Promise.resolve(result));
+    await flush();
+  }
+
+  /** Starts a 3-question quiz on BANK3. */
+  async function start3(): Promise<void> {
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(startButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 3));
+    });
+  }
+
+  function submit(correct: boolean): void {
+    fireEvent.click(
+      screen.getByRole("radio", { name: correct ? "True" : "False" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.submit }),
+    );
+  }
+
+  /** A saved session for TEST_BANK's q-1 with no answer yet. */
+  function savedSession(overrides: Record<string, unknown> = {}): string {
+    return JSON.stringify({
+      schemaVersion: 1,
+      contentVersion: "test-v1",
+      mode: "normal",
+      scope: { kind: "topic", topicId: "topic-a" },
+      seed: 1,
+      questionIds: ["q-1"],
+      optionOrder: [["true", "false"]],
+      answers: [],
+      index: 0,
+      savedAt: at,
+      ...overrides,
+    });
+  }
+  const validBest = JSON.stringify({
+    schemaVersion: 1,
+    scores: { "topic-a": { percent: 50, correct: 1, total: 2, at } },
+  });
+
+  it("FR-15 saves after Submit and Next, not on a selection; clears on finish", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    expect(stored(KEYS.session)).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.submit }),
+    );
+    expect(JSON.parse(stored(KEYS.session) ?? "null")).toMatchObject({
+      index: 0,
+      answers: [{ o: "true" }],
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    );
+    expect(JSON.parse(stored(KEYS.session) ?? "null")).toMatchObject({
+      index: 1,
+      answers: [{ o: "true" }],
+    });
+    answer(true, false);
+    answer(true, true);
+    await expectResultsFocused();
+    expect(stored(KEYS.session)).toBe(null);
+    expect(stored(KEYS.best)).not.toBe(null);
+  });
+
+  it("T-US6-2 after a reload, Resume restores the index, question order, option order and answers", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    const ids: (string | null)[] = [];
+    const orders: string[][] = [];
+    ids.push(currentQuestionId());
+    orders.push(optionOrder());
+    answer(false, false);
+    ids.push(currentQuestionId());
+    orders.push(optionOrder());
+
+    await reload();
+    expect(document.activeElement).not.toBe(h1());
+    const card = screen.getByRole("region", { name: strings.resume.heading });
+    expect(card.textContent).toContain(strings.resume.summary("Topic A", 1, 3));
+    // Card before the topic group in reading and Tab order.
+    expect(
+      card.compareDocumentPosition(screen.getByRole("group")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(startButton().getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(resumeButton());
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+      expect(h1().textContent).toBe(strings.question.heading(2, 3));
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(currentQuestionId()).toBe(ids[1]);
+    expect(optionOrder()).toEqual(orders[1]);
+    // A locked answer exists only for question 1; question 2 is open.
+    expect(screen.queryByRole("radio", { checked: true })).toBe(null);
+    expect(JSON.parse(stored(KEYS.session) ?? "null")).toMatchObject({
+      index: 1,
+      answers: [{ q: ids[0], o: "false" }],
+    });
+  });
+
+  it("T-US6-2 Resume in feedback shows the locked answer and Next, focuses the h1, empty status (F3)", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    submit(false);
+    await reload();
+    fireEvent.click(resumeButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 3));
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(screen.getByText(strings.feedback.incorrect)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", { name: /^False/ }).checked,
+    ).toBe(true);
+    expect(screen.getByRole("status").textContent).toBe("");
+    // Saving goes on: Next moves the saved index.
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.feedback.next }),
+    );
+    expect(JSON.parse(stored(KEYS.session) ?? "null")).toMatchObject({
+      index: 1,
+    });
+  });
+
+  it("U3 the card is shown right after Exit and after Back; nothing is saved before the first Submit", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+    await start3();
+    submit(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }).textContent,
+    ).toContain(strings.resume.summary("Topic A", 1, 3));
+    fireEvent.click(resumeButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 3));
+    });
+    navigate("#/");
+    expect(document.activeElement).toBe(h1());
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }),
+    ).toBeTruthy();
+  });
+
+  it("Discard removes the saved quiz, keeps best scores and focuses the result text", async () => {
+    createProgressStore().set(KEYS.best, validBest);
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(discardButton());
+    const text = screen.getByText(strings.resume.discarded);
+    expect(document.activeElement).toBe(text);
+    expect(text.getAttribute("tabindex")).toBe("-1");
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+    expect(stored(KEYS.session)).toBe(null);
+    expect(stored(KEYS.best)).toBe(validBest);
+    // No card: Start starts directly, without aria-expanded.
+    expect(startButton().hasAttribute("aria-expanded")).toBe(false);
+  });
+
+  it.each([
+    ["corrupt", "{not json"],
+    ["unknown version", savedSession({ schemaVersion: 2 })],
+  ])(
+    "T-US6-3 a %s saved quiz is removed with a status notice; best scores are kept",
+    async (_label, raw) => {
+      createProgressStore().set(KEYS.best, validBest);
+      createProgressStore().set(KEYS.session, raw);
+      renderApp(Promise.resolve(OK));
+      await waitFor(() => {
+        expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+      });
+      expect(stored(KEYS.session)).toBe(null);
+      expect(stored(KEYS.best)).toBe(validBest);
+      expect(document.activeElement).toBe(document.body);
+      expect(
+        screen.queryByRole("region", { name: strings.resume.heading }),
+      ).toBe(null);
+      // Cleared when Landing is left and not shown again.
+      await startQuiz();
+      navigate("#/");
+      expect(slotStatus().textContent).toBe("");
+    },
+  );
+
+  it("T-US6-3 a stale saved quiz (unknown question) is removed with the notice once the bank is ready", async () => {
+    createProgressStore().set(
+      KEYS.session,
+      savedSession({ questionIds: ["gone"], optionOrder: [["a", "b"]] }),
+    );
+    const bank = deferred<LoadBankResult>();
+    renderApp(bank.promise);
+    await flush();
+    expect(slotStatus().textContent).toBe("");
+    expect(stored(KEYS.session)).not.toBe(null);
+    bank.resolve(OK);
+    await waitFor(() => {
+      expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+    });
+    expect(stored(KEYS.session)).toBe(null);
+  });
+
+  it("T-US6-3 undecodable best scores: removed, notice; a valid saved quiz still gets its card", async () => {
+    createProgressStore().set(KEYS.best, "[]");
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK));
+    await waitFor(() => {
+      expect(slotStatus().textContent).toBe(strings.progress.bestRemoved);
+    });
+    expect(stored(KEYS.best)).toBe(null);
+    expect(stored(KEYS.session)).not.toBe(null);
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }),
+    ).toBeTruthy();
+  });
+
+  it("T-US6-3 stale quiz and undecodable best: both sentences, quiz first, in one paragraph", async () => {
+    createProgressStore().set(KEYS.best, "{");
+    createProgressStore().set(
+      KEYS.session,
+      savedSession({ scope: { kind: "topic", topicId: "gone" } }),
+    );
+    renderApp(Promise.resolve(OK));
+    await waitFor(() => {
+      expect(slotStatus().textContent).toBe(
+        `${strings.progress.sessionRemoved} ${strings.progress.bestRemoved}`,
+      );
+    });
+    expect(slotStatus().querySelectorAll("p")).toHaveLength(1);
+  });
+
+  it("a data error keeps the saved quiz untouched and shows no card or notice", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(FAILED));
+    await flush();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    expect(main().getAttribute("data-bank-status")).toBe("error");
+    expect(stored(KEYS.session)).toBe(savedSession());
+    expect(screen.queryByText(strings.resume.heading)).toBe(null);
+    expect(main().textContent).not.toContain(strings.progress.sessionRemoved);
+  });
+
+  it("T-US6-4 Start with a saved quiz opens the replace confirmation; Escape and Cancel return to Start", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    const startEl = startButton();
+    fireEvent.click(startEl);
+    const group = screen.getByRole("group", {
+      name: strings.landing.replaceMessage,
+    });
+    expect(window.location.hash).toBe("");
+    expect(document.activeElement).toBe(
+      screen.getByText(strings.landing.replaceMessage),
+    );
+    expect(startEl.getAttribute("aria-expanded")).toBe("true");
+    expect(startEl.getAttribute("aria-controls")).toBe(group.id);
+    fireEvent.keyDown(
+      within(group).getByRole("button", {
+        name: strings.landing.replaceConfirm,
+      }),
+      { key: "Escape" },
+    );
+    expect(
+      screen.queryByRole("group", { name: strings.landing.replaceMessage }),
+    ).toBe(null);
+    expect(document.activeElement).toBe(startEl);
+    expect(startEl.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(startEl);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.common.cancel }),
+    );
+    expect(document.activeElement).toBe(startEl);
+    expect(stored(KEYS.session)).toBe(savedSession());
+  });
+
+  it("T-US6-4 F4 Start new quiz removes the saved quiz first, then starts; leaving before Submit shows no card", async () => {
+    const inner = createProgressStore();
+    const calls: string[] = [];
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: (key, value) => {
+        calls.push(`set ${key}`);
+        return inner.set(key, value);
+      },
+      remove: (key) => {
+        calls.push(`remove ${key}`);
+        return inner.remove(key);
+      },
+      clearAppKeys: () => inner.clearAppKeys(),
+    };
+    inner.set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(startButton());
+    expect(calls).toEqual([]);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.replaceConfirm }),
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe("#/quiz");
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+      expect(document.activeElement).toBe(h1());
+    });
+    expect(calls).toEqual([`remove ${KEYS.session}`]);
+    expect(inner.get(KEYS.session)).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+  });
+
+  it("F5 a failed session write is followed by a best-effort remove, with no UI", async () => {
+    const inner = new MemoryStore();
+    const removed: string[] = [];
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: (key, value) =>
+        key === KEYS.session
+          ? { ok: false, reason: "quota" }
+          : inner.set(key, value),
+      remove: (key) => {
+        removed.push(key);
+        return inner.remove(key);
+      },
+      clearAppKeys: () => inner.clearAppKeys(),
+    };
+    renderApp(Promise.resolve(OK3), undefined, store);
+    await flush();
+    await start3();
+    submit(true);
+    expect(removed).toEqual([KEYS.session]);
+    expect(screen.queryByRole("alert")).toBe(null);
+    expect(screen.getByText(strings.feedback.correct)).toBeTruthy();
+  });
+
+  it("US-6.5 memory-only storage: no slot, Exit discards the quiz, Start never asks", async () => {
+    const store = new MemoryStore();
+    renderApp(Promise.resolve(OK3), undefined, store);
+    await flush();
+    expect(screen.queryByRole("status")).toBe(null);
+    await start3();
+    submit(true);
+    expect(store.get(KEYS.session)).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    expect(screen.queryByText(strings.resume.heading)).toBe(null);
+    expect(startButton().hasAttribute("aria-expanded")).toBe(false);
+    await start3();
+  });
+
+  it("SEC-R15 N1 a quiz resumed across a content change never updates the best score", async () => {
+    createProgressStore().set(
+      KEYS.session,
+      savedSession({ contentVersion: "older-v0" }),
+    );
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(resumeButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+    });
+    finishQuiz();
+    await expectResultsFocused();
+    expect(stored(KEYS.best)).toBe(null);
+    expect(stored(KEYS.session)).toBe(null);
+  });
+
+  it("T-43-TL01 L3 pressing Start again while the confirmation is open refocuses the message", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(startButton());
+    const message = screen.getByText(strings.landing.replaceMessage);
+    startButton().focus();
+    fireEvent.click(startButton());
+    expect(document.activeElement).toBe(message);
+    expect(startButton().getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("T-43-TL01 L3 a stale quiz found on a later re-read is removed silently", async () => {
+    renderApp(Promise.resolve(OK3));
+    await flush();
+    await start3();
+    submit(true);
+    // Another tab (or a new deploy) leaves a quiz this bank cannot restore.
+    const stale = savedSession({
+      questionIds: ["gone"],
+      optionOrder: [["a", "b"]],
+    });
+    createProgressStore().set(KEYS.session, stale);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    await waitFor(() => {
+      expect(stored(KEYS.session)).toBe(null);
+    });
+    expect(screen.queryByRole("region", { name: strings.resume.heading })).toBe(
+      null,
+    );
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+    expect(slotStatus().textContent).toBe("");
+  });
+
+  it("T-43-TL01 L1 leaving Landing and coming back while the bank loads keeps the reserve and the notice", async () => {
+    const reserveTopicId = landingReserve.topicIds[0] ?? "";
+    const reserveTopicName = landingReserve.topicNames[0] ?? "";
+    // In the reserve (card copy), but not in OK's bank: stale when ready.
+    createProgressStore().set(
+      KEYS.session,
+      savedSession({ scope: { kind: "topic", topicId: reserveTopicId } }),
+    );
+    const bank = deferred<LoadBankResult>();
+    renderApp(bank.promise);
+    const summary = strings.resume.summary(reserveTopicName, 0, 1);
+    const reserve = () =>
+      [...main().querySelectorAll('[aria-hidden="true"]')]
+        .map((el) => el.textContent)
+        .join("|");
+    expect(reserve()).toContain(summary);
+    navigate("#/zzz");
+    expect(h1().textContent).toBe(strings.notFound.heading);
+    navigate("#/");
+    expect(main().getAttribute("data-bank-status")).toBe("loading");
+    expect(reserve()).toContain(summary);
+    bank.resolve(OK);
+    await waitFor(() => {
+      expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+    });
+    expect(reserve()).toContain(summary);
+    expect(stored(KEYS.session)).toBe(null);
+  });
+
+  it("T-43-TL01 L1 a valid quiz still gets its card after leaving Landing while the bank loads", async () => {
+    createProgressStore().set(KEYS.session, savedSession());
+    const bank = deferred<LoadBankResult>();
+    renderApp(bank.promise);
+    navigate("#/zzz");
+    navigate("#/");
+    // Slot (with its reserve) still mounted while loading.
+    expect(screen.getAllByRole("status")).toHaveLength(2);
+    bank.resolve(OK);
+    await flush();
+    expect(
+      screen.getByRole("region", { name: strings.resume.heading }),
+    ).toBeTruthy();
+  });
+
+  describe("CLS reserve (views.md §9.2, TL N1, N2)", () => {
+    const reserveTopicId = landingReserve.topicIds[0] ?? "";
+    const reserveTopicName = landingReserve.topicNames[0] ?? "";
+
+    function reserveText(): string {
+      return [...main().querySelectorAll('[aria-hidden="true"]')]
+        .map((el) => el.textContent)
+        .join("|");
+    }
+
+    it("a decodable saved quiz reserves an invisible card with its real summary while loading", () => {
+      createProgressStore().set(
+        KEYS.session,
+        savedSession({
+          scope: { kind: "topic", topicId: reserveTopicId },
+          questionIds: ["a", "b"],
+          optionOrder: [
+            ["x", "y"],
+            ["x", "y"],
+          ],
+          answers: [{ q: "a", o: "x" }],
+          index: 1,
+        }),
+      );
+      renderApp(deferred<LoadBankResult>().promise);
+      expect(reserveText()).toContain(
+        strings.resume.summary(reserveTopicName, 1, 2),
+      );
+      expect(slotStatus().textContent).toBe("");
+      expect(
+        screen.queryByRole("button", { name: strings.resume.resume }),
+      ).toBe(null);
+    });
+
+    it("a stale quiz keeps the card copy behind the notice for this render", async () => {
+      createProgressStore().set(
+        KEYS.session,
+        savedSession({
+          scope: { kind: "topic", topicId: reserveTopicId },
+          mode: "retry-missed",
+        }),
+      );
+      renderApp(Promise.resolve(OK));
+      await waitFor(() => {
+        expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+      });
+      expect(reserveText()).toContain(
+        strings.resume.summaryRetry(reserveTopicName, 0, 1),
+      );
+    });
+
+    it("TL N2 a topic the reserve does not list reserves the notice instead of a card", () => {
+      createProgressStore().set(KEYS.best, "{");
+      createProgressStore().set(
+        KEYS.session,
+        savedSession({ scope: { kind: "topic", topicId: "not-in-reserve" } }),
+      );
+      renderApp(deferred<LoadBankResult>().promise);
+      const text = reserveText();
+      expect(text).toContain(
+        `${strings.progress.sessionRemoved} ${strings.progress.bestRemoved}`,
+      );
+      expect(text).not.toContain(strings.resume.heading);
+    });
+
+    it("a corrupt value reserves the notice copy; the notice fills the status after mount", async () => {
+      createProgressStore().set(KEYS.session, "nope");
+      renderApp(deferred<LoadBankResult>().promise);
+      expect(reserveText()).toContain(strings.progress.sessionRemoved);
+      expect(slotStatus().textContent).toBe("");
+      await waitFor(() => {
+        expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+      });
+    });
+
+    it("nothing saved: no reserve and no slot while loading (one status region); the slot mounts when ready", async () => {
+      const bank = deferred<LoadBankResult>();
+      renderApp(bank.promise);
+      expect(reserveText()).not.toContain(strings.resume.heading);
+      expect(screen.getAllByRole("status")).toHaveLength(1);
+      bank.resolve(OK);
+      await flush();
+      expect(slotStatus().textContent).toBe("");
+    });
   });
 });
 
