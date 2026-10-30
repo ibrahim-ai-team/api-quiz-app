@@ -11,7 +11,19 @@
     <title>ApiQuiz</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!--
+        Static fallback (T-47, US-12.5): shown only if the entry script never
+        runs. No script and no inline handlers or styles (CSP). Hidden by the
+        entry stylesheet until a delayed reveal; React replaces it on mount.
+        Plain English here because src/ui/strings.ts needs script.
+      -->
+      <div class="boot-fallback">
+        <h1>ApiQuiz could not start</h1>
+        <p>Part of the app did not load. Check your connection, then retry.</p>
+        <p><a href="">Retry</a></p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -5,6 +5,9 @@ import { loadBank } from "./content/loader";
 // Global tokens and base styles first, so component CSS Modules follow them.
 import "./ui/styles/tokens.css";
 import "./ui/styles/base.css";
+// Hides the static index.html fallback during a normal load (T-47; see
+// bootFallbackCssPlugin in vite.config.ts). createRoot().render replaces it.
+import "virtual:boot-fallback.css";
 import { App } from "./ui/app/App";
 
 // Start the bank request before React renders (ADR-0001 amendment A4), so the

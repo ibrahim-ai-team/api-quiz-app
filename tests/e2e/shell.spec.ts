@@ -316,3 +316,65 @@ test.describe("T-US13-1 dark colour scheme", () => {
     );
   });
 });
+
+/**
+ * T-47 (issue #110, US-12.5): static fallback in index.html for an entry
+ * script that never runs. It is plain HTML (no script, CSP unchanged), hidden
+ * by the entry stylesheet until a delayed CSS reveal, and React replaces it.
+ * The copy is hard-coded in index.html, so it is not in strings.ts.
+ */
+const ENTRY_SCRIPT_GLOB = "**/assets/*.js";
+const BOOT_FALLBACK = {
+  heading: "ApiQuiz could not start",
+  retry: "Retry",
+} as const;
+
+test.describe("T-47 entry script failure fallback", () => {
+  test("T-US12-5 aborted entry script shows the message and a Retry link that reloads", async ({
+    page,
+  }) => {
+    await useFixtureBank(page);
+    await page.route(ENTRY_SCRIPT_GLOB, (route) => route.abort());
+    // A hash route: Retry must still reload the app.
+    await page.goto("./#/nope");
+    const heading = h1(page, BOOT_FALLBACK.heading);
+    const retry = page.getByRole("link", { name: BOOT_FALLBACK.retry });
+    await expect(heading).toBeVisible({ timeout: 10_000 });
+    await expect(retry).toBeVisible();
+    await expect(page.getByText("Part of the app did not load.")).toBeVisible();
+    await expectNoAxeSeriousOrCritical(page, heading);
+    await expectNoHorizontalScroll(page);
+
+    // Retry is a plain link to the current document (fragment dropped), so
+    // following it is a new document load, not a fragment navigation.
+    await page.unroute(ENTRY_SCRIPT_GLOB);
+    await retry.click();
+    await expect(h1(page, strings.landing.heading)).toBeVisible();
+    await expectBankStatus(page, "ready");
+    await expect(page.getByText(BOOT_FALLBACK.heading)).toHaveCount(0);
+  });
+
+  test("T-US12-5 normal load: the fallback is hidden while the script loads and removed on mount", async ({
+    page,
+  }) => {
+    await useFixtureBank(page);
+    // Hold the entry script briefly so the pre-mount state can be inspected.
+    await page.route(ENTRY_SCRIPT_GLOB, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1_500));
+      await route.continue();
+    });
+    await page.goto("./", { waitUntil: "commit" });
+    const fallback = page.locator("#root .boot-fallback");
+    await expect(fallback).toBeAttached();
+    // Not visible, not in the accessibility tree, no layout space.
+    await expect(fallback).toBeHidden();
+    await expect(
+      page.getByRole("heading", { name: BOOT_FALLBACK.heading }),
+    ).toHaveCount(0);
+    await expect(fallback).toHaveCSS("position", "absolute");
+
+    await expectBankStatus(page, "ready");
+    await expect(page.getByText(BOOT_FALLBACK.heading)).toHaveCount(0);
+    await expect(fallback).toHaveCount(0);
+  });
+});
