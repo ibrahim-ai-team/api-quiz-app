@@ -2,7 +2,7 @@
 
 - **Last reconciled:** 2026-10-30 (S4-CLOSE-S5-PLAN-D01). Sources: `gh` reads of issues, PRs, Actions runs and the Pages site; `main` at `baee626`. Previous reconciliation: 2026-10-30 00:20 UTC at `32aa0fe`.
 - **Coordinator:** top-level Claude Code session following ai-software-team `workflows/orchestration-contract.md` and `workflows/sprint-governance.md`.
-- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 closed early on 2026-10-30 at the sponsor's request (planned end 2026-11-06; `docs/sprints/S4.md`): 12 of 12 committed points merged, goal met. Sprint 5 active 2026-10-31 to 2026-11-13 (`docs/sprints/S5.md`): the full open backlog is committed (SD-SPRINT-06), 16 points (10 provisional), plus story acceptances #9 to #17, epic closure #2 to #5 and the manual passes. Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
+- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 closed early on 2026-10-30 at the sponsor's request (planned end 2026-11-06; `docs/sprints/S4.md`): 12 of 12 committed points merged, goal met. Sprint 5 active 2026-10-31 to 2026-11-07 (client deadline, SD-SPRINT-07) (`docs/sprints/S5.md`): the full open backlog is committed (SD-SPRINT-06), 16 points (10 provisional), plus story acceptances #9 to #17, epic closure #2 to #5 and the manual passes. Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
 - **Current sprint (S5) goal:** finish the app. All remaining backlog work is delivered and merged with CI green on main, `check_governance.py --release` passes with no deploy override, and every open story (#9 to #18) is ready for sponsor acceptance.
 - The sections below the release criteria are kept as of 2026-10-21 for history, except Decisions, Workspace and Next actions, which were updated on 2026-10-30. The sprint records under `docs/sprints/` are the current source for sprint scope and status.
 
@@ -40,6 +40,7 @@ Check with ai-software-team `python scripts/check_governance.py --state docs/pro
 - SD-REL-03 (sponsor 2026-10-28): thresholds stay at 60/8/5/20% (SD-REL-02); no deploy-time override. Issue #117 (24/3 proposal) closed as not planned.
 - SD-SPRINT-05 (sponsor 2026-10-30): #109 and #110 go back to the backlog instead of a scope change over S4 capacity; close Sprint 4 and prepare and start Sprint 5.
 - SD-SPRINT-06 (sponsor 2026-10-30: "in this sprint i wana work on all backlog i wana finish this app in this sprint"): Sprint 5 takes the full open backlog; its capacity is raised to the committed total (16 points), since 13 was an assumption and the limit is sponsor review time, not agent capacity. Provisional estimates are updated after refinement inside the sprint.
+- SD-SPRINT-07 (sponsor 2026-10-30: "the deadline is november 07"): the app must be finished for the client by 2026-11-07; Sprint 5 ends on that date (moved from 2026-11-13).
 - SD-DEPLOY-01 (sponsor 2026-10-22): publish the partial bank with one manual deploy per sprint, with the override until US-8.1 was met. Superseded for the override part: #122 removed the input and SD-REL-03 forbids an override.
 - SD-DEPLOY (sponsor 2026-10-29, SEC-R14 mitigation): the three override deploy runs 39847942745, 39916746207 and 39922278097 were deleted (each returns 404 on read-back 2026-10-30); the `github-pages` environment is limited to branch `main`.
 - DQ-US6-1 to 7 (sponsor 2026-10-29, comment on #12): proposed US-6 UX defaults accepted.
@@ -142,7 +143,7 @@ As of 2026-10-30 (Sprint 5, starts 2026-10-31; full backlog per SD-SPRINT-06):
 4. Implementation of #60, #63, #16 and #18 by their owners after refinement, each with tech-lead and code-review-security reviews.
 5. Sponsor: #39 hand check (runbook §3); manual passes: screen reader US-10.3, iOS US-9.6, private mode (`docs/qa/manual-pass-checklist.md` §F).
 6. Sponsor or product-owner: accept US-3 to US-6, US-8 to US-10 and US-12 (#9 to #15, #17), and US-11 and US-13 when delivered; then close the epics #2 to #5.
-7. project-manager: `/sprint-review` for S5 on or before 2026-11-13.
+7. project-manager: `/sprint-review` for S5 on or before 2026-11-07 (client deadline).
 
 Earlier next actions (2026-10-21, history):
 
