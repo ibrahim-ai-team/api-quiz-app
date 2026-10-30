@@ -41,9 +41,57 @@ function cspMetaPlugin(): Plugin {
   };
 }
 
+/**
+ * Static fallback for a failed entry script (T-47, US-12.5). index.html puts
+ * `.boot-fallback` inside #root; React replaces it on mount. Without script
+ * the only way to keep it out of a normal load is CSS: it is hidden and
+ * absolutely positioned (no layout space, not in the accessibility tree) and
+ * a zero-length animation with a delay reveals it only if the app has not
+ * mounted by then. The CSP forbids inline styles and <style> (style-src
+ * 'self', scripts/check-dist-csp.mjs), so the rules ship in the entry
+ * stylesheet: main.tsx imports this virtual module and Vite extracts it into
+ * the render-blocking <link rel="stylesheet"> in <head>, which loads even
+ * when the entry script does not. If that stylesheet fails too, the fallback
+ * is simply visible at once. reduced-motion (base.css) shortens durations,
+ * not delays, so the reveal delay still applies.
+ */
+export const BOOT_FALLBACK_CSS_ID = "virtual:boot-fallback.css";
+export const BOOT_FALLBACK_DELAY = "4s";
+const BOOT_FALLBACK_CSS = `
+.boot-fallback {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: var(--space-6) var(--page-padding-inline);
+  visibility: hidden;
+  animation: boot-fallback-reveal 0s linear ${BOOT_FALLBACK_DELAY} forwards;
+}
+
+@keyframes boot-fallback-reveal {
+  to {
+    visibility: visible;
+  }
+}
+`;
+
+function bootFallbackCssPlugin(): Plugin {
+  const resolved = `\0${BOOT_FALLBACK_CSS_ID}`;
+  return {
+    name: "apiquiz-boot-fallback-css",
+    resolveId(id) {
+      return id === BOOT_FALLBACK_CSS_ID ? resolved : undefined;
+    },
+    load(id) {
+      return id === resolved ? BOOT_FALLBACK_CSS : undefined;
+    },
+  };
+}
+
 export default defineConfig({
   base: "/api-quiz-app/",
-  plugins: [react(), cspMetaPlugin()],
+  plugins: [react(), cspMetaPlugin(), bootFallbackCssPlugin()],
   build: {
     target: "es2022",
     sourcemap: false,
