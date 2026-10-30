@@ -249,6 +249,41 @@ describe("T-US1-8 deep link preselects without auto-start", () => {
   });
 });
 
+describe("T-US12-1 description, accuracy note and report link (T-46, views.md §1)", () => {
+  it("shows the description under the h1 and the accuracy note and report link in About the questions", () => {
+    renderLanding();
+    const h1 = screen.getByRole("heading", {
+      level: 1,
+      name: strings.landing.heading,
+    });
+    const description = screen.getByText(strings.landing.description);
+    expect(h1.nextElementSibling).toBe(description);
+
+    const about = screen.getByRole("heading", {
+      level: 2,
+      name: strings.landing.aboutHeading,
+    });
+    const note = screen.getByText(strings.landing.accuracyNote);
+    expect(about.nextElementSibling).toBe(note);
+    const report = screen.getByRole("link", {
+      name: `${strings.landing.report} ${strings.common.newTabCue}`,
+    });
+    // The report link follows the note, still inside About the questions.
+    expect(note.nextElementSibling?.contains(report)).toBe(true);
+  });
+
+  it("keeps the accuracy note and report link but swaps the description in the topic-not-found variant", () => {
+    renderLanding({ topicId: "no-such-slug", topicNotFound: true });
+    expect(screen.queryByText(strings.landing.description)).toBeNull();
+    expect(screen.getByText(strings.landing.accuracyNote)).toBeTruthy();
+    expect(
+      screen.getByRole("link", {
+        name: `${strings.landing.report} ${strings.common.newTabCue}`,
+      }),
+    ).toBeTruthy();
+  });
+});
+
 describe("T-US12-2 topic not found variant (views.md §7b)", () => {
   it("replaces the h1, shows the list with nothing selected and does not echo the slug", () => {
     renderLanding({ topicId: "no-such-slug", topicNotFound: true });
