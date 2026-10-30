@@ -129,6 +129,8 @@ export default tseslint.config(
       // V-1 / T1: no raw HTML injection from data.
       "react/no-danger": "error",
       "react/no-danger-with-children": "error",
+      // SEC-R01 L-3: no `javascript:` URLs in links.
+      "react/jsx-no-script-url": "error",
     },
   },
 
@@ -154,14 +156,34 @@ export default tseslint.config(
         "error",
         {
           selector:
-            "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
-          message: "Do not assign innerHTML/outerHTML (standard 5).",
+            "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML|srcdoc)$/]",
+          message: "Do not assign innerHTML/outerHTML/srcdoc (standard 5).",
+        },
+        // SEC-R01 L-2: computed forms such as el["innerHTML"] = html.
+        {
+          selector:
+            "AssignmentExpression > MemberExpression.left[computed=true][property.value=/^(innerHTML|outerHTML|srcdoc)$/]",
+          message: "Do not assign innerHTML/outerHTML/srcdoc (standard 5).",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='setAttribute'][arguments.0.value=/^srcdoc$/i]",
+          message:
+            'Do not set the srcdoc attribute via setAttribute("srcdoc") (standard 5).',
         },
         {
           selector:
             "CallExpression[callee.property.name=/^(insertAdjacentHTML|createContextualFragment)$/]",
           message:
             "Do not parse HTML strings (insertAdjacentHTML/createContextualFragment, standard 5).",
+        },
+        // SEC-R01 L-2: Element/ShadowRoot.setHTMLUnsafe, Document.parseHTMLUnsafe
+        // (static) and DOMParser.parseFromString.
+        {
+          selector:
+            "CallExpression[callee.property.name=/^(setHTMLUnsafe|parseHTMLUnsafe|parseFromString)$/]",
+          message:
+            "Do not parse HTML strings (setHTMLUnsafe/parseHTMLUnsafe/parseFromString, standard 5).",
         },
         {
           selector:

@@ -24,6 +24,23 @@ const expectations = {
     // document.write, document.writeln
     "no-restricted-syntax": 6,
   },
+  // T-31 (SEC-R01 L-2): computed innerHTML/outerHTML/srcdoc, dotted .srcdoc,
+  // setAttribute("srcdoc") and setAttribute("SrcDoc"), setHTMLUnsafe,
+  // Document.parseHTMLUnsafe, parseFromString
+  "tests/lint-fixtures/src/ui/rawHtmlSinksExtra.ts": {
+    "no-restricted-syntax": 9,
+  },
+  // T-31 (SEC-R01 L-3): eval(s), new Function(s), setTimeout("x()").
+  "tests/lint-fixtures/src/ui/evalSinks.ts": {
+    "no-eval": 1,
+    "no-new-func": 1,
+    "@typescript-eslint/no-implied-eval": 2, // new Function(s), setTimeout("x()")
+  },
+  "tests/lint-fixtures/src/ui/DangerWithChildren.tsx": {
+    "react/no-danger-with-children": 1,
+    "react/no-danger": 1,
+    "react/jsx-no-script-url": 1,
+  },
   "tests/lint-fixtures/src/domain/importsReact.ts": {
     "no-restricted-imports": 1,
   },
