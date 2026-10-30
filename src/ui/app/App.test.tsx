@@ -1216,8 +1216,8 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
       renderApp(Promise.resolve(OK));
       await waitFor(() => {
         expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+        expect(stored(KEYS.session)).toBe(null);
       });
-      expect(stored(KEYS.session)).toBe(null);
       expect(stored(KEYS.best)).toBe(validBest);
       expect(document.activeElement).toBe(document.body);
       expect(
@@ -1243,8 +1243,8 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     bank.resolve(OK);
     await waitFor(() => {
       expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+      expect(stored(KEYS.session)).toBe(null);
     });
-    expect(stored(KEYS.session)).toBe(null);
   });
 
   it("T-US6-3 undecodable best scores: removed, notice; a valid saved quiz still gets its card", async () => {
@@ -1253,8 +1253,8 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     renderApp(Promise.resolve(OK));
     await waitFor(() => {
       expect(slotStatus().textContent).toBe(strings.progress.bestRemoved);
+      expect(stored(KEYS.best)).toBe(null);
     });
-    expect(stored(KEYS.best)).toBe(null);
     expect(stored(KEYS.session)).not.toBe(null);
     expect(
       screen.getByRole("region", { name: strings.resume.heading }),
@@ -1489,9 +1489,9 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     bank.resolve(OK);
     await waitFor(() => {
       expect(slotStatus().textContent).toBe(strings.progress.sessionRemoved);
+      expect(stored(KEYS.session)).toBe(null);
     });
     expect(reserve()).toContain(summary);
-    expect(stored(KEYS.session)).toBe(null);
   });
 
   it("T-43-TL01 L1 a valid quiz still gets its card after leaving Landing while the bank loads", async () => {
