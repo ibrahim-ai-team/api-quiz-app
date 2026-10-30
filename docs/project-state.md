@@ -1,16 +1,16 @@
 # Project state — ApiQuiz (idea-01)
 
-- **Last reconciled:** 2026-10-23 UTC. Sources: GitHub reads of issues, PRs and Actions runs; `main` at `6698128`.
+- **Last reconciled:** 2026-10-30 00:20 UTC (S4-STATUS-D01). Sources: `gh` reads of issues, PRs, Actions runs, the `github-pages` environment and the Pages site; `main` at `32aa0fe`. Previous reconciliation: 2026-10-23 at `6698128`.
 - **Coordinator:** top-level Claude Code session following ai-software-team `workflows/orchestration-contract.md` and `workflows/sprint-governance.md`.
-- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 active 2026-10-24 to 2026-11-06 (`docs/sprints/S4.md`). Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
+- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 active 2026-10-24 to 2026-11-06 (`docs/sprints/S4.md`): 9 of 12 committed points merged as of 2026-10-30; T-45 (#108) in progress; US-5 (#11) and US-6 (#12) await acceptance. Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
 - **Current sprint (S4) goal:** a returning learner can review answers, retry missed questions, keep a best score per topic and resume an unfinished quiz. US-5 and US-6 E2E pass in CI on main, and the release check passes with no deploy override.
-- The sections below the release criteria are kept as of 2026-10-21 for history. The sprint records under `docs/sprints/` are the current source for sprint scope and status.
+- The sections below the release criteria are kept as of 2026-10-21 for history, except Decisions, Workspace and Next actions, which were updated on 2026-10-30. The sprint records under `docs/sprints/` are the current source for sprint scope and status.
 
 ## Product goal and approved MVP scope
 
 - Product goal: a free, static API interview practice quiz (`docs/planning/01-product-brief.md`).
 - MVP scope: the P0 and P1 stories US-1 to US-10 and US-12. US-11 and US-13 are post-MVP.
-- Delivered on main (not yet accepted): US-3, US-4, US-8 (66 reviewed / 8 topics), US-9 and US-10 slices, US-5 feature (E2E pending), US-6 storage layer. US-1 and US-2 issues are closed.
+- Delivered on main (not yet accepted): US-3, US-4, US-8 (66 reviewed / 8 topics), US-9 and US-10 slices, US-5 feature with E2E (#123, #124), US-6 best score, resume and reset (#126 to #128; E2E T-45 pending). The app is live on GitHub Pages (see Workspace). US-1 and US-2 issues are closed.
 
 ## Release criteria
 
@@ -21,7 +21,7 @@
 | RC-3 | minPerTopic | 5 | SD-REL-02 | scripts/content/rules.ts: minPerTopic: {value} |
 | RC-4 | minMediumOrHardPercent | 20 | SD-REL-02 | scripts/content/rules.ts: minMediumOrHardPercent: {value} |
 
-Check with ai-software-team `python scripts/check_governance.py --state docs/project-state.md --repo . --release`. The bank on main (66 reviewed, 8 topics) meets these values. The release check still fails on the deploy override input until #39 removes it (Sprint 4).
+Check with ai-software-team `python scripts/check_governance.py --state docs/project-state.md --repo . --release`. The bank on main (66 reviewed, 8 topics) meets these values. PR #122 (#39) removed the deploy override input. On 2026-10-30 at `main` 32aa0fe, `check_governance.py --state docs/project-state.md --repo . --release` printed "Governance check passed." (exit 0). Deploy run 40839486152 met the thresholds with no override. SD-REL-03 (2026-10-28) keeps these values and allows no deploy-time override.
 
 ## Requirement conflicts
 
@@ -36,14 +36,21 @@ Check with ai-software-team `python scripts/check_governance.py --state docs/pro
 - ADR-0001: `docs/adr/0001-architecture.md` (updated in PR #52).
 - Node pinned `>=22.18 <23`; Node 24 runs in CI as an informational job.
 - Team rule since PR #64/#65: the owner merges only after the coordinator's "ready to merge" comment.
-- Pending decisions: see "Sponsor decisions needed".
+- SD-REL-02 (sponsor 2026-10-23): keep the question bank and release thresholds 60/8/5/20%.
+- SD-REL-03 (sponsor 2026-10-28): thresholds stay at 60/8/5/20% (SD-REL-02); no deploy-time override. Issue #117 (24/3 proposal) closed as not planned.
+- SD-DEPLOY-01 (sponsor 2026-10-22): publish the partial bank with one manual deploy per sprint, with the override until US-8.1 was met. Superseded for the override part: #122 removed the input and SD-REL-03 forbids an override.
+- SD-DEPLOY (sponsor 2026-10-29, SEC-R14 mitigation): the three override deploy runs 39847942745, 39916746207 and 39922278097 were deleted (each returns 404 on read-back 2026-10-30); the `github-pages` environment is limited to branch `main`.
+- DQ-US6-1 to 7 (sponsor 2026-10-29, comment on #12): proposed US-6 UX defaults accepted.
+- Process (sponsor 2026-10-30): review follow-up fixes run only the impacted tests locally; PR CI runs the full suite.
+- Pending decisions: see "Sponsor decisions needed" (history) and Next actions.
 
 ## Workspace (GitHub)
 
 - Repository `ibrahim-ai-team/api-quiz-app`, public. Issues #2–#48 from the plan; follow-ups #55 (T-31), #60 (T-32), #63 (T-33). No milestones or Project board.
 - CI (`.github/workflows/ci.yml`): lint/typecheck/test/build/budgets/audit, dependency review, E2E Playwright (Chromium 6 viewports + `webkit-iphone` on PRs), Node 24 (informational). Dependency graph setting enabled during Sprint 1.
-- Branch protection on `main`: **not verified / not observed.** GitHub Pages: **not enabled** (per coordinator). No deploy workflow exists.
-- Deployed: **nothing.**
+- Branch protection on `main`: **not verified / not observed.**
+- GitHub Pages: source "GitHub Actions"; workflow `.github/workflows/deploy-pages.yml` ("Deploy to GitHub Pages (manual)", `workflow_dispatch`, no inputs since #122). Environment `github-pages`: custom deployment branch policy, branch `main` only (read 2026-10-30).
+- Deployed: **yes.** https://ibrahim-ai-team.github.io/api-quiz-app/ from run 40839486152 (`main` @ `edb6d76`, 2026-10-29, 3 jobs success, release thresholds met with no override); HTTP 200 on 2026-10-30. Later merges (#124 to #128) are not deployed yet.
 
 ## Merged (verified by the coordinator on GitHub)
 
@@ -125,6 +132,17 @@ SD-1 accept US-1/US-2; SD-2 confirm T-12-D01 / DQ-1; SD-3 DQ-5; SD-4 designer co
 
 ## Next actions
 
+As of 2026-10-30 (Sprint 4):
+
+1. qa-automation: finish T-45 (#108) on `feat/T-45-qa-automation`, push and open the PR with the manual private-mode Safari checklist; then tech-lead and code-review-security reviews.
+2. agile-orchestrator: confirm main CI run 40978700991 on `32aa0fe` (in progress at 00:20 UTC).
+3. Sponsor: hand check of the deploy per the runbook §3, then close #39.
+4. Sponsor or product-owner: accept US-5 (#11) and US-6 (#12) after T-45 merges; run the manual private-mode Safari pass from the T-45 checklist.
+5. Sponsor: earlier acceptances unchanged and still open: US-3 (#9), US-4 (#10), US-9 (#14), US-10 (#15).
+6. project-manager: `/sprint-review` for S4 on or before 2026-11-06.
+
+Earlier next actions (2026-10-21, history):
+
 1. agile-orchestrator: reconcile T-22 / PR #73, dispatch the tech-lead and security reviews, post "ready to merge" when dispositioned.
 2. agile-orchestrator: dispatch T-16 (qa-automation) in the main worktree; ask the sponsor SD-5, SD-7, SD-8 in one message.
 3. agile-orchestrator: after SD-5, dispatch T-23 in a separate content worktree.
@@ -137,3 +155,4 @@ SD-1 accept US-1/US-2; SD-2 confirm T-12-D01 / DQ-1; SD-3 DQ-5; SD-4 designer co
 | 2026-10-21 ~22:52 | DELIVERY (Sprint 1) | DELIVERY (Sprint 1 closed) | All committed tasks merged; sponsor stop point after PR #72 | `docs/planning/sprint1-coordinator-state.md` |
 | 2026-10-21 22:57 | DELIVERY | DELIVERY (Sprint 2 planned) | Sprint 1 review, retro and Sprint 2 plan (S2-PLAN-D01) | `docs/planning/06-sprint1-review-retro-sprint2-plan.md` |
 | 2026-10-23 | DELIVERY (Sprint 3) | DELIVERY (Sprint 4) | Sprint 2 and Sprint 3 closed with records; Sprint 4 planned at the sponsor's request; release criteria SD-REL-02 recorded | `docs/sprints/S2.md`, `S3.md`, `S4.md` |
+| 2026-10-30 | DELIVERY (Sprint 4) | DELIVERY (Sprint 4, mid-sprint) | Mid-sprint reconciliation: T-39, US-6 spec, T-42 to T-44 and the T-20 override removal merged; SD-REL-03; first deploy with no override | `docs/sprints/S4.md`, PRs #121 to #128, run 40839486152 |
