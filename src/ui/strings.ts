@@ -85,6 +85,29 @@ export const strings = {
     mixedDescription: "Questions from several topics",
     /** copy:landing.bestScore (US-6.1, views.md §9.3). */
     bestScore: (pct: number): string => `Best score: ${String(pct)}%`,
+    /** copy:landing.difficultyLegend (US-11, views.md §10.3). */
+    difficultyLegend: "Difficulty",
+    /** copy:landing.difficultyAll: the default difficulty radio. */
+    difficultyAll: "All",
+    /** copy:landing.difficulty.*: radio labels. */
+    difficulty: { easy: "Easy", medium: "Medium", hard: "Hard" },
+    /** copy:landing.difficultyWord.*: lower-case form inside sentences. */
+    difficultyWord: { easy: "easy", medium: "medium", hard: "hard" },
+    /** copy:landing.lengthLegend; the radio labels are the numerals. */
+    lengthLegend: "Number of questions",
+    /**
+     * copy:landing.shortHint (US-11.1, §10.4); plural by n. `difficulty` is a
+     * `difficultyWord` value, omitted with All.
+     */
+    shortHint: (n: number, difficulty?: string): string => {
+      const word = difficulty === undefined ? "" : `${difficulty} `;
+      return n === 1
+        ? `Only 1 ${word}question is available, so this quiz will have 1.`
+        : `Only ${String(n)} ${word}questions are available, so this quiz will have ${String(n)}.`;
+    },
+    /** copy:landing.noneHint (US-11.2, §10.4); a `difficultyWord` value. */
+    noneHint: (difficulty: string): string =>
+      `There are no ${difficulty} questions for this choice. Choose another difficulty or topic.`,
     start: "Start quiz",
     startHint: "Choose a topic to start.",
     /** copy:landing.replaceMessage (US-6.4, views.md §9.6). */
@@ -243,6 +266,12 @@ export const strings = {
      */
     retryNote:
       "This was a retry of your missed questions, so it does not count toward your best score.",
+    /**
+     * copy:results.filteredNote (US-11, views.md §10.6). Rendered only when
+     * storage is persistent: `ResultsProps.showFilteredNote`.
+     */
+    filteredNote:
+      "This quiz used a difficulty filter or fewer than 10 questions, so it does not count toward your best score.",
     /** copy:results.startFull: primary on retry results (US-5.5). */
     startFull: "Start a full quiz",
   },

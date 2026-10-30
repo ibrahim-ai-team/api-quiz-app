@@ -77,6 +77,7 @@ function renderResults(
     readonly retry?: RetryAvailability;
     readonly retryStarts?: boolean;
     readonly showRetryBestScoreNote?: boolean;
+    readonly showFilteredNote?: boolean;
   } = {},
 ) {
   const onTryAgain = vi.fn();
@@ -93,6 +94,7 @@ function renderResults(
       retry={options.retry ?? { missed, available: missed }}
       onRetryMissed={onRetryMissed}
       showRetryBestScoreNote={options.showRetryBestScoreNote ?? false}
+      showFilteredNote={options.showFilteredNote ?? false}
     />,
   );
   return { onTryAgain, onChooseAnother, onRetryMissed };
@@ -379,6 +381,20 @@ describe("T-38 Retry missed on Results (US-5.3 to US-5.6, views.md §8.4, §8.5)
     cleanup();
     renderResults(twoMissed(), { showRetryBestScoreNote: true });
     expect(screen.queryByText(strings.results.retryNote)).toBe(null);
+  });
+
+  it("T-49 showFilteredNote renders results.filteredNote under a normal quiz's h1 only (US-11, §10.6)", () => {
+    renderResults(twoMissed());
+    expect(screen.queryByText(strings.results.filteredNote)).toBe(null);
+    cleanup();
+    renderResults(twoMissed(), { showFilteredNote: true });
+    const note = screen.getByText(strings.results.filteredNote);
+    expect(note.previousElementSibling).toBe(
+      screen.getByRole("heading", { level: 1 }),
+    );
+    cleanup();
+    renderResults(retrySession(twoMissed()), { showFilteredNote: true });
+    expect(screen.queryByText(strings.results.filteredNote)).toBe(null);
   });
 
   it("retry results with an unknown scope topic omit the title segment", () => {

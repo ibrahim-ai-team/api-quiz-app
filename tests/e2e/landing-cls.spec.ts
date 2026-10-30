@@ -149,7 +149,13 @@ test.describe("T-34 Landing CLS: the topic area does not move later content", ()
         name: strings.notFound.topicHeading,
       }),
     ).toBeVisible();
-    for (const radio of await page.getByRole("radio").all()) {
+    // Only the topic radios: the US-11 settings groups keep their checked
+    // defaults (All, 10).
+    const topicRadios = page
+      .getByRole("group", { name: strings.landing.topicsLegend })
+      .getByRole("radio");
+    await expect(topicRadios).not.toHaveCount(0);
+    for (const radio of await topicRadios.all()) {
       await expect(radio).not.toBeChecked();
     }
     const readyHeight = await topicAreaHeight();

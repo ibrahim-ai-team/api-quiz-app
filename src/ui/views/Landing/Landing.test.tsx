@@ -14,7 +14,12 @@ import type { Bank, BankQuestion } from "../../../content/types";
 import { startSession, type QuizScope } from "../../../domain";
 import type { BankState } from "../../app/bankState";
 import { strings } from "../../strings";
-import { Landing, type LandingProps } from "./Landing";
+import {
+  DEFAULT_SETTINGS,
+  Landing,
+  type LandingProps,
+  type QuizSettings,
+} from "./Landing";
 import type { LandingProgress } from "./progress";
 
 function question(id: string, topic: string): BankQuestion {
@@ -72,7 +77,13 @@ function renderLanding(props: Partial<LandingProps> = {}) {
   return { onStart };
 }
 
-const radios = () => screen.queryAllByRole("radio");
+/** Topic radios only (the US-11 settings groups have radios too). */
+const radios = () => {
+  const group = screen.queryByRole("group", {
+    name: strings.landing.topicsLegend,
+  });
+  return group === null ? [] : within(group).queryAllByRole("radio");
+};
 const startButton = () =>
   screen.getByRole("button", { name: strings.landing.start });
 
@@ -209,6 +220,9 @@ describe("T-US1-6/7 Start", () => {
     expect(document.activeElement).toBe(radios()[0]);
     await user.keyboard(" ");
     expect((radios()[0] as HTMLInputElement).checked).toBe(true);
+    // US-11: Difficulty and Number of questions are one Tab stop each.
+    await user.tab();
+    await user.tab();
     await user.tab();
     expect(document.activeElement).toBe(startButton());
     await user.keyboard("{Enter}");
@@ -306,12 +320,12 @@ describe("states and structure", () => {
     const reserve = document.querySelector('[aria-hidden="true"]');
     expect(reserve).not.toBeNull();
     // aria-label is "<name>, <count>"; a name may itself contain ", ".
-    const names = [...(reserve?.querySelectorAll("input") ?? [])].map(
-      (input) => {
-        const label = input.getAttribute("aria-label") ?? "";
-        return label.slice(0, label.lastIndexOf(", "));
-      },
-    );
+    const names = [
+      ...(reserve?.querySelectorAll("input[aria-label]") ?? []),
+    ].map((input) => {
+      const label = input.getAttribute("aria-label") ?? "";
+      return label.slice(0, label.lastIndexOf(", "));
+    });
     expect(names).toEqual([
       ...landingReserve.topicNames,
       ...(landingReserve.eligibleTopicCount > 1
@@ -631,5 +645,183 @@ describe("T-44 Your progress and Reset progress (US-6.6, views.md §9.6)", () =>
       strings.progress.resetFailed,
     );
     expect(screen.queryByText(strings.progress.resetDone)).toBe(null);
+  });
+});
+
+describe("T-49 difficulty and length groups (US-11, views.md §10)", () => {
+  function q(
+    id: string,
+    topic: string,
+    difficulty: BankQuestion["difficulty"],
+  ) {
+    return { ...question(id, topic), difficulty };
+  }
+  /** Topic B: 1 easy, 1 hard; Topic A: 2 easy, 0 hard. Mixed: 1 hard. */
+  const BANK_D: Bank = {
+    ...BANK,
+    questions: [
+      q("q-1", "topic-a", "easy"),
+      q("q-2", "topic-b", "easy"),
+      q("q-3", "topic-a", "easy"),
+      q("q-4", "topic-b", "hard"),
+    ],
+  };
+  const group = (name: string) => screen.getByRole("group", { name });
+  const difficultyRadio = (name: string) =>
+    within(group(strings.landing.difficultyLegend)).getByRole("radio", {
+      name,
+    });
+  const lengthRadio = (n: number) =>
+    within(group(strings.landing.lengthLegend)).getByRole("radio", {
+      name: String(n),
+    });
+  const description = () =>
+    document.getElementById(
+      startButton().getAttribute("aria-describedby") ?? "",
+    )?.textContent ?? "";
+
+  /** Landing whose settings live in a parent, like App. */
+  function renderWithSettings(props: Partial<LandingProps> = {}) {
+    const onStart = vi.fn<(scope: QuizScope) => boolean>(() => true);
+    function Harness() {
+      const [settings, setSettings] = useState<QuizSettings>(DEFAULT_SETTINGS);
+      return (
+        <Landing
+          bank={ready(BANK_D)}
+          onRetry={() => undefined}
+          topicId={null}
+          topicNotFound={false}
+          onStart={onStart}
+          settings={settings}
+          onSettingsChange={setSettings}
+          {...props}
+        />
+      );
+    }
+    render(<Harness />);
+    return { onStart };
+  }
+
+  it("renders both groups after the topics, before Start, with the defaults checked", () => {
+    renderWithSettings();
+    const difficulty = group(strings.landing.difficultyLegend);
+    const length = group(strings.landing.lengthLegend);
+    expect(
+      within(difficulty)
+        .getAllByRole("radio")
+        .map((r) => r.closest("label")?.textContent),
+    ).toEqual(["All", "Easy", "Medium", "Hard"]);
+    expect(
+      within(length)
+        .getAllByRole("radio")
+        .map((r) => r.closest("label")?.textContent),
+    ).toEqual(["5", "10", "20"]);
+    expect((difficultyRadio("All") as HTMLInputElement).checked).toBe(true);
+    expect((lengthRadio(10) as HTMLInputElement).checked).toBe(true);
+    const topics = group(strings.landing.topicsLegend);
+    const follows = (a: Node, b: Node) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(topics, difficulty)).toBe(true);
+    expect(follows(difficulty, length)).toBe(true);
+    expect(follows(length, startButton())).toBe(true);
+  });
+
+  it("row counts follow the difficulty; rows stay, Mixed keeps its place", () => {
+    renderWithSettings();
+    fireEvent.click(difficultyRadio("Hard"));
+    expect(radios().map((r) => r.getAttribute("aria-label"))).toEqual([
+      `Topic B, ${strings.landing.topicCount(1)}`,
+      `Topic A, ${strings.landing.topicCount(0)}`,
+      `${strings.landing.mixedLabel}, ${strings.landing.topicCount(1)}`,
+    ]);
+  });
+
+  it("no hint at the defaults even when the topic has fewer than 10", () => {
+    renderWithSettings();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    expect(startButton().hasAttribute("aria-describedby")).toBe(false);
+    expect(document.body.textContent).not.toContain("are available");
+  });
+
+  it("T-US11-1 a changed setting states the real number as Start's description", () => {
+    const { onStart } = renderWithSettings();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(lengthRadio(5));
+    expect(description()).toBe(strings.landing.shortHint(2));
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic B/ }));
+    fireEvent.click(difficultyRadio("Hard"));
+    expect(description()).toBe(strings.landing.shortHint(1, "hard"));
+    expect(startButton().getAttribute("aria-disabled")).toBe(null);
+    fireEvent.click(startButton());
+    expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("T-US11-2 0 matches: aria-disabled Start with noneHint; activating it does nothing, no replace confirmation", () => {
+    const resumable = startSession({
+      scope: { kind: "topic", topicId: "topic-a" },
+      mode: "normal",
+      contentVersion: "landing-test",
+      seed: 1,
+      questions: [],
+    });
+    const onReplaceStart = vi.fn(() => true);
+    const { onStart } = renderWithSettings({
+      progress: {
+        resumable,
+        notice: { session: false, best: false },
+        reserve: null,
+        onResume: () => false,
+        onDiscard: () => undefined,
+        onReplaceStart,
+        onReset: () => true,
+      },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(difficultyRadio("Hard"));
+    const none = strings.landing.noneHint("hard");
+    expect(screen.getByText(none)).toBeTruthy();
+    expect(startButton().getAttribute("aria-disabled")).toBe("true");
+    expect(description()).toBe(none);
+    fireEvent.click(startButton());
+    fireEvent.keyDown(startButton(), { key: "Enter" });
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onReplaceStart).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("group", { name: strings.landing.replaceMessage }),
+    ).toBe(null);
+    expect(startButton().getAttribute("aria-expanded")).toBe("false");
+    // Another difficulty recovers.
+    fireEvent.click(difficultyRadio("Easy"));
+    expect(startButton().getAttribute("aria-disabled")).toBe(null);
+  });
+
+  it("the loading reserve contains both groups, disabled, with the defaults checked", () => {
+    renderLanding({
+      bank: { status: "loading", attempt: 0, userRetry: false },
+      settings: { difficulty: "hard", length: 5 },
+    });
+    const reserve = document.querySelector('[aria-hidden="true"]');
+    const legends = [...(reserve?.querySelectorAll("legend") ?? [])].map(
+      (legend) => legend.textContent,
+    );
+    expect(legends).toEqual([
+      strings.landing.topicsLegend,
+      strings.landing.difficultyLegend,
+      strings.landing.lengthLegend,
+    ]);
+    const settingsInputs = [
+      ...(reserve?.querySelectorAll<HTMLInputElement>(
+        "input:not([aria-label])",
+      ) ?? []),
+    ];
+    expect(settingsInputs).toHaveLength(7);
+    expect(settingsInputs.every((input) => input.matches(":disabled"))).toBe(
+      true,
+    );
+    expect(
+      settingsInputs
+        .filter((input) => input.checked)
+        .map((input) => input.closest("label")?.textContent),
+    ).toEqual(["All", "10"]);
   });
 });

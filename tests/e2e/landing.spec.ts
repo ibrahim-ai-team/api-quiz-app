@@ -17,6 +17,15 @@ import {
 import { expectNoHorizontalScroll } from "./helpers/layout.ts";
 
 const radio = (page: Page, name: RegExp) => page.getByRole("radio", { name });
+// US-11 adds the Difficulty and Number of questions radio groups, so topic
+// checks are scoped to the "Choose a topic" group.
+const topicGroup = (page: Page) =>
+  page.getByRole("group", { name: strings.landing.topicsLegend });
+const topicRadios = (page: Page) => topicGroup(page).getByRole("radio");
+const settingRadio = (page: Page, legend: string, name: string) =>
+  page
+    .getByRole("group", { name: legend, exact: true })
+    .getByRole("radio", { name, exact: true });
 const start = (page: Page) =>
   page.getByRole("button", { name: strings.landing.start });
 const questionHeading = (page: Page, n: number) =>
@@ -76,7 +85,7 @@ test.describe("T-09 Landing", () => {
       route.fulfill({ json: singleTopic }),
     );
     await page.reload();
-    await expect(page.getByRole("radio")).toHaveCount(1);
+    await expect(topicRadios(page)).toHaveCount(1);
     await expect(radio(page, /^Fixture topic A/)).toBeVisible();
     await expect(page.getByRole("radio", { name: /^Mixed/ })).toHaveCount(0);
   });
@@ -121,6 +130,20 @@ test.describe("T-09 Landing", () => {
     await expect(first).toBeChecked();
     // Tab moves are not counted (F-5): Space and Enter are the 2 activations.
     await page.keyboard.press("Space");
+    // US-11 (views.md §10.8): Difficulty and Number of questions are one Tab
+    // stop each, on their checked defaults, between the topics and Start.
+    await page.keyboard.press("Tab");
+    await expect(
+      settingRadio(
+        page,
+        strings.landing.difficultyLegend,
+        strings.landing.difficultyAll,
+      ),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(
+      settingRadio(page, strings.landing.lengthLegend, "10"),
+    ).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(start(page)).toBeFocused();
     await page.keyboard.press("Enter");
@@ -226,10 +249,21 @@ test.describe("T-09 Landing", () => {
       name: strings.notFound.topicHeading,
     });
     await expect(heading).toBeFocused();
-    await expect(page.getByRole("radio")).toHaveCount(4);
-    for (const r of await page.getByRole("radio").all()) {
+    await expect(topicRadios(page)).toHaveCount(4);
+    for (const r of await topicRadios(page).all()) {
       await expect(r).not.toBeChecked();
     }
+    // The US-11 settings keep their defaults (views.md §10.3): All and 10.
+    await expect(
+      settingRadio(
+        page,
+        strings.landing.difficultyLegend,
+        strings.landing.difficultyAll,
+      ),
+    ).toBeChecked();
+    await expect(
+      settingRadio(page, strings.landing.lengthLegend, "10"),
+    ).toBeChecked();
     await expect(page.locator("body")).not.toContainText("evil-slug");
     expect(await page.content()).not.toContain("evil-slug");
     expect(await page.title()).not.toContain("evil-slug");

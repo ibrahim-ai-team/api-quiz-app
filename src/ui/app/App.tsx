@@ -6,7 +6,9 @@
  * score per topic and Mixed (US-6.1, US-5.5, views.md §9.3); T-43 saving,
  * Resume, Discard, the load notice and replacing a saved quiz (US-6.2 to
  * US-6.4, views.md §9.2, §9.4 to §9.6); T-44 Reset progress (US-6.6) and the
- * memory-only mode check (US-6.5, §9.1 U2).
+ * memory-only mode check (US-6.5, §9.1 U2). T-49 the difficulty and length
+ * settings of the page load, Try again with the quiz's own settings, and the
+ * full-quiz rule for the best score (US-11, views.md §10).
  */
 import {
   useCallback,
@@ -23,6 +25,7 @@ import type { LoadBankResult } from "../../content/loader";
 import {
   countsTowardBest,
   createQuiz,
+  isFullQuiz,
   randomSeed,
   score,
   updateBest,
@@ -60,7 +63,13 @@ import {
   sessionReducer,
   type SessionState,
 } from "./session";
-import { Landing } from "../views/Landing/Landing";
+import type { Difficulty } from "../../content/types";
+import {
+  DEFAULT_SETTINGS,
+  difficultyFilter,
+  Landing,
+  type QuizSettings,
+} from "../views/Landing/Landing";
 import type { LandingProgress } from "../views/Landing/progress";
 import { Question } from "../views/Question/Question";
 import { Results } from "../views/Results/Results";
@@ -232,13 +241,27 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   // Quiz session (standard 8, T-09-R01 N3). `scope` is Landing's
   // bank-derived selection (SEC-R06 N-2); Landing guards double activation.
   const [session, dispatchSession] = useReducer(sessionReducer, null);
+  // Difficulty and length (US-11, views.md §10.1 F6): App state for the page
+  // load, since Landing remounts per route; never stored, not in the URL.
+  const [settings, setSettings] = useState<QuizSettings>(DEFAULT_SETTINGS);
   // Start pushes `#/quiz`. Try again replaces `#/results` with it, so Back
   // from the new quiz leaves for Landing as usual (US-2.8) instead of
   // reaching a results entry for a quiz that is no longer in memory.
   const beginQuiz = useCallback(
-    (scope: QuizScope, replace: boolean): boolean => {
+    (
+      scope: QuizScope,
+      replace: boolean,
+      length: number,
+      difficulty: Difficulty | undefined,
+    ): boolean => {
       if (bank.status !== "ready") return false;
-      const result = createQuiz(bank.bank, scope, randomSeed());
+      const result = createQuiz(
+        bank.bank,
+        scope,
+        randomSeed(),
+        length,
+        difficulty,
+      );
       if (!result.ok) return false;
       dispatchSession({ type: "started", quiz: result.quiz });
       if (replace) window.location.replace(QUIZ_HREF);
@@ -247,9 +270,16 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     },
     [bank],
   );
-  const startQuiz = useCallback(
-    (scope: QuizScope) => beginQuiz(scope, false),
-    [beginQuiz],
+  // Start and the replace confirmation use Landing's current settings.
+  const startWithSettings = useCallback(
+    (scope: QuizScope) =>
+      beginQuiz(
+        scope,
+        false,
+        settings.length,
+        difficultyFilter(settings.difficulty),
+      ),
+    [beginQuiz, settings],
   );
   // Exit and browser Back both leave the quiz for Landing (US-2.8, views.md
   // §2) and both clear the in-memory session, so `#/quiz` never shows a
@@ -266,9 +296,19 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   // Only from a finished quiz (SEC N-1).
   const tryAgain = () => {
     if (session?.phase !== "finished") return;
+    // A normal quiz keeps its own difficulty and question count (§10.1 F7);
+    // "Start a full quiz" on retry results uses the defaults (All, 10).
+    const { quiz } = session;
+    const normal = quiz.mode === "normal";
+    const ok = beginQuiz(
+      quiz.scope,
+      true,
+      normal ? quiz.questions.length : DEFAULT_SETTINGS.length,
+      normal ? quiz.difficulty : difficultyFilter(DEFAULT_SETTINGS.difficulty),
+    );
     // Cannot fail with a ready, unchanged bank (the scope came from it); if
     // it ever does, leave for Landing rather than keep stale results.
-    if (!beginQuiz(session.quiz.scope, true)) exitQuiz();
+    if (!ok) exitQuiz();
   };
   // Retry missed (US-5.4, views.md §8.4): like Try again, but a quiz of the
   // finished run's missed questions still in the bank, original order,
@@ -313,8 +353,10 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
   }, [store]);
 
   // Best score (US-6.1, US-5.5, SEC-R13): written once per finished quiz,
-  // only for a normal quiz built from the loaded bank. The ref is keyed on
-  // the quiz object, so re-renders of Results never write twice. A failed
+  // only for a normal, full quiz (no difficulty filter, default size; US-11
+  // F5, SEC-R19, also for a resumed quiz) built from the loaded bank. The
+  // ref is keyed on the quiz object, so re-renders of Results never write
+  // twice. A failed
   // read counts as no best scores; a failed write is silent (U2). Every way
   // back to Landing is a hashchange, which re-reads storage (see above).
   const recordedQuiz = useRef<Quiz | null>(null);
@@ -327,7 +369,12 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     recordedQuiz.current = session.quiz;
     if (!store.persistent) return;
     if (contentChangedQuiz.current === session.quiz) return;
-    if (!countsTowardBest(session.quiz, bank.bank.contentVersion)) return;
+    if (
+      !countsTowardBest(session.quiz, bank.bank.contentVersion) ||
+      !isFullQuiz(session.quiz, bank.bank)
+    ) {
+      return;
+    }
     const current = readBest(store);
     const next = updateBest(
       current === null ? null : pruneUnknownTopics(current, bank.bank),
@@ -410,9 +457,9 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     (scope: QuizScope): boolean => {
       store.remove(KEYS.session);
       dispatchSaved({ type: "cleared" });
-      return beginQuiz(scope, false);
+      return startWithSettings(scope);
     },
-    [store, beginQuiz],
+    [store, startWithSettings],
   );
 
   // Reset progress (US-6.6, §9.6): only `apiquiz:` keys. In the same render
@@ -533,9 +580,11 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
           onRetry={retry}
           topicId={route.name === "topic" ? route.topicId : null}
           topicNotFound={view === "topicNotFound"}
-          onStart={startQuiz}
+          onStart={startWithSettings}
           bestScores={bestScores}
           progress={landingProgress}
+          settings={settings}
+          onSettingsChange={setSettings}
         />
       );
       break;
@@ -564,6 +613,13 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
             retry={retryAvailability(bank.bank, session)}
             onRetryMissed={retryMissed}
             showRetryBestScoreNote={store.persistent}
+            // US-11 §10.6: the quiz itself is not full, persistent storage
+            // only; independent of whether the best-score write happened.
+            showFilteredNote={
+              store.persistent &&
+              session.quiz.mode === "normal" &&
+              !isFullQuiz(session.quiz, bank.bank)
+            }
           />
         ) : null;
       break;

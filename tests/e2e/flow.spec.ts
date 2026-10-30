@@ -55,9 +55,15 @@ const SOURCE = `link "www.rfc-editor.org ${cue}"`;
 const QUESTION_REPORT = `link "${strings.feedback.report} ${cue}"`;
 
 /** The `name` shared by the radios on screen (one Tab stop per group). */
-async function radioGroupStop(page: Page): Promise<string> {
-  const name = await page
-    .locator("main input[type='radio']")
+async function radioGroupStop(page: Page, legend?: string): Promise<string> {
+  // Landing has three radio groups since US-11 (topic, Difficulty, Number of
+  // questions): `legend` picks one; without it, the first radio in main.
+  const scope =
+    legend === undefined
+      ? page.locator("main")
+      : page.getByRole("group", { name: legend, exact: true });
+  const name = await scope
+    .locator("input[type='radio']")
     .first()
     .getAttribute("name");
   return `radio-group "${name ?? ""}"`;
@@ -230,9 +236,41 @@ test.describe("T-16 journey J1", () => {
     await expect(topicC).toBeFocused();
     await page.keyboard.press("Space");
     await expect(topicC).toBeChecked();
+    // US-11 (views.md §10.8): Difficulty and Number of questions are one Tab
+    // stop each (on their checked defaults) between the topics and Start.
+    const difficultyAll = page
+      .getByRole("group", {
+        name: strings.landing.difficultyLegend,
+        exact: true,
+      })
+      .getByRole("radio", { name: strings.landing.difficultyAll, exact: true });
+    const length10 = page
+      .getByRole("group", { name: strings.landing.lengthLegend, exact: true })
+      .getByRole("radio", { name: "10", exact: true });
+    await page.keyboard.press("Tab");
+    await expect(difficultyAll).toBeFocused();
+    await expectVisibleFocusIndicator(page);
+    await page.keyboard.press("Tab");
+    await expect(length10).toBeFocused();
+    await expectVisibleFocusIndicator(page);
     await page.keyboard.press("Tab");
     await expect(button(page, strings.landing.start)).toBeFocused();
     await expectVisibleFocusIndicator(page);
+    // Shift+Tab walks the same stops back, then Tab returns to Start; the
+    // settings keep their defaults.
+    await page.keyboard.press("Shift+Tab");
+    await expect(length10).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(difficultyAll).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(topicC).toBeFocused();
+    await expect(topicC).toBeChecked();
+    await expect(difficultyAll).toBeChecked();
+    await expect(length10).toBeChecked();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(button(page, strings.landing.start)).toBeFocused();
     await page.keyboard.press("Enter");
 
     await playTopicCByKeyboard(page, browserName);
@@ -310,7 +348,11 @@ test.describe("T-16 focus order and no keyboard trap (US-10.2)", () => {
     const order = [
       SKIP,
       BRAND,
-      await radioGroupStop(page),
+      await radioGroupStop(page, strings.landing.topicsLegend),
+      // US-11 (views.md §10.8): Difficulty and Number of questions are one
+      // Tab stop each, between the topics and Start.
+      await radioGroupStop(page, strings.landing.difficultyLegend),
+      await radioGroupStop(page, strings.landing.lengthLegend),
       `button "${strings.landing.start}"`,
       `link "${strings.landing.report} ${cue}"`,
       // T-44 (views.md §9.7): "Your progress" is last in main, after the

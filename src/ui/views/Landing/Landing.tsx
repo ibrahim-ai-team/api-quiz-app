@@ -5,14 +5,19 @@
  * T-42 adds the best score line to each row (US-6.1, views.md §9.3).
  * T-43 adds the resume slot (load notice and resume card, §9.4, §9.5) and
  * the inline replace confirmation under Start (US-6.4, §9.6). T-44 adds the
- * "Your progress" section with Reset progress (US-6.6, §9.6).
+ * "Your progress" section with Reset progress (US-6.6, §9.6). T-49 adds the
+ * Difficulty and Number of questions groups, filtered row counts and the
+ * shortfall / none hints under Start (US-11, views.md §10.2 to §10.4).
  * Displayed names come from the bank topic objects; `topicId` from the route
  * is only compared against bank ids and never rendered (security I-3).
  */
 import { useEffect, useId, useRef, useState } from "react";
 import { landingReserve } from "../../../content/landingReserve";
+import { BANK_DIFFICULTIES, type Difficulty } from "../../../content/types";
 import {
+  availableCount,
   bestFor,
+  DEFAULT_QUIZ_LENGTH,
   eligibleTopics,
   type BestScore,
   type QuizScope,
@@ -30,6 +35,46 @@ import type { LandingProgress } from "./progress";
 import { ProgressSection } from "./ProgressSection";
 import { reserveChoices, reserveHasSelection, type Choice } from "./reserve";
 import { ResumeSlot } from "./ResumeSlot";
+
+/** Difficulty radio value: a bank difficulty, or All (no filter). */
+export type DifficultyChoice = Difficulty | "all";
+
+/** Lengths offered by the Number of questions group (views.md §10.1 F1). */
+export const QUIZ_LENGTHS = [5, 10, 20] as const;
+export type QuizLength = (typeof QUIZ_LENGTHS)[number];
+
+/**
+ * Quiz settings of the page load (US-11, views.md §10.1 F6): held by App,
+ * since Landing remounts on every route change; never stored.
+ */
+export interface QuizSettings {
+  readonly difficulty: DifficultyChoice;
+  readonly length: QuizLength;
+}
+
+/** The defaults reproduce the quiz from before US-11 (All, 10). */
+export const DEFAULT_SETTINGS: QuizSettings = {
+  difficulty: "all",
+  length: DEFAULT_QUIZ_LENGTH,
+};
+
+/** The domain filter of a choice: `undefined` means All. */
+export function difficultyFilter(
+  choice: DifficultyChoice,
+): Difficulty | undefined {
+  return choice === "all" ? undefined : choice;
+}
+
+const DIFFICULTY_CHOICES: readonly DifficultyChoice[] = [
+  "all",
+  ...BANK_DIFFICULTIES,
+];
+
+function difficultyLabel(choice: DifficultyChoice): string {
+  return choice === "all"
+    ? strings.landing.difficultyAll
+    : strings.landing.difficulty[choice];
+}
 
 export interface LandingProps {
   readonly bank: BankState;
@@ -52,6 +97,12 @@ export interface LandingProps {
    * replace confirmation, and no "Your progress" section (T-44).
    */
   readonly progress?: LandingProgress | null;
+  /**
+   * Difficulty and length of the page load (US-11, §10.1 F6); the quiz
+   * started by `onStart` / `onReplaceStart` uses them (App holds both).
+   */
+  readonly settings?: QuizSettings;
+  readonly onSettingsChange?: (settings: QuizSettings) => void;
 }
 
 /** Stand-in rows for the loading reserve (T-34, T-35): real names and count. */
@@ -79,6 +130,8 @@ export function Landing({
   onStart,
   bestScores = null,
   progress = null,
+  settings = DEFAULT_SETTINGS,
+  onSettingsChange,
 }: LandingProps) {
   const id = useId();
   const [selected, setSelected] = useState<QuizScope | null>(
@@ -109,15 +162,19 @@ export function Landing({
         : strings.title.landing,
   );
 
+  const filter = difficultyFilter(settings.difficulty);
   const choices: Choice[] = [];
   if (bank.status === "ready") {
+    // Rows and Mixed visibility come from the unfiltered bank; the counts
+    // follow the difficulty, and a row may read "0 questions" (§10.1 F2).
     const topics = eligibleTopics(bank.bank);
     for (const topic of topics) {
+      const scope: QuizScope = { kind: "topic", topicId: topic.id };
       choices.push({
         key: `t-${topic.id}`,
-        scope: { kind: "topic", topicId: topic.id },
+        scope,
         name: topic.name,
-        count: topic.count,
+        count: availableCount(bank.bank, scope, filter),
       });
     }
     // Mixed is hidden when only 1 topic is shown (US-1.2).
@@ -126,15 +183,34 @@ export function Landing({
         key: "mixed",
         scope: { kind: "mixed" },
         name: strings.landing.mixedLabel,
-        count: topics.reduce((sum, topic) => sum + topic.count, 0),
+        count: availableCount(bank.bank, { kind: "mixed" }, filter),
         description: strings.landing.mixedDescription,
       });
     }
   }
   // A deep link to an unknown topic never matches, so nothing is selected.
-  const selection =
-    choices.find((choice) => sameScope(selected, choice.scope))?.scope ?? null;
-  const unavailable = selection === null || starting;
+  const selectedChoice =
+    choices.find((choice) => sameScope(selected, choice.scope)) ?? null;
+  const selection = selectedChoice?.scope ?? null;
+  // US-11.2: no question matches the difficulty, so Start does nothing.
+  const noneMatch = selectedChoice !== null && selectedChoice.count === 0;
+  const unavailable = selection === null || noneMatch || starting;
+  // The hint under Start, first matching row of §10.4. The shortfall is
+  // stated only when a setting differs from the defaults (DQ-US11-5).
+  const word =
+    filter === undefined ? undefined : strings.landing.difficultyWord[filter];
+  const isDefault =
+    settings.difficulty === DEFAULT_SETTINGS.difficulty &&
+    settings.length === DEFAULT_SETTINGS.length;
+  let hint: string | null = null;
+  if (selectedChoice === null) {
+    hint = strings.landing.startHint;
+  } else if (noneMatch) {
+    // Never All: every shown row has at least 1 question unfiltered.
+    hint = strings.landing.noneHint(word ?? "");
+  } else if (!isDefault && selectedChoice.count < settings.length) {
+    hint = strings.landing.shortHint(selectedChoice.count, word);
+  }
   // A resume card is shown: Start asks before replacing it (US-6.4).
   const cardShown =
     progress !== null && bank.status === "ready" && progress.resumable !== null;
@@ -159,7 +235,7 @@ export function Landing({
   };
 
   const start = () => {
-    if (selection === null || startingRef.current) return;
+    if (selection === null || noneMatch || startingRef.current) return;
     if (cardShown) {
       setConfirming(true);
       setConfirmFocus((n) => n + 1);
@@ -168,7 +244,12 @@ export function Landing({
     launch(selection, onStart);
   };
   const confirmReplace = () => {
-    if (selection === null || startingRef.current || progress === null) {
+    if (
+      selection === null ||
+      noneMatch ||
+      startingRef.current ||
+      progress === null
+    ) {
       return;
     }
     // Focus would be lost with the group if starting fails: back to Start.
@@ -190,15 +271,59 @@ export function Landing({
   };
 
   /**
-   * The topic group and Start. `placeholder` renders the same markup with
-   * stand-in rows for the loading reserve: no handlers, no ids shared with the
+   * One settings group (§10.3): native radios in chip labels. The reserve
+   * copy shows the defaults, disabled, with no handlers.
+   */
+  const settingsGroup = <T extends string | number>(
+    prefix: string,
+    legend: string,
+    values: readonly T[],
+    current: T,
+    label: (value: T) => string,
+    onPick: (value: T) => void,
+    placeholder: boolean,
+  ) => (
+    <fieldset
+      className={[styles.group, styles.settings].join(" ")}
+      disabled={placeholder || undefined}
+    >
+      <legend className={styles.legend}>{legend}</legend>
+      {values.map((value) => (
+        <label key={String(value)} className={styles.chip}>
+          <input
+            type="radio"
+            name={prefix}
+            className={styles.radio}
+            checked={value === current}
+            onChange={() => {
+              if (placeholder) return;
+              onPick(value);
+              setFailed(false);
+            }}
+          />
+          <span>{label(value)}</span>
+        </label>
+      ))}
+    </fieldset>
+  );
+
+  /**
+   * The topic group, the two settings groups (US-11, §10.2) and Start.
+   * `placeholder` renders the same markup with stand-in rows and the default
+   * settings for the loading reserve: no handlers, no ids shared with the
    * live group, and every control disabled.
    */
   const topicGroup = (list: readonly Choice[], placeholder: boolean) => {
     const prefix = placeholder ? `${id}-reserve` : id;
-    const showHint = placeholder
-      ? !reserveHasSelection(landingReserve, selected)
-      : selection === null;
+    // The reserve shows the defaults, so only the "choose a topic" hint can
+    // appear in it (§10.3: the shortfall hint is not reserved).
+    const shown = placeholder ? DEFAULT_SETTINGS : settings;
+    const hintText = placeholder
+      ? reserveHasSelection(landingReserve, selected)
+        ? null
+        : strings.landing.startHint
+      : hint;
+    const showHint = hintText !== null;
     return (
       <>
         <fieldset className={styles.group} disabled={placeholder || undefined}>
@@ -256,6 +381,24 @@ export function Landing({
             );
           })}
         </fieldset>
+        {settingsGroup(
+          `${prefix}-difficulty`,
+          strings.landing.difficultyLegend,
+          DIFFICULTY_CHOICES,
+          shown.difficulty,
+          difficultyLabel,
+          (difficulty) => onSettingsChange?.({ ...settings, difficulty }),
+          placeholder,
+        )}
+        {settingsGroup(
+          `${prefix}-length`,
+          strings.landing.lengthLegend,
+          QUIZ_LENGTHS,
+          shown.length,
+          String,
+          (length) => onSettingsChange?.({ ...settings, length }),
+          placeholder,
+        )}
         <div className={styles.start}>
           <button
             ref={placeholder ? undefined : startRef}
@@ -276,7 +419,7 @@ export function Landing({
           </button>
           {showHint && (
             <p id={`${prefix}-hint`} className={styles.hint}>
-              {strings.landing.startHint}
+              {hintText}
             </p>
           )}
           {!placeholder && showConfirm && (
