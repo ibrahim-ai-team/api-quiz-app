@@ -85,18 +85,20 @@ Run on one desktop browser with the keyboard and on the iPhone with taps.
 | EB-4 | On results, press browser Back. | Landing with the heading focused; Forward does not show stale results. |  |  |
 | EB-5 | On results, activate "Choose another topic", then press Back. | Landing stays (results are not shown again). |  |  |
 | EB-6 | During a quiz, tap the "ApiQuiz" brand text in the header. | Nothing happens: the brand is plain text on the quiz route, so a tap cannot exit the quiz by accident. |  |  |
-| EB-7 | Reload the page during a quiz, and again on results. | Both go to Landing with the heading focused. Since US-6, after a reload during a quiz Landing also shows the "Unfinished quiz" card (section F covers private mode). |  |  |
+| EB-7 | Reload the page during a quiz, and again on results. | Both go to Landing with the heading focused. Since US-6, after a reload during a quiz in which at least one answer has been submitted, Landing also shows the "Unfinished quiz" card (saving starts at the first Submit; section F covers private mode). |  |  |
 
 ## F. US-6 private mode and saved progress (T-45, issue #108)
 
 - **Why manual:** each browser's private mode treats `localStorage` differently (older Safari threw on every write; current Safari, Chrome and Firefox keep storage in memory until the private window closes). Playwright cannot open a real private window. The E2E suite (`tests/e2e/progress.spec.ts`) simulates storage that throws or is unavailable; this pass checks the real browsers.
 - **Status:** NOT RUN.
+- **Precondition: a deploy that includes US-6 (T-42 to T-45).** The live site is currently on `edb6d76`, which is before US-6, so a new deploy is needed before this section can be run. How to check, without any technical tools: open the live URL in a **normal** (not private) window. Landing must show a "Your progress" section with a "Reset progress" button at the bottom, and after you finish any quiz and choose "Choose another topic", that topic's row must show a "Best score: N%" line. If either is missing, stop: the deploy does not include US-6 yet (record BLOCKED in PM-0).
 - **Expected in every case:** the app never crashes and a quiz always completes. Then one of two outcomes, and record which one you saw: (a) **storage usable in the private window**: progress features work as in a normal window (best score, "Unfinished quiz" card, "Your progress" with "Reset progress"), and everything is gone after the private window is closed and reopened; (b) **storage unusable**: no best score, no card, no "Your progress" section and no retry note on retry results (views.md §9.1 U2), with no error message.
 
 Run on: iOS Safari (real iPhone, Private tab), macOS Safari (File > New Private Window), and once each in Chrome Incognito and Firefox Private Window.
 
 | ID | Steps | Expected result | Result | Notes |
 | --- | --- | --- | --- | --- |
+| PM-0 | Before any private-window step: open the live URL in a **normal** window, scroll to the bottom of Landing, then finish one quiz and choose "Choose another topic". | "Your progress" and "Reset progress" are shown, and the topic row shows "Best score: N%". If not, the deploy is too old: mark BLOCKED and do not run PM-1 to PM-10. Afterwards use "Reset progress" so the normal window starts clean. |  |  |
 | PM-1 | Open the live URL in a private window. | Landing loads with no error. Note whether "Your progress" and "Reset progress" are shown (outcome a) or not (outcome b). |  |  |
 | PM-2 | Finish a topic quiz with some wrong answers, then "Choose another topic". | Results show normally. (a): the topic row shows "Best score: N%". (b): no best score anywhere. |  |  |
 | PM-3 | From the results of PM-2 (repeat it if needed), use "Retry N missed questions" and finish. | The retry completes. (a): the note "This was a retry ... does not count toward your best score." is shown and the best score on Landing is unchanged. (b): no note. |  |  |
@@ -106,7 +108,7 @@ Run on: iOS Safari (real iPhone, Private tab), macOS Safari (File > New Private 
 | PM-7 | (a) only: close the private window (all private tabs), open a new one and load the URL. | No best score, no card, no notice: nothing survived the private session. |  |  |
 | PM-8 | iPhone only: in a private tab, answer a question, switch to another app for a minute, come back. | The quiz is on the same question (or, if Safari reloaded the tab, Landing; with outcome (a) the card is offered). No error. |  |  |
 | PM-9 | Normal (not private) window, same browser: finish a quiz, then open the app in a second tab, start and answer a question there, return to the first tab and answer a question. Reload the second tab. | No "changed in another tab" message in either tab (US-6.7). The second tab's Landing shows the quiz of the tab that saved last. |  |  |
-| PM-10 | With a screen reader (VoiceOver), load Landing after corrupting saved data: in desktop Safari's Web Inspector > Storage > Local Storage, set `apiquiz:v1:session` to `{bad`, then reload. | "Your unfinished quiz could not be restored, so it was removed." is announced once (polite status); focus does not move to it; the app works. |  |  |
+| PM-10 | macOS Safari, **normal** window, with VoiceOver on. First enable the Develop menu: Safari > Settings > Advanced > tick "Show features for web developers". Start a quiz and submit one answer. Then Develop > Show Web Inspector > Storage > Local Storage > the site, set `apiquiz:v1:session` to `{bad`, and reload. | "Your unfinished quiz could not be restored, so it was removed." is announced once (polite status); focus does not move to it; the app works. |  |  |
 
 **If any item crashes the app, shows a raw error, or blocks the quiz:** log a defect against US-6.5 (frontend-developer) with the browser, version and mode.
 

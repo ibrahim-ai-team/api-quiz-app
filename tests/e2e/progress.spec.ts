@@ -452,6 +452,11 @@ test.describe("T-45 US-6 saved progress", () => {
         MAX_VALUE_LENGTH,
       );
     }
+    // US-6.8 "at most 50 KB" for the stored data as a whole.
+    const total = Object.values(stored).reduce((n, v) => n + v.length, 0);
+    expect(total, "combined length of both values").toBeLessThanOrEqual(
+      MAX_VALUE_LENGTH,
+    );
 
     // Allowed string values: bank IDs, the content version and enum words.
     const allowed = new Set<string>([
@@ -512,10 +517,18 @@ test.describe("T-45 US-6 saved progress", () => {
     walk(session);
     walk(best);
     expect(found.filter((s) => !allowed.has(s))).toEqual([]);
-    // No question or option text anywhere.
+    // No question, option or explanation text anywhere.
     const raw = Object.values(stored).join("\n");
     for (const q of FIXTURE.questions) {
       for (const o of q.options) expect(raw).not.toContain(o.text);
+    }
+    const texts = FIXTURE.questions as unknown as {
+      prompt: string;
+      explanation: string;
+    }[];
+    for (const { prompt, explanation } of texts) {
+      expect(raw).not.toContain(prompt);
+      expect(raw).not.toContain(explanation);
     }
   });
 });
@@ -783,18 +796,21 @@ test.describe("T-45 US-6.7 two tabs: last write wins, no prompt", () => {
       .click();
     await expect(h1(b, strings.question.heading(1, 3))).toBeFocused();
     await answerByMouse(b, true);
-    expect((await readSession(b))?.scope).toEqual({
-      kind: "topic",
-      topicId: "topic-c",
-    });
+    // Polled: a write in one tab reaches the other through shared storage.
+    await expect
+      .poll(async () => (await readSession(a))?.scope)
+      .toEqual({ kind: "topic", topicId: "topic-c" });
 
     // Tab A goes on: its next save wins, without any prompt.
     await nextButton(a).click();
     await expect(h1(a, strings.question.heading(2, 5))).toBeFocused();
     await answerByMouse(a, false);
-    const afterA = await readSession(b);
-    expect(afterA?.scope).toEqual({ kind: "topic", topicId: "topic-b" });
-    expect(afterA?.answers).toHaveLength(2);
+    await expect
+      .poll(async () => {
+        const afterA = await readSession(b);
+        return { scope: afterA?.scope, answered: afterA?.answers.length };
+      })
+      .toEqual({ scope: { kind: "topic", topicId: "topic-b" }, answered: 2 });
 
     // Tab B goes on undisturbed and finishes: its quiz is removed, its best
     // score written.
@@ -805,7 +821,7 @@ test.describe("T-45 US-6.7 two tabs: last write wins, no prompt", () => {
     await answerByMouse(b, true);
     await nextButton(b).click();
     await expect(h1(b, strings.results.heading)).toBeFocused();
-    expect(await readSession(a)).toBeNull();
+    await expect.poll(() => readSession(a)).toBeNull();
 
     // Tab A's next save writes its quiz again (last write wins).
     await nextButton(a).click();
