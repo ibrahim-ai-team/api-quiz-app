@@ -45,7 +45,7 @@ function navigate(hash: string): void {
 
 /** Selects the only topic in TEST_BANK and starts a 1-question quiz. */
 async function startQuiz(): Promise<void> {
-  fireEvent.click(screen.getByRole("radio"));
+  fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
   fireEvent.click(screen.getByRole("button", { name: strings.landing.start }));
   await waitFor(() => {
     expect(window.location.hash).toBe("#/quiz");
@@ -283,7 +283,9 @@ describe("T-US12-2 404 and topic not found", () => {
       expect(document.title).toBe(strings.title.topicNotFound);
       expect(main().textContent).not.toContain(hash.slice("#/topic/".length));
       // views.md §7b: the Landing topic list follows, nothing preselected.
-      const radio = screen.getByRole<HTMLInputElement>("radio");
+      const radio = screen.getByRole<HTMLInputElement>("radio", {
+        name: /^Topic A/,
+      });
       expect(radio.checked).toBe(false);
     },
   );
@@ -294,7 +296,9 @@ describe("T-US12-2 404 and topic not found", () => {
     await flush();
     expect(h1().textContent).toContain(strings.landing.heading);
     expect(document.title).toBe(strings.title.landing);
-    expect(screen.getByRole<HTMLInputElement>("radio").checked).toBe(true);
+    expect(
+      screen.getByRole<HTMLInputElement>("radio", { name: /^Topic A/ }).checked,
+    ).toBe(true);
     expect(window.location.hash).toBe("#/topic/topic-a");
   });
 });
@@ -324,7 +328,9 @@ describe("T-US1-8 deep-link preselection follows the route (T-09-R01 L2)", () =>
     expect(radio(/^Mixed/).checked).toBe(false);
     navigate("#/");
     expect(
-      screen.getAllByRole<HTMLInputElement>("radio").some((r) => r.checked),
+      within(screen.getByRole("group", { name: strings.landing.topicsLegend }))
+        .getAllByRole<HTMLInputElement>("radio")
+        .some((r) => r.checked),
     ).toBe(false);
   });
 });
@@ -336,7 +342,7 @@ describe("T-US1-3/6 Start creates one quiz and opens #/quiz", () => {
     const hashChanges = vi.fn();
     window.addEventListener("hashchange", hashChanges);
     try {
-      fireEvent.click(screen.getByRole("radio"));
+      fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
       const start = screen.getByRole("button", { name: strings.landing.start });
       fireEvent.click(start);
       fireEvent.click(start);
@@ -667,7 +673,7 @@ describe("T-38 Review answers and Retry missed in the app (US-5, views.md §8)",
     };
     renderApp(Promise.resolve({ ok: true, bank }));
     await flush();
-    fireEvent.click(screen.getByRole("radio"));
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
     fireEvent.click(
       screen.getByRole("button", { name: strings.landing.start }),
     );
@@ -1107,8 +1113,9 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     expect(card.textContent).toContain(strings.resume.summary("Topic A", 1, 3));
     // Card before the topic group in reading and Tab order.
     expect(
-      card.compareDocumentPosition(screen.getByRole("group")) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      card.compareDocumentPosition(
+        screen.getByRole("group", { name: strings.landing.topicsLegend }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(startButton().getAttribute("aria-expanded")).toBe("false");
     fireEvent.click(resumeButton());
@@ -1992,5 +1999,245 @@ describe("reloadBank prop (T-08-R01 L4)", () => {
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
     expect(main().getAttribute("data-bank-status")).toBe("ready");
+  });
+});
+
+describe("T-49 difficulty and length in the app (US-11, views.md §10)", () => {
+  const base = TEST_BANK.questions[0];
+  if (base === undefined) throw new Error("no test question");
+  type Level = "easy" | "medium" | "hard";
+  const q = (id: string, topic: string, difficulty: Level) => ({
+    ...base,
+    id,
+    topic,
+    difficulty,
+  });
+  /** Topic A: 4 easy, 1 medium, 1 hard (6); Topic B: 2 easy. */
+  const BANK_D = {
+    ...TEST_BANK,
+    topics: [
+      { id: "topic-a", name: "Topic A" },
+      { id: "topic-b", name: "Topic B" },
+    ],
+    questions: [
+      q("a-e1", "topic-a", "easy"),
+      q("a-e2", "topic-a", "easy"),
+      q("a-e3", "topic-a", "easy"),
+      q("a-e4", "topic-a", "easy"),
+      q("a-m1", "topic-a", "medium"),
+      q("a-h1", "topic-a", "hard"),
+      q("b-e1", "topic-b", "easy"),
+      q("b-e2", "topic-b", "easy"),
+    ],
+  };
+  const OK_D: LoadBankResult = { ok: true, bank: BANK_D };
+  const startButton = () =>
+    screen.getByRole("button", { name: strings.landing.start });
+  const difficulty = (name: string) =>
+    within(
+      screen.getByRole("group", { name: strings.landing.difficultyLegend }),
+    ).getByRole("radio", { name });
+  const length = (n: number) =>
+    within(
+      screen.getByRole("group", { name: strings.landing.lengthLegend }),
+    ).getByRole("radio", { name: String(n) });
+  const checked = (el: HTMLElement) => (el as HTMLInputElement).checked;
+  const storedBest = () => createProgressStore().get(KEYS.best);
+
+  async function renderD(store?: ProgressStore): Promise<void> {
+    renderApp(Promise.resolve(OK_D), undefined, store);
+    await flush();
+  }
+
+  /** Selects Topic A and the settings, then starts an `n`-question quiz. */
+  async function startA(d: string, len: number, n: number): Promise<void> {
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(difficulty(d));
+    fireEvent.click(length(len));
+    fireEvent.click(startButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, n));
+    });
+  }
+
+  /** Answers all `n` questions (True is correct) and opens Results. */
+  async function playAll(n: number, correct = true): Promise<string[]> {
+    const ids: string[] = [];
+    for (let k = 1; k <= n; k += 1) {
+      await waitFor(() => {
+        expect(h1().textContent).toBe(strings.question.heading(k, n));
+      });
+      ids.push(currentQuestionId() ?? "");
+      answer(correct, k === n);
+    }
+    await expectResultsFocused();
+    return ids;
+  }
+
+  async function chooseAnother(): Promise<void> {
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.chooseAnother }),
+    );
+    await expectLandingFocused();
+  }
+
+  it("the defaults (All, 10) are checked and reproduce today's quiz, with no hint", async () => {
+    await renderD();
+    expect(checked(difficulty(strings.landing.difficultyAll))).toBe(true);
+    expect(checked(length(10))).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    expect(startButton().hasAttribute("aria-describedby")).toBe(false);
+    fireEvent.click(startButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 6));
+    });
+  });
+
+  it("T-US11-1 Hard + 5 describes Start with the shortfall and starts that many hard questions", async () => {
+    await renderD();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(difficulty(strings.landing.difficulty.hard));
+    fireEvent.click(length(5));
+    const hint = strings.landing.shortHint(1, "hard");
+    const describedBy = startButton().getAttribute("aria-describedby") ?? "";
+    expect(document.getElementById(describedBy)?.textContent).toBe(hint);
+    expect(startButton().getAttribute("aria-disabled")).toBe(null);
+    fireEvent.click(startButton());
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+    });
+    expect(currentQuestionId()).toBe("a-h1");
+  });
+
+  it("T-US11-3 a Hard quiz writes no best score and shows the note; Topic + All + 10 writes one, no note", async () => {
+    await renderD();
+    await startA(strings.landing.difficulty.hard, 5, 1);
+    await playAll(1);
+    expect(screen.getByText(strings.results.filteredNote)).toBeTruthy();
+    expect(storedBest()).toBe(null);
+    await chooseAnother();
+    await startA(strings.landing.difficultyAll, 10, 6);
+    await playAll(6);
+    expect(main().textContent).not.toContain(strings.results.filteredNote);
+    expect(decodeBest(storedBest()).ok).toBe(true);
+  });
+
+  it("T-US11-3 a short All quiz (5 of 6) does not count and shows the note", async () => {
+    await renderD();
+    await startA(strings.landing.difficultyAll, 5, 5);
+    await playAll(5);
+    expect(screen.getByText(strings.results.filteredNote)).toBeTruthy();
+    expect(storedBest()).toBe(null);
+  });
+
+  it("US-6.5 no note when storage is not persistent", async () => {
+    await renderD(new MemoryStore());
+    await startA(strings.landing.difficulty.hard, 5, 1);
+    await playAll(1);
+    expect(main().textContent).not.toContain(strings.results.filteredNote);
+  });
+
+  it("F6 settings survive Exit and Choose another topic, and reset on remount", async () => {
+    await renderD();
+    await startA(strings.landing.difficulty.easy, 20, 4);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.exit }),
+    );
+    await expectLandingFocused();
+    expect(checked(difficulty(strings.landing.difficulty.easy))).toBe(true);
+    expect(checked(length(20))).toBe(true);
+    // Rows count the easy questions.
+    expect(
+      screen.getByRole("radio", {
+        name: `Topic A, ${strings.landing.topicCount(4)}`,
+      }),
+    ).toBeTruthy();
+    await startA(strings.landing.difficulty.easy, 20, 4);
+    await playAll(4);
+    await chooseAnother();
+    expect(checked(difficulty(strings.landing.difficulty.easy))).toBe(true);
+    expect(checked(length(20))).toBe(true);
+    // A reload (new App) starts from the defaults.
+    cleanup();
+    setHash("");
+    await renderD();
+    expect(checked(difficulty(strings.landing.difficultyAll))).toBe(true);
+    expect(checked(length(10))).toBe(true);
+  });
+
+  it("F7 Try again keeps Hard and the length of a normal quiz", async () => {
+    await renderD();
+    await startA(strings.landing.difficulty.hard, 5, 1);
+    await playAll(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.tryAgain }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+    });
+    expect(currentQuestionId()).toBe("a-h1");
+    await playAll(1);
+    await chooseAnother();
+    // All + 5: Try again keeps 5 questions (not the 6 of a default quiz).
+    await startA(strings.landing.difficultyAll, 5, 5);
+    await playAll(5);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.tryAgain }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 5));
+    });
+  });
+
+  it("F7 Start a full quiz on retry results uses the defaults (All, 10)", async () => {
+    await renderD();
+    await startA(strings.landing.difficulty.hard, 5, 1);
+    await playAll(1, false);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.retryMissed(1) }),
+    );
+    await expectRetryQuestion(1, 1);
+    answer(true, true);
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.results.retryHeading);
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.startFull }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 6));
+    });
+  });
+
+  it("SEC-R19 a restored filtered session keeps its difficulty and never updates the best score", async () => {
+    createProgressStore().set(
+      KEYS.session,
+      JSON.stringify({
+        schemaVersion: 1,
+        contentVersion: "test-v1",
+        mode: "normal",
+        scope: { kind: "topic", topicId: "topic-a" },
+        seed: 1,
+        difficulty: "hard",
+        questionIds: ["a-h1"],
+        optionOrder: [["true", "false"]],
+        answers: [],
+        index: 0,
+        savedAt: 1761200000000,
+      }),
+    );
+    await renderD();
+    // Landing's settings are the defaults; the card resumes the hard quiz.
+    expect(checked(difficulty(strings.landing.difficultyAll))).toBe(true);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.resume.resume }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 1));
+    });
+    expect(currentQuestionId()).toBe("a-h1");
+    await playAll(1);
+    expect(storedBest()).toBe(null);
+    expect(screen.getByText(strings.results.filteredNote)).toBeTruthy();
   });
 });

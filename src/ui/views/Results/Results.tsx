@@ -10,6 +10,7 @@
  * "Retry N missed" sits between the primary button and Choose another
  * topic, counted against the current bank (§8.5). A retry quiz's results
  * use the retry h1/title and "Start a full quiz" as the primary button.
+ * T-49 (US-11; views.md §10.6): the filtered-quiz note under the h1.
  */
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import type { BankTopic } from "../../../content/types";
@@ -43,6 +44,13 @@ export interface ResultsProps {
    * something the app does not have yet (sponsor default, PR #111).
    */
   readonly showRetryBestScoreNote?: boolean;
+  /**
+   * Shows `copy:results.filteredNote` under a normal quiz's h1 (US-11,
+   * views.md §10.6). The app passes true for a normal quiz that is not full
+   * (a difficulty filter, or fewer questions than a default quiz of its
+   * scope), with persistent storage only. Ignored on a retry quiz.
+   */
+  readonly showFilteredNote?: boolean;
 }
 
 export function Results({
@@ -53,6 +61,7 @@ export function Results({
   retry,
   onRetryMissed,
   showRetryBestScoreNote = false,
+  showFilteredNote = false,
 }: ResultsProps) {
   const { scope, mode } = session.quiz;
   const isRetry = mode === "retry-missed";
@@ -103,6 +112,9 @@ export function Results({
       </h1>
       {isRetry && showRetryBestScoreNote && (
         <p className={common.text}>{strings.results.retryNote}</p>
+      )}
+      {!isRetry && showFilteredNote && (
+        <p className={common.text}>{strings.results.filteredNote}</p>
       )}
       {scopeName !== null && <p className={styles.scope}>{scopeName}</p>}
       <p className={styles.score}>

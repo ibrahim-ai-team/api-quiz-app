@@ -17,6 +17,34 @@
   composes: radio from "../../components/optionRow.module.css";
 }
 
+/*
+ * Difficulty and Number of questions (US-11, views.md §10.3): option-row
+ * chips at auto width in a wrapping row, --space-5 above the legend (the
+ * margin collapses with the group's --space-4 above). Two-class selectors win
+ * over the composed `.group` / `.row` whatever the cross-file order.
+ */
+.group.settings {
+  flex-flow: row wrap;
+  margin-block-start: var(--space-5);
+}
+
+.chip {
+  composes: row from "../../components/optionRow.module.css";
+}
+
+.settings .chip {
+  align-items: center;
+  gap: var(--space-2);
+  min-width: var(--target-min);
+  min-height: var(--target-min);
+  padding-block: 0;
+  padding-inline: var(--space-3);
+}
+
+.settings .chip .radio {
+  margin: 0;
+}
+
 .optionText {
   display: flex;
   flex-direction: column;
