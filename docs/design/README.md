@@ -8,7 +8,7 @@
 | File | Contents |
 | --- | --- |
 | `tokens.md` | Colour tokens (light and dark) with contrast ratios, type, spacing, radii, focus ring, motion, forced colours, breakpoints |
-| `views.md` | Shared shell rules plus Landing, Question, Feedback, Results, Loading, errors, 404 / Topic not found |
+| `views.md` | Shared shell rules plus Landing, Question, Feedback, Results, Loading, errors (incl. boot fallback), 404 / Topic not found, US-5, US-6 and US-11 extensions |
 | `copy.md` | Every user-facing string, keyed for `src/ui/strings.ts` |
 
 ## Design principles
@@ -34,8 +34,10 @@
 | Results (§4) | `#/results` | US-4.1-4.5 | **T-15** (score data from T-14) |
 | Review answers, Retry missed (§8) | `#/results` (in place) | US-5.1-5.6 | US-5 tasks (#11) |
 | Best score, resume card, load notice, replace and reset confirmations (§9) | `#/`, `#/topic/<slug>` | US-6.1-6.8 | **T-42**, **T-43**, **T-44** (E2E T-45) |
+| Difficulty filter and quiz length (§10) | `#/`, `#/topic/<slug>` (Results note on `#/results`) | US-11.1, 11.2 | US-11 tasks (#16, T-48+) |
+| Boot fallback, no script (§6.1) | any (static `index.html`) | NFR-9 | T-47 follow-up (T-47-TL01) |
 
-US-5 (Review / Retry missed) is specified in views.md §8 and US-6 (best score, resume, reset) in §9. T-16/T-17 verify the responsive and contrast rules end to end.
+US-5 (Review / Retry missed) is specified in views.md §8, US-6 (best score, resume, reset) in §9 and US-11 (difficulty filter and quiz length) in §10. T-16/T-17 verify the responsive and contrast rules end to end.
 
 ## Assumptions (routine, reversible)
 
