@@ -118,12 +118,28 @@ export const strings = {
     discard: "Discard quiz",
     discarded: "Unfinished quiz discarded.",
   },
-  /** Load notice (US-6.3, views.md §9.5). */
+  /** Load notice (US-6.3, §9.5) and Reset progress (US-6.6, §9.6). */
   progress: {
     sessionRemoved:
       "Your unfinished quiz could not be restored, so it was removed.",
     bestRemoved:
       "Your saved best scores could not be read, so they were removed.",
+    /** copy:progress.heading: h2 of "Your progress" (US-6.6, views.md §9.6). */
+    heading: "Your progress",
+    /** copy:progress.description (US-6.8 transparency). */
+    description:
+      "Best scores and your unfinished quiz are saved only in this browser on this device.",
+    /** copy:progress.reset: trigger of the reset confirmation. */
+    reset: "Reset progress",
+    /** copy:progress.resetMessage: focused when the confirmation opens. */
+    resetMessage:
+      "This will delete your best scores and any unfinished quiz from this browser. This cannot be undone.",
+    /** copy:progress.resetConfirm */
+    resetConfirm: "Yes, reset progress",
+    /** copy:progress.resetDone: replaces the confirmation; focused. */
+    resetDone: "Your progress has been reset.",
+    /** copy:progress.resetFailed: `clearAppKeys` returned `ok: false`; focused. */
+    resetFailed: "Your progress could not be reset. Try again.",
   },
   question: {
     /** copy:question.heading */

@@ -5,7 +5,8 @@
  * Results route; T-38 Review answers and Retry missed (US-5); T-42 the best
  * score per topic and Mixed (US-6.1, US-5.5, views.md §9.3); T-43 saving,
  * Resume, Discard, the load notice and replacing a saved quiz (US-6.2 to
- * US-6.4, views.md §9.2, §9.4 to §9.6).
+ * US-6.4, views.md §9.2, §9.4 to §9.6); T-44 Reset progress (US-6.6) and the
+ * memory-only mode check (US-6.5, §9.1 U2).
  */
 import {
   useCallback,
@@ -155,7 +156,9 @@ interface SavedState {
 type SavedAction =
   | { readonly type: "left" }
   | { readonly type: "reread"; readonly saved: SavedSession | null }
-  | { readonly type: "cleared" };
+  | { readonly type: "cleared" }
+  /** Reset progress: what is still stored (null after a successful reset). */
+  | { readonly type: "reset"; readonly saved: SavedSession | null };
 
 function savedReducer(state: SavedState, action: SavedAction): SavedState {
   switch (action.type) {
@@ -165,6 +168,10 @@ function savedReducer(state: SavedState, action: SavedAction): SavedState {
       return state.startup ? state : { saved: action.saved, startup: false };
     case "cleared":
       return state.saved === null ? state : { ...state, saved: null };
+    case "reset":
+      // Ends the startup notice and reserve too: the data they describe is
+      // gone (or re-read after a failed reset, §9.6).
+      return { saved: action.saved, startup: false };
   }
 }
 
@@ -408,6 +415,19 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     [store, beginQuiz],
   );
 
+  // Reset progress (US-6.6, §9.6): only `apiquiz:` keys. In the same render
+  // best-score lines, the card and the notice go; after a failure the page
+  // shows what is still stored (re-read).
+  const resetProgress = useCallback((): boolean => {
+    const { ok } = store.clearAppKeys();
+    setBest(ok ? null : readBest(store));
+    dispatchSaved({
+      type: "reset",
+      saved: ok ? null : readSavedSession(store),
+    });
+    return ok;
+  }, [store]);
+
   const landingProgress = useMemo((): LandingProgress | null => {
     if (!store.persistent) return null;
     const { startup: shown } = savedState;
@@ -427,6 +447,7 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
       onResume: resumeQuiz,
       onDiscard: discardSaved,
       onReplaceStart: replaceAndStart,
+      onReset: resetProgress,
     };
   }, [
     store,
@@ -437,6 +458,7 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
     resumeQuiz,
     discardSaved,
     replaceAndStart,
+    resetProgress,
   ]);
 
   // Rows show only scores of topics the bank still has (SEC-R13 finding 4).

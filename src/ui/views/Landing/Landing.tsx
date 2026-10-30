@@ -4,11 +4,12 @@
  * T-13 adds the general "Report a problem" link to "About the questions".
  * T-42 adds the best score line to each row (US-6.1, views.md §9.3).
  * T-43 adds the resume slot (load notice and resume card, §9.4, §9.5) and
- * the inline replace confirmation under Start (US-6.4, §9.6).
+ * the inline replace confirmation under Start (US-6.4, §9.6). T-44 adds the
+ * "Your progress" section with Reset progress (US-6.6, §9.6).
  * Displayed names come from the bank topic objects; `topicId` from the route
  * is only compared against bank ids and never rendered (security I-3).
  */
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { landingReserve } from "../../../content/landingReserve";
 import {
   bestFor,
@@ -24,7 +25,9 @@ import common from "../../components/common.module.css";
 import { generalReportHref } from "../../report/reportLink";
 import { strings } from "../../strings";
 import styles from "./Landing.module.css";
+import { InlineConfirm } from "./InlineConfirm";
 import type { LandingProgress } from "./progress";
+import { ProgressSection } from "./ProgressSection";
 import { reserveChoices, reserveHasSelection, type Choice } from "./reserve";
 import { ResumeSlot } from "./ResumeSlot";
 
@@ -46,7 +49,7 @@ export interface LandingProps {
   /**
    * Saved quiz and load notice (US-6.2 to US-6.4, views.md §9.4 to §9.6).
    * `null` (storage not persistent, U2) renders no resume slot and no
-   * replace confirmation.
+   * replace confirmation, and no "Your progress" section (T-44).
    */
   readonly progress?: LandingProgress | null;
 }
@@ -89,6 +92,9 @@ export function Landing({
   // effect below to focus the message (also when Start is pressed again).
   const [confirming, setConfirming] = useState(false);
   const [confirmFocus, setConfirmFocus] = useState(0);
+  // Bumped by each Reset progress attempt: remounts the resume slot, so its
+  // discarded text goes with the cleared progress (§9.6).
+  const [resets, setResets] = useState(0);
   const startRef = useRef<HTMLButtonElement>(null);
   const messageRef = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
@@ -176,10 +182,11 @@ export function Landing({
     setConfirming(false);
     startRef.current?.focus();
   };
-  const onConfirmKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Escape") return;
-    event.preventDefault();
-    cancelReplace();
+  const resetProgress = (): boolean => {
+    if (progress === null) return false;
+    setConfirming(false);
+    setResets((n) => n + 1);
+    return progress.onReset();
   };
 
   /**
@@ -272,41 +279,15 @@ export function Landing({
             </p>
           )}
           {!placeholder && showConfirm && (
-            // Not a modal: Escape or Cancel closes it and returns to Start.
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Escape handler for the controls inside the group (§9.6)
-            <div
+            <InlineConfirm
               id={`${prefix}-replace`}
-              role="group"
-              aria-labelledby={`${prefix}-replace-msg`}
-              className={styles.confirm}
-              onKeyDown={onConfirmKeyDown}
-            >
-              <p
-                id={`${prefix}-replace-msg`}
-                ref={messageRef}
-                tabIndex={-1}
-                className={styles.confirmMessage}
-              >
-                {strings.landing.replaceMessage}
-              </p>
-              <div className={common.actions}>
-                <button
-                  type="button"
-                  className={common.buttonPrimary}
-                  aria-disabled={starting ? true : undefined}
-                  onClick={confirmReplace}
-                >
-                  {strings.landing.replaceConfirm}
-                </button>
-                <button
-                  type="button"
-                  className={common.buttonSecondary}
-                  onClick={cancelReplace}
-                >
-                  {strings.common.cancel}
-                </button>
-              </div>
-            </div>
+              message={strings.landing.replaceMessage}
+              confirmLabel={strings.landing.replaceConfirm}
+              onConfirm={confirmReplace}
+              onCancel={cancelReplace}
+              busy={starting}
+              messageRef={messageRef}
+            />
           )}
         </div>
       </>
@@ -365,6 +346,7 @@ export function Landing({
         (bank.status === "ready" ||
           (bank.status === "loading" && hasStartupData(progress))) && (
           <ResumeSlot
+            key={resets}
             progress={progress}
             topics={bank.status === "ready" ? bank.bank.topics : null}
             noTopics={bank.status === "ready" && choices.length === 0}
@@ -379,6 +361,10 @@ export function Landing({
           {strings.landing.report}
         </ExternalLink>
       </p>
+      {/* Last in main; with the topic group, never while loading (§9.2). */}
+      {progress !== null && bank.status === "ready" && (
+        <ProgressSection onReset={resetProgress} />
+      )}
     </>
   );
 }

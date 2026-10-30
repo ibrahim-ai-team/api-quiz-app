@@ -28,4 +28,9 @@ export interface LandingProgress {
   readonly onDiscard: () => void;
   /** Removes the saved quiz first, then starts `scope` (F4); like onStart. */
   readonly onReplaceStart: (scope: QuizScope) => boolean;
+  /**
+   * Reset progress (US-6.6, T-44): clears only `apiquiz:` keys and the
+   * App's progress state; false when the store reported `ok: false`.
+   */
+  readonly onReset: () => boolean;
 }
