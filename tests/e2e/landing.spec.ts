@@ -1,7 +1,7 @@
 /**
- * Landing view (T-09, issue #29; US-1, US-12.2). Fixture bank (enlarged in
- * T-12): topic-a 12, topic-b 5, topic-c 3, topic-d 0 questions, so Mixed
- * shows 20. Quiz content checks live in question.spec.ts.
+ * Landing view (T-09, issue #29; US-1, US-12.1, US-12.2). Fixture bank
+ * (enlarged in T-12): topic-a 12, topic-b 5, topic-c 3, topic-d 0 questions,
+ * so Mixed shows 20. Quiz content checks live in question.spec.ts.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -145,6 +145,41 @@ test.describe("T-09 Landing", () => {
     ]);
     await expectNoAxeSeriousOrCritical(page, report);
     await expectNoHorizontalScroll(page);
+  });
+
+  test("T-US12-1 description under the h1 and accuracy note in About the questions (T-46)", async ({
+    page,
+  }) => {
+    await openLanding(page);
+    const h1 = page.getByRole("heading", {
+      level: 1,
+      name: strings.landing.heading,
+    });
+    const description = page.getByText(strings.landing.description, {
+      exact: true,
+    });
+    await expect(description).toBeVisible();
+    // views.md §1: the description is the element right after the h1.
+    await expect(h1.locator("xpath=following-sibling::*[1]")).toHaveText(
+      strings.landing.description,
+    );
+
+    const about = page.getByRole("heading", {
+      level: 2,
+      name: strings.landing.aboutHeading,
+    });
+    const note = page.getByText(strings.landing.accuracyNote, { exact: true });
+    await expect(note).toBeVisible();
+    // The accuracy note is the element right after the About h2, then the report link.
+    await expect(about.locator("xpath=following-sibling::*[1]")).toHaveText(
+      strings.landing.accuracyNote,
+    );
+    await expect(
+      note.locator("xpath=following-sibling::*[1]").getByRole("link", {
+        name: `${strings.landing.report} ${strings.common.newTabCue}`,
+        exact: true,
+      }),
+    ).toBeVisible();
   });
 
   test("T-US1-8 topic deep link preselects and does not auto-start, also after a reload", async ({
