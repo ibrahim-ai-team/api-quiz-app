@@ -434,6 +434,7 @@ describe("T-43 replace confirmation when starting fails (views.md §9.6; T-43-TL
           setSaved(null);
           return false;
         },
+        onReset: () => true,
       };
       return (
         <Landing
@@ -467,5 +468,133 @@ describe("T-43 replace confirmation when starting fails (views.md §9.6; T-43-TL
     );
     // No card any more: Start is a plain Start again.
     expect(startButton().hasAttribute("aria-expanded")).toBe(false);
+  });
+});
+
+describe("T-44 Your progress and Reset progress (US-6.6, views.md §9.6)", () => {
+  function progressProps(onReset: () => boolean): LandingProgress {
+    return {
+      resumable: null,
+      notice: { session: false, best: false },
+      reserve: null,
+      onResume: () => false,
+      onDiscard: () => undefined,
+      onReplaceStart: () => true,
+      onReset,
+    };
+  }
+  const resetButton = () =>
+    screen.getByRole("button", { name: strings.progress.reset });
+  const section = () =>
+    screen.queryByRole("region", { name: strings.progress.heading });
+
+  it("is the last section, after About the questions, with heading, text and Reset", () => {
+    renderLanding({ progress: progressProps(() => true) });
+    const region = section();
+    expect(region).toBeTruthy();
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((h) => h.textContent);
+    expect(headings.slice(-2)).toEqual([
+      strings.landing.aboutHeading,
+      strings.progress.heading,
+    ]);
+    expect(region?.textContent).toContain(strings.progress.description);
+    expect(resetButton().getAttribute("aria-expanded")).toBe("false");
+    expect(resetButton().hasAttribute("aria-controls")).toBe(false);
+  });
+
+  it("US-6.5 is not rendered without persistent storage (progress null)", () => {
+    renderLanding();
+    expect(section()).toBe(null);
+    expect(screen.queryByText(strings.progress.reset)).toBe(null);
+  });
+
+  it("is not rendered while the bank loads or failed (§9.2)", () => {
+    renderLanding({
+      bank: { status: "loading", attempt: 0, userRetry: false },
+      progress: progressProps(() => true),
+    });
+    expect(screen.queryByText(strings.progress.heading)).toBe(null);
+  });
+
+  it("is still shown when no topic is playable (§9.2 No topics)", () => {
+    renderLanding({
+      bank: ready({ ...BANK, questions: [] }),
+      progress: progressProps(() => true),
+    });
+    expect(section()).toBeTruthy();
+  });
+
+  it("opens the confirmation and focuses its message; Cancel returns focus to Reset", () => {
+    const onReset = vi.fn(() => true);
+    renderLanding({ progress: progressProps(onReset) });
+    fireEvent.click(resetButton());
+    const group = screen.getByRole("group", {
+      name: strings.progress.resetMessage,
+    });
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetMessage,
+    );
+    expect(resetButton().getAttribute("aria-expanded")).toBe("true");
+    expect(resetButton().getAttribute("aria-controls")).toBe(group.id);
+    fireEvent.click(
+      within(group).getByRole("button", { name: strings.common.cancel }),
+    );
+    expect(document.activeElement).toBe(resetButton());
+    expect(
+      screen.queryByRole("group", { name: strings.progress.resetMessage }),
+    ).toBe(null);
+    expect(resetButton().getAttribute("aria-expanded")).toBe("false");
+    expect(resetButton().hasAttribute("aria-controls")).toBe(false);
+    expect(onReset).not.toHaveBeenCalled();
+  });
+
+  it("Escape inside the group closes it and returns focus to Reset", async () => {
+    const user = userEvent.setup();
+    const onReset = vi.fn(() => true);
+    renderLanding({ progress: progressProps(onReset) });
+    await user.click(resetButton());
+    await user.tab();
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetConfirm,
+    );
+    await user.keyboard("{Escape}");
+    expect(document.activeElement).toBe(resetButton());
+    expect(onReset).not.toHaveBeenCalled();
+  });
+
+  it("confirm resets once and focuses the result text, which Reset replaces again", () => {
+    const onReset = vi.fn(() => true);
+    renderLanding({ progress: progressProps(onReset) });
+    fireEvent.click(resetButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.progress.resetConfirm }),
+    );
+    expect(onReset).toHaveBeenCalledTimes(1);
+    const done = screen.getByText(strings.progress.resetDone);
+    expect(document.activeElement).toBe(done);
+    expect(done.getAttribute("tabindex")).toBe("-1");
+    expect(
+      screen.queryByRole("group", { name: strings.progress.resetMessage }),
+    ).toBe(null);
+    // The trigger stays; pressing it again replaces the result text.
+    fireEvent.click(resetButton());
+    expect(screen.queryByText(strings.progress.resetDone)).toBe(null);
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetMessage,
+    );
+  });
+
+  it("a failed reset focuses progress.resetFailed", () => {
+    renderLanding({ progress: progressProps(() => false) });
+    fireEvent.click(resetButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.progress.resetConfirm }),
+    );
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetFailed,
+    );
+    expect(screen.queryByText(strings.progress.resetDone)).toBe(null);
   });
 });

@@ -42,7 +42,8 @@
   color: var(--color-text-muted);
 }
 
-.start {
+.start,
+.progressActions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -162,6 +163,11 @@
   color: var(--color-text);
 }
 
+/* Reset progress result text (T-44, §9.6): replaces the confirmation. */
+.progressResult {
+  margin: 0;
+}
+
 .aboutHeading {
   margin-block: var(--space-6) var(--space-2);
   font-size: var(--font-size-xl);
@@ -184,15 +190,17 @@
     text-align: end;
   }
 
-  .start {
+  .start,
+  .progressActions {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
   }
 
-  /* Its own line under Start and the hint. */
-  .confirm {
+  /* Its own line under the trigger (and the hint). */
+  .confirm,
+  .progressResult {
     flex-basis: 100%;
     margin-block-start: 0;
   }

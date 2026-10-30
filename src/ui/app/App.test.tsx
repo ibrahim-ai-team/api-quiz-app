@@ -15,6 +15,7 @@ import {
   createProgressStore,
   decodeBest,
   KEYS,
+  LocalStorageStore,
   MemoryStore,
   type ProgressStore,
   type WriteResult,
@@ -770,7 +771,7 @@ describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)",
   it("T-US6-1 a finished normal quiz writes the best score, shown in the row and its name", async () => {
     renderApp(Promise.resolve(OK));
     await flush();
-    expect(main().textContent).not.toContain("Best score");
+    expect(main().textContent).not.toContain("Best score:");
     await startQuiz();
     finishQuiz();
     await expectResultsFocused();
@@ -889,7 +890,7 @@ describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)",
     });
     renderApp(Promise.resolve(OK));
     await flush();
-    expect(main().textContent.match(/Best score/g)).toHaveLength(1);
+    expect(main().textContent.match(/Best score:/g)).toHaveLength(1);
     await startQuiz();
     finishQuiz();
     await expectResultsFocused();
@@ -900,7 +901,7 @@ describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)",
     createProgressStore().set(KEYS.best, "{not json");
     renderApp(Promise.resolve(OK));
     await flush();
-    expect(main().textContent).not.toContain("Best score");
+    expect(main().textContent).not.toContain("Best score:");
     await startQuiz();
     finishQuiz();
     await expectResultsFocused();
@@ -964,7 +965,7 @@ describe("T-42 best score per topic and Mixed (US-6.1, US-5.5, views.md §9.3)",
     });
     expect(screen.queryByText(strings.results.retryNote)).toBe(null);
     await backToLanding();
-    expect(main().textContent).not.toContain("Best score");
+    expect(main().textContent).not.toContain("Best score:");
   });
 
   it("T-42 layout reserve: the loading reserve already has the best-score line", () => {
@@ -1315,6 +1316,7 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     ).toBe(null);
     expect(document.activeElement).toBe(startEl);
     expect(startEl.getAttribute("aria-expanded")).toBe("false");
+    expect(startEl.hasAttribute("aria-controls")).toBe(false);
     fireEvent.click(startEl);
     fireEvent.click(
       screen.getByRole("button", { name: strings.common.cancel }),
@@ -1591,6 +1593,271 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
       await flush();
       expect(slotStatus().textContent).toBe("");
     });
+  });
+});
+
+describe("T-44 reset progress and memory-only mode (US-6.5, US-6.6, views.md §9.1 U2, §9.6)", () => {
+  const at = 1761200000000;
+  const BEST = JSON.stringify({
+    schemaVersion: 1,
+    scores: { "topic-a": { percent: 50, correct: 1, total: 2, at } },
+  });
+  const SESSION = JSON.stringify({
+    schemaVersion: 1,
+    contentVersion: "test-v1",
+    mode: "normal",
+    scope: { kind: "topic", topicId: "topic-a" },
+    seed: 1,
+    questionIds: ["q-1"],
+    optionOrder: [["true", "false"]],
+    answers: [],
+    index: 0,
+    savedAt: at,
+  });
+  const resetButton = () =>
+    screen.getByRole("button", { name: strings.progress.reset });
+  const progressRegion = () =>
+    screen.queryByRole("region", { name: strings.progress.heading });
+  const resumeCard = () =>
+    screen.queryByRole("region", { name: strings.resume.heading });
+
+  /** A Web Storage stand-in over a Map (other sites' keys live here too). */
+  function stubStorage(entries: Record<string, string>): Storage {
+    const data = new Map(Object.entries(entries));
+    return {
+      get length() {
+        return data.size;
+      },
+      key: (i: number) => [...data.keys()][i] ?? null,
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        data.set(key, value);
+      },
+      removeItem: (key: string) => {
+        data.delete(key);
+      },
+      clear: () => {
+        data.clear();
+      },
+    };
+  }
+
+  function confirmReset(): void {
+    fireEvent.click(resetButton());
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetMessage,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.progress.resetConfirm }),
+    );
+  }
+
+  it("US-6.5 memory-only: no best score, card, notice or Your progress; a quiz completes in memory", async () => {
+    const store = new MemoryStore();
+    // Even data in the memory store is never offered (U2).
+    store.set(KEYS.best, BEST);
+    store.set(KEYS.session, SESSION);
+    store.set(KEYS.session.replace("session", "x"), "{");
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    expect(main().textContent).not.toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBe(null);
+    expect(screen.queryByRole("status")).toBe(null);
+    expect(progressRegion()).toBe(null);
+    expect(screen.queryByText(strings.progress.reset)).toBe(null);
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(screen.queryByText(strings.results.retryNote)).toBe(null);
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.results.chooseAnother }),
+    );
+    await expectLandingFocused();
+    expect(progressRegion()).toBe(null);
+    expect(main().textContent).not.toContain(strings.landing.bestScore(50));
+  });
+
+  it("US-6.5 a store whose writes all fail never interrupts the quiz", async () => {
+    const inner = new MemoryStore();
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: () => ({ ok: false, reason: "error" }),
+      remove: () => ({ ok: false, reason: "error" }),
+      clearAppKeys: () => ({ ok: false, reason: "error" }),
+    };
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    await startQuiz();
+    finishQuiz();
+    await expectResultsFocused();
+    expect(screen.queryByRole("alert")).toBe(null);
+  });
+
+  it("T-US6-6 Reset clears only apiquiz: keys; best line, card and section result update in the same render", async () => {
+    const storage = stubStorage({
+      [KEYS.best]: BEST,
+      [KEYS.session]: SESSION,
+      "apiquiz:other": "x",
+      "other-app:best": "keep",
+      apiquizz: "keep too",
+    });
+    renderApp(Promise.resolve(OK), undefined, new LocalStorageStore(storage));
+    await flush();
+    expect(main().textContent).toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBeTruthy();
+    expect(progressRegion()?.textContent).toContain(
+      strings.progress.description,
+    );
+    confirmReset();
+    const keys = Array.from({ length: storage.length }, (_, i) =>
+      storage.key(i),
+    );
+    expect(keys).toEqual(["other-app:best", "apiquizz"]);
+    expect(storage.getItem("other-app:best")).toBe("keep");
+    expect(main().textContent).not.toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBe(null);
+    const done = screen.getByText(strings.progress.resetDone);
+    expect(document.activeElement).toBe(done);
+    expect(resetButton()).toBeTruthy();
+    // Start no longer asks: nothing is saved any more.
+    expect(
+      screen
+        .getByRole("button", { name: strings.landing.start })
+        .hasAttribute("aria-expanded"),
+    ).toBe(false);
+  });
+
+  it("T-US6-6 Reset also removes the load notice and the discarded text", async () => {
+    const store = createProgressStore();
+    store.set(KEYS.best, "{not json");
+    store.set(KEYS.session, SESSION);
+    renderApp(Promise.resolve(OK));
+    await flush();
+    await waitFor(() => {
+      expect(main().textContent).toContain(strings.progress.bestRemoved);
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.resume.discard }),
+    );
+    expect(screen.getByText(strings.resume.discarded)).toBeTruthy();
+    confirmReset();
+    expect(main().textContent).not.toContain(strings.progress.bestRemoved);
+    expect(screen.queryByText(strings.resume.discarded)).toBe(null);
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetDone,
+    );
+    // No invisible reserve keeps the old slot height behind.
+    expect(main().querySelector('[class*="slotReserve"]')).toBe(null);
+  });
+
+  it("T-US6-6 ok: false shows progress.resetFailed and keeps what is still stored", async () => {
+    const inner = new MemoryStore();
+    inner.set(KEYS.best, BEST);
+    inner.set(KEYS.session, SESSION);
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: (key, value) => inner.set(key, value),
+      remove: (key) => inner.remove(key),
+      clearAppKeys: () => ({ ok: false, reason: "error" }),
+    };
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    confirmReset();
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetFailed,
+    );
+    expect(main().textContent).toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBeTruthy();
+    expect(screen.queryByText(strings.progress.resetDone)).toBe(null);
+  });
+
+  it("T-44-TL01 F1 ok: false re-reads storage: a key removed before the failure is gone, the rest stays", async () => {
+    const inner = new MemoryStore();
+    inner.set(KEYS.best, BEST);
+    inner.set(KEYS.session, SESSION);
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: (key, value) => inner.set(key, value),
+      remove: (key) => inner.remove(key),
+      // Fails part-way: the best scores were already removed.
+      clearAppKeys: () => {
+        inner.remove(KEYS.best);
+        return { ok: false, reason: "error" };
+      },
+    };
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    expect(main().textContent).toContain(strings.landing.bestScore(50));
+    confirmReset();
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetFailed,
+    );
+    expect(main().textContent).not.toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBeTruthy();
+  });
+
+  it("SEC-R17 N1 Reset ends a quiz still held in memory: going back to #/quiz never saves it again", async () => {
+    const BANK3 = {
+      ...TEST_BANK,
+      questions: ["q-1", "q-2", "q-3"].map((qid) => ({
+        ...TEST_BANK.questions[0],
+        id: qid,
+      })),
+    } as typeof TEST_BANK;
+    renderApp(Promise.resolve({ ok: true, bank: BANK3 }));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.start }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 3));
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.submit }),
+    );
+    expect(createProgressStore().get(KEYS.session)).not.toBe(null);
+    // Unknown route, then the brand link: the quiz stays in memory.
+    navigate("#/x");
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.notFound.heading);
+    });
+    navigate("#/");
+    await expectLandingFocused();
+    confirmReset();
+    expect(createProgressStore().get(KEYS.session)).toBe(null);
+    // Like browser Back to #/quiz: no quiz in memory, so Landing again.
+    navigate("#/quiz");
+    await expectLandingFocused();
+    expect(
+      screen.queryByRole("button", { name: strings.question.submit }),
+    ).toBe(null);
+    expect(createProgressStore().get(KEYS.session)).toBe(null);
+  });
+
+  it("Cancel and Escape close the confirmation, return focus to Reset and keep the data", async () => {
+    createProgressStore().set(KEYS.best, BEST);
+    renderApp(Promise.resolve(OK));
+    await flush();
+    fireEvent.click(resetButton());
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.common.cancel }),
+    );
+    expect(document.activeElement).toBe(resetButton());
+    fireEvent.click(resetButton());
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: strings.progress.resetConfirm }),
+      { key: "Escape" },
+    );
+    expect(document.activeElement).toBe(resetButton());
+    expect(
+      screen.queryByRole("group", { name: strings.progress.resetMessage }),
+    ).toBe(null);
+    expect(createProgressStore().get(KEYS.best)).toBe(BEST);
   });
 });
 

@@ -313,6 +313,9 @@ test.describe("T-16 focus order and no keyboard trap (US-10.2)", () => {
       await radioGroupStop(page),
       `button "${strings.landing.start}"`,
       `link "${strings.landing.report} ${cue}"`,
+      // T-44 (views.md §9.7): "Your progress" is last in main, after the
+      // About section's report link.
+      `button "${strings.progress.reset}"`,
     ];
     await expectTabCycle(page, browserName, order, "Tab");
     await expectTabCycle(page, browserName, order, "Shift+Tab");
