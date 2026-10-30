@@ -22,9 +22,9 @@ Strings are referenced as `copy:key` and defined in `copy.md`. Tokens are in `to
 - **640x360 landscape:** `sm` + `short` layout. Everything is reachable by vertical scrolling, and the header scrolls away with the page.
 - **400% zoom at 1280:** identical to the 320 layout. Code boxes scroll inside themselves; no other content scrolls horizontally.
 
-## 1. Landing (T-09; US-1, US-12.1; US-6 in §9)
+## 1. Landing (T-09; US-1, US-12.1; US-6 in §9; US-11 in §10)
 
-Hierarchy: h1, description, [resume slot: load notice, resume card, §9], topic group (fieldset), Start + hint [+ replace confirmation, §9], "About the questions" (h2, accuracy note, report link) [, "Your progress" (h2, Reset progress), §9].
+Hierarchy: h1, description, [resume slot: load notice, resume card, §9], topic group (fieldset), [difficulty and length groups, §10], Start + hint [+ replace confirmation, §9], "About the questions" (h2, accuracy note, report link) [, "Your progress" (h2, Reset progress), §9].
 
 ```
 320                                   768 / 1280 (45rem column, centred)
@@ -185,6 +185,25 @@ Data error (in the Landing topic area)        App error (full view, error bounda
 
 - Data error: `role="alert"` container (announced once, assertive, because the main task is blocked), `h2` `copy:error.dataHeading`, body text, Retry (primary). The icon plus the text carry the meaning, with no reliance on colour (text colour on bg, `--color-danger` icon). Focus does not move on first load. After a failed Retry, focus stays on Retry and the alert content is replaced, so it is announced again. Title `copy:title.dataError`.
 - App error (chunk failure or unexpected error): its own view, `h1` focused, Retry reloads the page, home link goes to `#/`. Title `copy:title.appError`.
+
+### 6.1 Boot fallback, no script (T-47-TL01 follow-up)
+
+```
+all widths (static HTML inside #root, before the app mounts)
+| ApiQuiz could not start          (h1) |
+| Part of the app did not load. Check   |
+| your connection, then retry.          |
+| Retry                                 |   link, href=""
+```
+
+- **When:** the app's script never runs (the module or a chunk it needs failed to load, or script is blocked), so neither §5 Loading nor the §6 app error can render. The block is static markup written directly in `index.html` inside `#root`, so React replaces it when the app mounts and it never shows on a working load.
+- **Styles (as shipped in PR #134):** the CSP (`style-src 'self'`) blocks inline styles, so there is no `<style>` block or `style` attribute in `index.html`. The fallback CSS is bundled into the render-blocking, same-origin entry stylesheet through a Vite virtual module (`virtual:boot-fallback.css`, imported from `src/main.tsx`). That stylesheet loads before first paint even when the script fails to run. The rules use the browser's system colours (`Canvas` / `CanvasText`, so both themes and forced colours work), the system font and the 45rem column with a 16px inline padding at 320; they do not depend on the app's tokens.
+- **Reveal:** hidden at first with `visibility: hidden` (not opacity, so screen readers do not read it before it is shown), then shown after **4 s by CSS only** with a zero-length animation that has a 4 s delay: `animation: boot-fallback-reveal 0s linear 4s forwards`, whose end state is `visibility: visible`. Nothing moves or fades; the animation only switches visibility at the 4 s mark. Reduced-motion rules shorten animation durations, not delays, so the 4 s delay still applies (the duration is already 0). If the entry stylesheet itself fails to load, the fallback is unstyled and shows immediately, without the delay; this is accepted (it can then flash on a load where the script does run, which is unlikely when the stylesheet failed).
+- **Content (static markup in `index.html`, not in `strings.ts`):** `h1` `copy:boot.heading`, `<p>` `copy:boot.body`, then a link `copy:boot.retry` with `href=""`. Following it reloads the document URL **without the hash**, so the user lands on Home; a deep-link route (`#/topic/<slug>`, `#/quiz`, `#/results`) is lost. Accepted: the saved quiz (US-6) is still offered on Home. The link is underlined, `display: inline-flex; min-height: 44px` (the `--target-min` value written literally in the fallback CSS, which does not use the tokens).
+- **No home link:** a `#/` link only changes the hash, which needs the script to navigate, so it would do nothing. Retry is the only control.
+- **Focus and announcement:** none are possible without script. Focus stays where the browser put it (the document); the block is not a live region and is not announced when it appears. Screen-reader users find it by reading the page or by heading navigation (it is the only `h1`).
+- **Title:** the static `<title>ApiQuiz</title>` from `index.html` stays (no script to change it).
+- **Not covered:** a script that loads but throws before mounting is the §6 app error's job (error boundary); if nothing mounts at all, this block is what remains visible after 4 s.
 
 ## 7. 404 and Topic not found (T-08, T-09; US-12.2)
 
@@ -460,3 +479,117 @@ New keys (defined in `copy.md`): `landing.bestScore`, `landing.replaceMessage`, 
 - **DQ-US6-5** Placement of Reset progress: a "Your progress" section at the end of Landing (U1) rather than inside "About the questions" or a footer. Please confirm.
 - **DQ-US6-6** Button labels are "Resume quiz" and "Discard quiz", not the bare "Resume" / "Discard" quoted in US-6.2, so each name makes sense on its own. Please confirm; tests should match the copy keys.
 - **DQ-US6-7** Card wording does not show when the quiz was saved (`savedAt` exists). Proposed: leave it out; there is no expiry (Q5).
+
+## 10. Difficulty filter and quiz length (US-11, GitHub #16; design US11-UX-D01)
+
+Proposed design guidance, not user-tested. Extends §1 Landing (and touches §4 Results, §9 best score and resume); no new route, colour, token or dependency. Covers US-11.1 and US-11.2. Bank facts used here (content build of main 7f5a677): 66 questions, 8 topics of 8-9 questions; per topic 2-3 easy, 3-4 medium and **1-2 hard**; whole bank 21 easy, 30 medium, 15 hard. So with a single topic, any difficulty filter gives fewer than 5 questions, and lengths 10 and 20 are always capped by the topic size: the "fewer available" hint (§10.4) is the normal case, not a rare one.
+
+### 10.1 Decisions
+
+- **F1 Two native radio groups on Landing, between the topic group and Start:** "Difficulty" (All, Easy, Medium, Hard; default All) and "Number of questions" (5, 10, 20; default 10 = `DEFAULT_QUIZ_LENGTH`). Native radios: one Tab stop per group, arrow keys inside, no custom widget. A `select` was rejected because it hides the choices and needs two taps. The defaults reproduce today's quiz exactly, so the US-1.7 "select + Start = 2 interactions" path is unchanged.
+- **F2 Topic counts follow the difficulty.** Each row's count (and the Mixed total) shows the questions that match the selected difficulty ("2 questions" for Status codes with Hard), so availability is visible before Start. Rows are never hidden or reordered by the filter (no layout jump, the selection is kept); a row may read "0 questions". Mixed visibility is unchanged (§1: hidden only when 1 topic is shown, counted without the filter).
+- **F3 Fewer available: start with what there is, and say so first** (US-11.1; planning §4 "Only 3 hard questions available, starting 3"). Start stays available; a hint under Start states the real number. No blocking dialog.
+- **F4 None available: Start unavailable with an explanation** (US-11.2), using the existing `aria-disabled` + visible hint pattern (§1).
+- **F5 Best score counts only for an unfiltered, full-length quiz** (minimal and safe; DQ-US11-1). A quiz updates the best score only when, in addition to the §9.3 rules, its difficulty is All **and** it has at least as many questions as a default quiz of that scope would have, min(10, questions in the scope). So 10 or 20 questions count, 5 questions or any difficulty filter do not. This keeps a 5-question or easy-only 100% from replacing a real best score, and keeps one best score per scope (no per-difficulty scores, DQ-US11-2). Results says why when it does not count (§10.6).
+- **F6 Settings live for the page load only, held at App level.** Landing remounts on every route change, so the chosen difficulty and length are App state passed to Landing, not Landing state. They are kept when the user comes back to Landing in the same page load (Exit, Back, "Choose another topic"), and reset to the defaults on reload or a new visit. They are not saved to storage and not put in the URL (DQ-US11-3, DQ-US11-4).
+- **F7 A quiz carries its difficulty.** Try again and Resume use the quiz's own difficulty and question count, not whatever Landing shows now. "Start a full quiz" (retry results) uses the defaults (All, 10), because a retry quiz has no difficulty or length to carry.
+
+### 10.2 Landing layout
+
+Order: h1, description, [resume slot, §9], topic group, **Difficulty group**, **Number of questions group**, Start + hint [+ replace confirmation, §9], About the questions [, Your progress, §9].
+
+```
+320                                   768 / 1280 (45rem column, centred)
++--------------------------------+    +---------------------------------------------+
+| Choose a topic       (legend)  |    | Choose a topic                     (legend) |
+| +----------------------------+ |    | +-----------------------------------------+ |
+| | (o) Status codes           | |    | | (o) Status codes           2 questions  | |
+| |     2 questions            | |    | | ( ) HTTP fundamentals      2 questions  | |
+| | ( ) HTTP fundamentals      | |    | | ...                                     | |
+| |     2 questions            | |    | | ( ) Mixed                 15 questions  | |
+| | ...                        | |    | +-----------------------------------------+ |
+| | ( ) Mixed                  | |    | Difficulty                         (legend) |
+| |     ... 15 questions       | |    | [( ) All] [( ) Easy] [( ) Medium] [(o) Hard]|
+| +----------------------------+ |    | Number of questions                (legend) |
+| Difficulty           (legend)  |    | [(o) 5] [( ) 10] [( ) 20]                   |
+| [( ) All] [( ) Easy]           |    | [ Start quiz ]                              |
+| [( ) Medium] [(o) Hard]        |    | Only 2 hard questions are available, so     |
+| Number of questions  (legend)  |    | this quiz will have 2.                      |
+| [(o) 5] [( ) 10] [( ) 20]      |    | About the questions                    (h2) |
+| [         Start quiz         ] |    +---------------------------------------------+
+| Only 2 hard questions are      |
+| available, so this quiz will   |
+| have 2.                        |
+| About the questions      (h2)  |
++--------------------------------+
+```
+
+The drawing shows Hard + 5 with Status codes selected (US-11.1 example).
+
+### 10.3 Controls
+
+- Markup per group: `fieldset` + `legend` (`copy:landing.difficultyLegend`, `copy:landing.lengthLegend`), same legend style and `--space-5` spacing above as the topic group, then native radios each inside its `label`. Difficulty labels: `copy:landing.difficultyAll`, `copy:landing.difficulty.easy|medium|hard`. Length labels: the numerals 5, 10, 20 (no copy key; the legend gives the meaning). Accessible name = visible label; the group name comes from the legend.
+- Look: the existing option-row style (`optionRow.module.css` `.row` / `.radio`: 2px border, `--radius-md`, hover surface, selected = 2px primary border + selected-bg + native checked radio, focus ring on the label) but **auto width**, laid out `inline-flex` in a wrapping row with gap `--space-2`. Each label is at least `--target-min` tall and wide, padding-inline `--space-3`. At 320 Difficulty wraps to two lines; Length fits on one. Nothing is truncated. No new tokens.
+- Defaults are checked on first render, so each group always has exactly one checked radio (no "nothing selected" state for these groups).
+- Changing either group: updates the row counts (F2) and the hint under Start (§10.4) in the same render; focus stays on the radio; nothing is announced (the hint is a description, as in §1).
+- Loading reserve (§5, T-34): the two groups render inside the topic group markup (`topicGroup` in `Landing.tsx`, before Start), so the invisible reserve copy includes them automatically, with their defaults checked and disabled like the reserve rows, so About still does not move when the bank arrives. The shortfall hint appears only after a user choice (or a deep link, see §10.7) and is not reserved; a deep-linked topic with default settings shows no hint, so the first paint is unchanged.
+
+### 10.4 States of Start and its hint
+
+One hint element under Start (the existing `copy:landing.startHint` slot), referenced by Start's `aria-describedby` whenever it has text. First matching row wins:
+
+| Situation | Start | Hint text |
+| --- | --- | --- |
+| No topic selected | `aria-disabled` | `copy:landing.startHint` (unchanged) |
+| Topic or Mixed selected, 0 questions match the difficulty (US-11.2) | `aria-disabled`; activating it does nothing | `copy:landing.noneHint` ("There are no hard questions for this choice. Choose another difficulty or topic.") |
+| Matches < chosen length, and the settings are not the defaults (US-11.1) | available | `copy:landing.shortHint` ("Only 2 hard questions are available, so this quiz will have 2."; with All: "Only 8 questions are available, so this quiz will have 8.") |
+| Otherwise (enough questions, or default settings) | available | none (as today) |
+
+- **Why not with default settings:** a single topic has 8-9 questions, so the default 10 is always capped. Today's Landing shows no message for that and the row count already says it; showing the hint would add text to every default start. With any changed setting the user has asked for a number, so the real number is stated.
+- Creating the quiz: `createQuiz` filters the scope's pool by difficulty first, then draws min(length, matches) as today. Mixed keeps its spread rule over the filtered pool: at least min(3, topics with a matching question, N) topics. If creation still fails (for example the bank changed), the existing `copy:landing.startError` alert is shown, as today.
+- The replace confirmation (§9.6) is unchanged; its confirm starts a quiz with the currently selected scope **and settings**. It can only open from an available Start, so never in the "0 match" state.
+
+### 10.5 Interaction with Mixed, Resume and retry
+
+- **Mixed:** the filter applies to the whole pool; the Mixed row shows the filtered total (15 for Hard). Mixed + Hard + 20 starts 15 questions with the shortfall hint.
+- **Resume (§9.4):** a saved quiz keeps its own questions and settings; Landing's current radios do not change it and are not changed by it. The card summary is `copy:resume.summary` as today (it does not name the difficulty). Restore must rebuild the same draw from the seed, so the saved session needs the difficulty (see the handoff note below).
+- **Try again** (§4): fresh draw of the same scope with the quiz's difficulty and its question count as the length (min(requested, matches), which gives the same quiz size). **Retry missed** (§8): unchanged (it uses the missed questions, which already match the filter); it never counts toward the best score. **Start a full quiz** on retry results: the original scope with the defaults (All, 10); a retry quiz carries no difficulty or length.
+- **Handoff note (tech-lead, US11-UX-TL01):** the quiz needs its difficulty after a reload, otherwise a resumed filtered quiz would not reproduce from its seed and would be reported `stale` and removed. The length needs no field (it is the saved question count; F5 is computed from it). Session codec (`src/storage/codec/session.ts`) and `restoreQuiz`: **no `schemaVersion` bump**; an optional `difficulty` field, absent = All. Encode the key only when a difficulty is chosen. Decode accepts only `easy`, `medium` or `hard`; any other value, including `"all"`, makes the value corrupt (removed, load notice as in §9.5). Sessions saved before US-11 have no key and restore as All.
+
+### 10.6 Best score and Results
+
+- Rule F5 is added to the §9.3 write condition (with `mode === "normal"` and the content-version check).
+- Results for a finished normal quiz that is not "full" (full = difficulty All and at least min(10, available) questions, the F5 size test), with persistent storage only: under the h1, `copy:results.filteredNote` ("This quiz used a difficulty filter or fewer than 10 questions, so it does not count toward your best score."), same place and style as `copy:results.retryNote`, rendered only when storage is persistent (U2). The note depends on the quiz itself, not on whether the best-score write happened (a stale content version, for example, skips the write without this note). With a topic of 8 questions and length 10 or 20 the quiz counts, so no note.
+- Results otherwise unchanged: no difficulty line, title unchanged (`copy:title.results`). Landing rows keep showing the single best score per scope whatever the filter.
+
+### 10.7 Deep links
+
+- `#/topic/<slug>` preselects the topic as today; the two groups show the page-load settings (the defaults on a fresh load). No difficulty or length in the URL (DQ-US11-4). Topic not found (§7b): groups shown as normal.
+
+### 10.8 Keyboard, focus and screen reader
+
+- Tab order on Landing: brand, [Resume quiz, Discard quiz], topic radios (one stop), **Difficulty radios (one stop)**, **Number of questions radios (one stop)**, Start, [confirm, Cancel], report link, [Reset progress, ...]. Arrow keys move and select inside a group (native). No focus moves are added.
+- Screen reader: "Difficulty, group; Hard, radio button, 4 of 4, checked". Row names update with the count ("Status codes, 2 questions"). On Start the description reads the hint (shortfall or none). No live region is added (the hint is not announced on change, as in §1); a user who changes a setting hears the result on reaching Start.
+- Focus never lost: no element that can hold focus is removed by changing a setting.
+
+### 10.9 Copy summary
+
+New keys (defined in `copy.md`): `landing.difficultyLegend`, `landing.difficultyAll`, `landing.difficulty.easy`, `landing.difficulty.medium`, `landing.difficulty.hard`, `landing.difficultyWord.easy`, `landing.difficultyWord.medium`, `landing.difficultyWord.hard`, `landing.lengthLegend`, `landing.shortHint`, `landing.noneHint`, `results.filteredNote`. `resume.summary` is unchanged. Existing `landing.topicCount` now receives the filtered count (`0 questions` is valid).
+
+### 10.10 Accessibility and responsive checks (proposed, not verified)
+
+- Native `fieldset`/`legend` groups (1.3.1); labels match visible text (2.5.3); selection shown by the native radio plus border, never colour alone (1.4.1); forced colours as for option rows (tokens.md §6).
+- Targets at least `--target-min` with `--space-2` gaps (2.5.8). 320 and 400% zoom: chips wrap, no horizontal scroll; 640x360: groups reached by vertical scrolling; nothing sticky.
+- Status message (4.1.3): none needed; the hint is a static description of Start.
+- To verify in the US-11 E2E: axe on Landing with Hard + 5 selected and with a 0-match state (unit-test fixture bank, since the shipped bank has no 0-match topic); keyboard path select topic, Hard, 5, Start = 3 Tab stops plus arrows; CLS < 0.01 on load (reserve includes the groups).
+
+### 10.11 Open questions for the sponsor / PO (US-11)
+
+All six proposed defaults were accepted by the sponsor (recorded on PR #136); kept here for traceability.
+
+- **DQ-US11-1** Does a filtered or shorter quiz count toward the best score? Proposed: no, only difficulty All with at least min(10, scope size) questions (F5), with a note on Results. Alternative: every normal quiz counts (simpler, but a 5-question easy run can set 100%).
+- **DQ-US11-2** One best score per scope, or one per scope and difficulty? Proposed: one per scope (no storage schema change, rows stay short).
+- **DQ-US11-3** Remember the chosen difficulty and length across visits (localStorage)? Proposed: no, page load only (F6); defaults on reload.
+- **DQ-US11-4** Should deep links carry the settings (for example `#/topic/<slug>?difficulty=hard&n=5`)? Proposed: no (no new route syntax or validation).
+- **DQ-US11-5** The shortfall hint is hidden with default settings (§10.4) even though a topic quiz then has 8-9 questions, not 10. Proposed: keep today's behaviour (the row count already shows it).
+- **DQ-US11-6** Should the Question view or Results show the difficulty of the current quiz? Proposed: no (not in the AC); only the resume card names it.
