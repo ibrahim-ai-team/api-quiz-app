@@ -62,11 +62,20 @@ export function validateFiles(
   );
 }
 
+/**
+ * The one comparator for location lists (T-32 N3): plain UTF-16 code-unit
+ * order, so actual and expected lists always sort the same way.
+ */
+export function compareLocations(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
 /** `(file) questionId field` triples, sorted, for exact comparison. */
 export function locations(issues: readonly ContentIssue[]): string[] {
   return issues
     .map((i) => `${i.file} ${i.questionId} ${i.field}`)
-    .sort((a, b) => a.localeCompare(b));
+    .sort(compareLocations);
 }
 
 export interface BankSpec {

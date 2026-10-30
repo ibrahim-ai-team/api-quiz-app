@@ -7,6 +7,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
+import { findDuplicateKey } from "./json.ts";
 import {
   questionFileSchema,
   questionSchema,
@@ -39,6 +40,11 @@ export interface ContentSources {
   topics: SourceFile;
   retiredIds: SourceFile;
   questionFiles: readonly SourceFile[];
+  /**
+   * Entries of the questions directory that are not `.json` files and were
+   * not read; each one becomes a file-level warning (T-32 N6).
+   */
+  ignoredFiles?: readonly string[];
   /** Display path for bank-level (threshold) issues. */
   bankPath?: string;
 }
@@ -113,13 +119,30 @@ function parseJson(source: SourceFile): ParsedJson {
     },
   });
   if (source.text === null) return fail("file is missing or unreadable");
+  let value: unknown;
   try {
-    return { ok: true, value: JSON.parse(source.text) as unknown };
+    value = JSON.parse(source.text) as unknown;
   } catch (error) {
     return fail(
       `malformed JSON: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+  // JSON.parse keeps only the last value of a repeated key (T-32 M1).
+  let duplicate: ReturnType<typeof findDuplicateKey>;
+  try {
+    duplicate = findDuplicateKey(source.text);
+  } catch (error) {
+    return fail(
+      `could not check for duplicate keys: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (duplicate !== null) {
+    return fail(
+      `duplicate key "${duplicate.key}" in ${formatPath(duplicate.path, "(root)")} ` +
+        "(JSON.parse would keep only the last value)",
+    );
+  }
+  return { ok: true, value };
 }
 
 /** Parses a whole-file schema; issues are file-level. */
@@ -141,7 +164,8 @@ function parseFile<T>(
   return null;
 }
 
-function displayQuestionId(raw: unknown, index: number): string {
+/** The raw `id` of a question entry when it is a non-blank string. */
+function usableQuestionId(raw: unknown): string | null {
   if (
     typeof raw === "object" &&
     raw !== null &&
@@ -151,7 +175,7 @@ function displayQuestionId(raw: unknown, index: number): string {
   ) {
     return raw.id;
   }
-  return `questions[${String(index)}]`;
+  return null;
 }
 
 export function validateContent(
@@ -186,6 +210,8 @@ export function validateContent(
 
   /** First file that declared each question ID. */
   const firstSeen = new Map<string, string>();
+  /** Question entries declared across all parsed files, valid or not. */
+  let declared = 0;
 
   for (const source of sources.questionFiles) {
     const fileTopic = path.basename(source.path, ".json");
@@ -203,28 +229,35 @@ export function validateContent(
     }
     const file = parseFile(source, questionFileSchema, errors);
     if (file === null) continue;
+    declared += file.questions.length;
 
     file.questions.forEach((raw, index) => {
-      const questionId = displayQuestionId(raw, index);
+      const rawId = usableQuestionId(raw);
+      const questionId = rawId ?? `questions[${String(index)}]`;
       const report = (p: FieldProblem): void => {
         errors.push({ file: source.path, questionId, ...p });
       };
+      // The ID is claimed before the schema check (T-32 N5), so a valid
+      // duplicate after a schema-invalid first occurrence is still caught.
+      const problems: FieldProblem[] = [];
+      if (rawId !== null) {
+        const previous = firstSeen.get(rawId);
+        if (previous === undefined) {
+          firstSeen.set(rawId, source.path);
+        } else {
+          problems.push({
+            field: "id",
+            message: `duplicate question id (first declared in ${previous})`,
+          });
+        }
+      }
       const result = questionSchema.safeParse(raw);
       if (!result.success) {
         zodProblems(result.error, "(question)").forEach(report);
+        problems.forEach(report);
         return;
       }
       const question = result.data;
-      const problems: FieldProblem[] = [];
-      const previous = firstSeen.get(question.id);
-      if (previous === undefined) {
-        firstSeen.set(question.id, source.path);
-      } else {
-        problems.push({
-          field: "id",
-          message: `duplicate question id (first declared in ${previous})`,
-        });
-      }
       if (retired.has(question.id)) {
         problems.push({
           field: "id",
@@ -238,7 +271,24 @@ export function validateContent(
     });
   }
 
+  for (const ignored of sources.ignoredFiles ?? []) {
+    warnings.push({
+      file: ignored,
+      questionId: FILE_LEVEL,
+      field: "(file name)",
+      message: "ignored: question files must end in .json",
+    });
+  }
+
   const bankFile = sources.bankPath ?? "content/questions";
+  if (declared === 0) {
+    warnings.push({
+      file: bankFile,
+      questionId: BANK_LEVEL,
+      field: "(empty)",
+      message: "the question bank is empty: no questions are declared",
+    });
+  }
   for (const p of releaseThresholdProblems(questions, topics)) {
     (options.release ? errors : warnings).push({
       file: bankFile,
@@ -260,7 +310,8 @@ async function readSource(file: string, display: string): Promise<SourceFile> {
 
 /**
  * Reads `<root>/topics.json`, `<root>/retired-ids.json` and every
- * `<root>/questions/*.json` (sorted). Display paths are relative to `cwd`.
+ * `<root>/questions/*.json` (sorted). Other entries of the questions
+ * directory are listed in `ignoredFiles`. Display paths are relative to `cwd`.
  * Never throws: a missing questions directory yields an empty list plus a
  * marker source with `text: null`.
  */
@@ -272,10 +323,14 @@ export async function loadContentSources(
     path.relative(cwd, file).split(path.sep).join("/");
   const questionsDir = path.join(root, "questions");
   let questionFiles: SourceFile[];
+  const ignoredFiles: string[] = [];
   try {
-    const names = (await readdir(questionsDir))
-      .filter((name) => name.endsWith(".json"))
-      .sort();
+    const entries = (await readdir(questionsDir)).sort();
+    const names: string[] = [];
+    for (const name of entries) {
+      if (name.endsWith(".json")) names.push(name);
+      else ignoredFiles.push(display(path.join(questionsDir, name)));
+    }
     questionFiles = await Promise.all(
       names.map((name) => {
         const file = path.join(questionsDir, name);
@@ -291,6 +346,7 @@ export async function loadContentSources(
     topics: await readSource(topicsPath, display(topicsPath)),
     retiredIds: await readSource(retiredPath, display(retiredPath)),
     questionFiles,
+    ignoredFiles,
     bankPath: display(questionsDir),
   };
 }
