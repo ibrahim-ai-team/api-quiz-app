@@ -122,6 +122,7 @@ export function draftGuardPlugin(bankPath?: string): Plugin {
       } catch (error) {
         throw new Error(
           `Draft guard: cannot read the generated bank at ${resolvedPath} (${String(error)}). ${hint}`,
+          { cause: error },
         );
       }
       let bank: unknown;
@@ -130,6 +131,7 @@ export function draftGuardPlugin(bankPath?: string): Plugin {
       } catch (error) {
         throw new Error(
           `Draft guard: the generated bank at ${resolvedPath} is not valid JSON (${String(error)}). ${hint}`,
+          { cause: error },
         );
       }
       const questions =
