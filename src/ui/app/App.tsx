@@ -417,8 +417,12 @@ export function App({ bankPromise, reloadBank, store: storeProp }: AppProps) {
 
   // Reset progress (US-6.6, §9.6): only `apiquiz:` keys. In the same render
   // best-score lines, the card and the notice go; after a failure the page
-  // shows what is still stored (re-read).
+  // shows what is still stored (re-read). A quiz still held in memory (Landing
+  // reached from the 404 view keeps it) ends too, so returning to `#/quiz`
+  // can never save it again (SEC-R17 N1).
   const resetProgress = useCallback((): boolean => {
+    dispatchSession({ type: "exited" });
+    persisted.current = null;
     const { ok } = store.clearAppKeys();
     setBest(ok ? null : readBest(store));
     dispatchSaved({

@@ -264,10 +264,11 @@ export function Landing({
             disabled={placeholder || undefined}
             aria-disabled={unavailable ? true : undefined}
             aria-describedby={showHint ? `${prefix}-hint` : undefined}
-            // Only while a card exists (§9.6): Start then opens the group.
+            // Only while a card exists (§9.6): Start then opens the group;
+            // aria-controls only while the group is open (T-44-TL01 F2).
             aria-expanded={!placeholder && cardShown ? showConfirm : undefined}
             aria-controls={
-              !placeholder && cardShown ? `${prefix}-replace` : undefined
+              !placeholder && showConfirm ? `${prefix}-replace` : undefined
             }
             onClick={placeholder ? undefined : start}
           >

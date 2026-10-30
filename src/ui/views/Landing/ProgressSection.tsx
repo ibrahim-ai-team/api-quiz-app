@@ -61,7 +61,8 @@ export function ProgressSection({ onReset }: ProgressSectionProps) {
           type="button"
           className={common.buttonSecondary}
           aria-expanded={confirming}
-          aria-controls={groupId}
+          // Only while the group exists (§9.6, T-44-TL01 F2).
+          aria-controls={confirming ? groupId : undefined}
           onClick={open}
         >
           {strings.progress.reset}

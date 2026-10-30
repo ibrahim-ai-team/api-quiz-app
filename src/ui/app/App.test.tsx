@@ -1316,6 +1316,7 @@ describe("T-43 resume, discard, load notice and replace (US-6.2 to US-6.4, views
     ).toBe(null);
     expect(document.activeElement).toBe(startEl);
     expect(startEl.getAttribute("aria-expanded")).toBe("false");
+    expect(startEl.hasAttribute("aria-controls")).toBe(false);
     fireEvent.click(startEl);
     fireEvent.click(
       screen.getByRole("button", { name: strings.common.cancel }),
@@ -1770,6 +1771,72 @@ describe("T-44 reset progress and memory-only mode (US-6.5, US-6.6, views.md §9
     expect(main().textContent).toContain(strings.landing.bestScore(50));
     expect(resumeCard()).toBeTruthy();
     expect(screen.queryByText(strings.progress.resetDone)).toBe(null);
+  });
+
+  it("T-44-TL01 F1 ok: false re-reads storage: a key removed before the failure is gone, the rest stays", async () => {
+    const inner = new MemoryStore();
+    inner.set(KEYS.best, BEST);
+    inner.set(KEYS.session, SESSION);
+    const store: ProgressStore = {
+      persistent: true,
+      get: (key) => inner.get(key),
+      set: (key, value) => inner.set(key, value),
+      remove: (key) => inner.remove(key),
+      // Fails part-way: the best scores were already removed.
+      clearAppKeys: () => {
+        inner.remove(KEYS.best);
+        return { ok: false, reason: "error" };
+      },
+    };
+    renderApp(Promise.resolve(OK), undefined, store);
+    await flush();
+    expect(main().textContent).toContain(strings.landing.bestScore(50));
+    confirmReset();
+    expect(document.activeElement?.textContent).toBe(
+      strings.progress.resetFailed,
+    );
+    expect(main().textContent).not.toContain(strings.landing.bestScore(50));
+    expect(resumeCard()).toBeTruthy();
+  });
+
+  it("SEC-R17 N1 Reset ends a quiz still held in memory: going back to #/quiz never saves it again", async () => {
+    const BANK3 = {
+      ...TEST_BANK,
+      questions: ["q-1", "q-2", "q-3"].map((qid) => ({
+        ...TEST_BANK.questions[0],
+        id: qid,
+      })),
+    } as typeof TEST_BANK;
+    renderApp(Promise.resolve({ ok: true, bank: BANK3 }));
+    await flush();
+    fireEvent.click(screen.getByRole("radio", { name: /^Topic A/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.landing.start }),
+    );
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.question.heading(1, 3));
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "True" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: strings.question.submit }),
+    );
+    expect(createProgressStore().get(KEYS.session)).not.toBe(null);
+    // Unknown route, then the brand link: the quiz stays in memory.
+    navigate("#/x");
+    await waitFor(() => {
+      expect(h1().textContent).toBe(strings.notFound.heading);
+    });
+    navigate("#/");
+    await expectLandingFocused();
+    confirmReset();
+    expect(createProgressStore().get(KEYS.session)).toBe(null);
+    // Like browser Back to #/quiz: no quiz in memory, so Landing again.
+    navigate("#/quiz");
+    await expectLandingFocused();
+    expect(
+      screen.queryByRole("button", { name: strings.question.submit }),
+    ).toBe(null);
+    expect(createProgressStore().get(KEYS.session)).toBe(null);
   });
 
   it("Cancel and Escape close the confirmation, return focus to Reset and keep the data", async () => {

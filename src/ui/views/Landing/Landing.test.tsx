@@ -501,6 +501,7 @@ describe("T-44 Your progress and Reset progress (US-6.6, views.md §9.6)", () =>
     ]);
     expect(region?.textContent).toContain(strings.progress.description);
     expect(resetButton().getAttribute("aria-expanded")).toBe("false");
+    expect(resetButton().hasAttribute("aria-controls")).toBe(false);
   });
 
   it("US-6.5 is not rendered without persistent storage (progress null)", () => {
@@ -544,6 +545,8 @@ describe("T-44 Your progress and Reset progress (US-6.6, views.md §9.6)", () =>
     expect(
       screen.queryByRole("group", { name: strings.progress.resetMessage }),
     ).toBe(null);
+    expect(resetButton().getAttribute("aria-expanded")).toBe("false");
+    expect(resetButton().hasAttribute("aria-controls")).toBe(false);
     expect(onReset).not.toHaveBeenCalled();
   });
 
