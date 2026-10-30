@@ -23,10 +23,19 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
  * `ready` is required: it must identify an element of the state under test,
  * and it is awaited as visible before scanning, so axe never scans a page
  * that is still loading or rendering. Running CSS transitions are awaited too.
+ *
+ * `options.disableRules` (optional) turns off named axe rules for one scan.
+ * Every caller that passes it must document why at the call site (for
+ * example a confirmed axe false positive); the default scans every rule.
  */
+export interface AxeScanOptions {
+  disableRules?: readonly string[];
+}
+
 export async function expectNoAxeSeriousOrCritical(
   page: Page,
   ready: Locator,
+  options: AxeScanOptions = {},
 ): Promise<void> {
   await expect(ready, "axe readiness locator").toBeVisible();
   // A colour transition in flight (for example Start becoming available)
@@ -42,9 +51,10 @@ export async function expectNoAxeSeriousOrCritical(
     .catch(() => {
       throw new Error("CSS transitions still running before axe scan");
     });
-  const results = await new AxeBuilder({ page })
-    .withTags(AXE_WCAG_TAGS)
-    .analyze();
+  let builder = new AxeBuilder({ page }).withTags(AXE_WCAG_TAGS);
+  const disabled = options.disableRules ?? [];
+  if (disabled.length > 0) builder = builder.disableRules([...disabled]);
+  const results = await builder.analyze();
 
   await test.info().attach("axe-results.json", {
     body: JSON.stringify(results, null, 2),
