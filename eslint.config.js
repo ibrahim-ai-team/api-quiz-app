@@ -1,3 +1,4 @@
+import { fixupPluginRules } from "@eslint/compat";
 import js from "@eslint/js";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import react from "eslint-plugin-react";
@@ -112,9 +113,11 @@ export default tseslint.config(
     ...react.configs.flat.recommended,
     ...react.configs.flat["jsx-runtime"],
     plugins: {
-      react,
+      // eslint-plugin-react and eslint-plugin-jsx-a11y still call context APIs
+      // removed in ESLint 10 (e.g. context.getFilename); wrap them until they ship v10 support.
+      react: fixupPluginRules(react),
       "react-hooks": reactHooks,
-      "jsx-a11y": jsxA11y,
+      "jsx-a11y": fixupPluginRules(jsxA11y),
     },
     languageOptions: {
       ...react.configs.flat.recommended.languageOptions,

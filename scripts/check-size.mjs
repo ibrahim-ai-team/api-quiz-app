@@ -68,7 +68,7 @@ function main() {
     return 1;
   }
 
-  let isDir = false;
+  let isDir;
   try {
     isDir = statSync(opts.dir).isDirectory();
   } catch {
