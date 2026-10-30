@@ -63,9 +63,15 @@ const httpsUrl = z.string().superRefine((value, ctx) => {
   }
 });
 
+/** Option text must be trimmed (T-32 N7); blank text reports "empty" only. */
+const optionText = nonBlank.refine(
+  (value) => value.trim() === "" || value === value.trim(),
+  { error: "must not have leading or trailing whitespace" },
+);
+
 export const optionSchema = z.strictObject({
   id: nonBlank,
-  text: nonBlank,
+  text: optionText,
 });
 
 export const questionSchema = z.strictObject({

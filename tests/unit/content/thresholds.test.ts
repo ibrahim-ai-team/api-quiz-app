@@ -5,15 +5,24 @@
  */
 import { describe, expect, it } from "vitest";
 import { releaseThresholdProblems } from "../../../scripts/content/rules.ts";
+import type { Question } from "../../../scripts/content/schema.ts";
 import {
   BANK_LEVEL,
   validateContent,
 } from "../../../scripts/content/validate.ts";
 import { generateBank, type BankSpec } from "./helpers.ts";
 
-/** Runs the full validator over a generated bank, one file per topic. */
-function validateBank(spec: BankSpec, release: boolean) {
+/**
+ * Runs the full validator over a generated bank, one file per topic.
+ * `corrupt` may break questions before they are serialized.
+ */
+function validateBank(
+  spec: BankSpec,
+  release: boolean,
+  corrupt: (questions: Question[]) => void = () => undefined,
+) {
   const { topics, questions } = generateBank(spec);
+  corrupt(questions);
   return validateContent(
     {
       topics: {
@@ -132,5 +141,26 @@ describe("dev mode warns, release mode fails", () => {
     );
     expect(result.errors).toEqual([]);
     expect(result.questions).toHaveLength(60);
+  });
+});
+
+describe("questions with errors are left out of the threshold counts (T-32 N4)", () => {
+  it("one broken reviewed question drops an exactly-at-threshold bank below 60", () => {
+    const result = validateBank(
+      { perTopic: EIGHT_BY_60, mediumOrHard: 12 },
+      true,
+      (questions) => {
+        const last = questions.at(-1);
+        if (last === undefined) throw new Error("generated bank is empty");
+        last.correct = "maybe";
+      },
+    );
+    expect(result.questions).toHaveLength(59);
+    expect(
+      result.errors.map((e) => `${e.file} ${e.questionId} ${e.field}`),
+    ).toEqual([
+      "content/questions/topic-8.json topic-8-q-6 correct",
+      "content/questions (bank) reviewed.total",
+    ]);
   });
 });

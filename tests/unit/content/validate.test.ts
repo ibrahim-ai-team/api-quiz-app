@@ -9,6 +9,7 @@ import {
 } from "../../../scripts/content/validate.ts";
 import {
   QUESTION_FILE,
+  compareLocations,
   fixtureText,
   locations,
   questionFile,
@@ -113,13 +114,15 @@ const RULE_FIXTURES: [string, [string, string][]][] = [
   ["wrong-schema-version.json", [["(file)", "schemaVersion"]]],
   ["unknown-file-key.json", [["(file)", "topic"]]],
   ["questions-not-array.json", [["(file)", "questions"]]],
+  // T-32 M1: JSON.parse would silently keep the last of two `correct` keys.
+  ["duplicate-key.json", [["(file)", "(json)"]]],
 ];
 
 describe("T-US7-2 / T-US7-3: one failing fixture per rule", () => {
   it.each(RULE_FIXTURES)("vfx/%s", (name, expected) => {
     const result = validateFiles([vfx(name)]);
     expect(locations(result.errors)).toEqual(
-      expected.map(([id, field]) => at(id, field)).sort(),
+      expected.map(([id, field]) => at(id, field)).sort(compareLocations),
     );
     expect(result.questions).toEqual([]);
   });
@@ -171,6 +174,93 @@ describe("specific messages", () => {
     );
   });
 
+  it("names credentials in an https sourceUrl", () => {
+    const [error] = validateFiles([
+      questionFile([
+        { ...validQuestion(), sourceUrl: "https://user:secret@example.com/" },
+      ]),
+    ]).errors;
+    expect(error?.message).toBe("must not contain credentials");
+  });
+
+  it("names the repeated key and its object for duplicate JSON keys", () => {
+    const [error] = validateFiles([vfx("duplicate-key.json")]).errors;
+    expect(error?.message).toBe(
+      'duplicate key "correct" in questions[0] (JSON.parse would keep only the last value)',
+    );
+  });
+
+  it("finds duplicate keys at the root and in nested objects", () => {
+    const root = validateFiles([
+      {
+        path: QUESTION_FILE,
+        text: '{"schemaVersion":1,"schemaVersion":1,"questions":[]}',
+      },
+    ]).errors;
+    expect(locations(root)).toEqual([at("(file)", "(json)")]);
+    expect(root[0]?.message).toContain('"schemaVersion" in (root)');
+    const nested = validQuestion();
+    const text = JSON.stringify({
+      schemaVersion: 1,
+      questions: [nested],
+    }).replace(
+      '{"id":"a","text":"Host"}',
+      '{"id":"a","text":"Host","t\\u0065xt":"Accept"}',
+    );
+    const [option] = validateFiles([{ path: QUESTION_FILE, text }]).errors;
+    expect(option?.message).toContain('"text" in questions[0].options[0]');
+  });
+
+  it("a missing schemaVersion fails at file level", () => {
+    const result = validateFiles([
+      { path: QUESTION_FILE, text: JSON.stringify({ questions: [] }) },
+    ]);
+    expect(locations(result.errors)).toEqual([at("(file)", "schemaVersion")]);
+  });
+
+  it("option text comparison collapses inner whitespace and ignores case", () => {
+    const q = validQuestion();
+    const result = validateFiles([
+      questionFile([
+        {
+          ...q,
+          options: [
+            { id: "a", text: "Request header" },
+            { id: "b", text: "request \t\n  HEADER" },
+            { id: "c", text: "Referer" },
+          ],
+        },
+      ]),
+    ]);
+    expect(locations(result.errors)).toEqual([
+      at("valid-question", "options[1].text"),
+    ]);
+  });
+
+  it("option text with leading or trailing whitespace is rejected", () => {
+    for (const text of [" Host", "Host ", "Host\n", "\tHost"]) {
+      const q = validQuestion();
+      const result = validateFiles([
+        questionFile([
+          {
+            ...q,
+            options: [
+              { id: "a", text },
+              { id: "b", text: "Accept" },
+              { id: "c", text: "Referer" },
+            ],
+          },
+        ]),
+      ]);
+      expect(locations(result.errors), JSON.stringify(text)).toEqual([
+        at("valid-question", "options[0].text"),
+      ]);
+      expect(result.errors[0]?.message).toBe(
+        "must not have leading or trailing whitespace",
+      );
+    }
+  });
+
   it("formats an issue as file › questionId › field: message", () => {
     const [error] = validateFiles([vfx("short-explanation.json")]).errors;
     expect(error && formatIssue(error)).toBe(
@@ -196,6 +286,21 @@ describe("cross-file rules", () => {
     const q = validQuestion();
     const result = validateFiles([questionFile([q, q])]);
     expect(locations(result.errors)).toEqual([at("valid-question", "id")]);
+  });
+
+  it("a valid duplicate after a schema-invalid first occurrence is caught", () => {
+    const q = validQuestion();
+    const result = validateFiles([
+      questionFile([{ ...q, difficulty: "expert" }, q]),
+    ]);
+    expect(locations(result.errors)).toEqual([
+      at("valid-question", "difficulty"),
+      at("valid-question", "id"),
+    ]);
+    expect(result.errors.find((e) => e.field === "id")?.message).toContain(
+      "duplicate question id",
+    );
+    expect(result.questions).toEqual([]);
   });
 
   it("a file whose name is not a topic id fails at file level", () => {
@@ -272,7 +377,7 @@ describe("malformed and missing files never throw", () => {
     ]);
   });
 
-  it("non-object JSON values are reported, not thrown", () => {
+  it("non-object JSON values are reported at (file) (root), not thrown", () => {
     for (const text of ["null", "42", '"text"', "[]"]) {
       const result = validateContent(
         {
@@ -280,9 +385,13 @@ describe("malformed and missing files never throw", () => {
           retiredIds: { path: "r.json", text },
           questionFiles: [{ path: QUESTION_FILE, text }],
         },
-        { release: true },
+        { release: false },
       );
-      expect(result.errors.length, text).toBeGreaterThanOrEqual(3);
+      expect(locations(result.errors), text).toEqual([
+        at("(file)", "(root)"),
+        "r.json (file) (root)",
+        "t.json (file) (root)",
+      ]);
     }
   });
 });
