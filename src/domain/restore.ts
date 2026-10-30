@@ -23,6 +23,10 @@
  * - Question/option text, explanations and sources always come from the
  *   current bank.
  *
+ * Difficulty (US-11): a saved `difficulty` is passed to `createQuiz` for the
+ * seed check and kept on the restored quiz; absent means All. Removing it
+ * from a filtered save makes the seed check fail, so the result is `stale`.
+ *
  * Phase: `answers.length === index` restores `answering` (no selection; a
  * pending selection is not saved), `answers.length === index + 1` restores
  * `feedback` on that locked answer. A finished session saves as all answers
@@ -106,6 +110,7 @@ export function toSavedSession(
     answers: session.answers.map((a) => ({ q: a.questionId, o: a.optionId })),
     index: session.index,
     savedAt,
+    ...(quiz.difficulty === undefined ? {} : { difficulty: quiz.difficulty }),
   };
 }
 
@@ -125,7 +130,13 @@ function sameOrder(quiz: Quiz, saved: SavedSession): boolean {
 function reproducesFromSeed(bank: Bank, saved: SavedSession): boolean {
   const rebuilt: CreateQuizResult | CreateRetryQuizResult =
     saved.mode === "normal"
-      ? createQuiz(bank, saved.scope, saved.seed, saved.questionIds.length)
+      ? createQuiz(
+          bank,
+          saved.scope,
+          saved.seed,
+          saved.questionIds.length,
+          saved.difficulty,
+        )
       : createRetryQuiz(bank, saved.questionIds, saved.seed, saved.scope);
   return rebuilt.ok && sameOrder(rebuilt.quiz, saved);
 }
@@ -208,6 +219,9 @@ export function restoreQuiz(
       contentVersion: saved.contentVersion,
       seed: saved.seed,
       questions,
+      ...(saved.difficulty === undefined
+        ? {}
+        : { difficulty: saved.difficulty }),
     },
     index: saved.index,
     selected: locked === undefined ? null : locked.optionId,

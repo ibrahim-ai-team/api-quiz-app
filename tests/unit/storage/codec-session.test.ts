@@ -169,6 +169,59 @@ describe("encodeSession / decodeSession", () => {
     }
   });
 
+  it("decodes a literal pre-US-11 save (no difficulty) unchanged", () => {
+    const raw =
+      '{"schemaVersion":1,"contentVersion":"cv","mode":"normal","scope":{"kind":"topic","topicId":"t"},"seed":42,' +
+      '"questionIds":["q1","q2"],"optionOrder":[["b","a"],["true","false"]],"answers":[{"q":"q1","o":"a"}],"index":1,"savedAt":1761200000000}';
+    const decoded = decodeSession(raw);
+    expect(decoded).toEqual({ ok: true, value: minimal });
+    expect(decoded.ok && Object.hasOwn(decoded.value, "difficulty")).toBe(
+      false,
+    );
+  });
+
+  it("encodes an All session with no difficulty key", () => {
+    expect(encodeSession(minimal)).not.toContain("difficulty");
+    expect(
+      Object.hasOwn(JSON.parse(encodeSession(minimal)) as object, "difficulty"),
+    ).toBe(false);
+  });
+
+  it.each(["easy", "medium", "hard"] as const)(
+    "round-trips difficulty %s as the last field",
+    (difficulty) => {
+      const filtered: SavedSession = { ...minimal, difficulty };
+      const raw = encodeSession(filtered);
+      expect(
+        raw.endsWith(`"savedAt":1761200000000,"difficulty":"${difficulty}"}`),
+      ).toBe(true);
+      expect(decodeSession(raw)).toEqual({ ok: true, value: filtered });
+    },
+  );
+
+  it.each<[string, unknown]>([
+    ["all", "all"],
+    ["extreme", "extreme"],
+    ["1", 1],
+    ["null", null],
+    ["Hard", "Hard"],
+    ["empty string", ""],
+  ])("rejects difficulty %s as corrupt", (_name, difficulty) => {
+    expect(decodeSession(JSON.stringify({ ...minimal, difficulty }))).toEqual({
+      ok: false,
+      reason: "corrupt",
+    });
+  });
+
+  it("does not take difficulty from __proto__", () => {
+    const raw = encodeSession(minimal).replace(
+      '"savedAt":1761200000000',
+      '"savedAt":1761200000000,"__proto__":{"difficulty":"hard"}',
+    );
+    const decoded = decodeSession(raw);
+    expect(decoded).toEqual({ ok: true, value: minimal });
+  });
+
   it("reads own properties only (__proto__ cannot supply fields)", () => {
     const raw = encodeSession(minimal).replace(
       '"scope":{"kind":"topic","topicId":"t"}',
@@ -197,6 +250,37 @@ describe("real content: restore and encoded sizes (US-6.8)", () => {
       ok: true,
       session,
       contentChanged: false,
+    });
+  });
+
+  it("round-trips a filtered (hard) topic session through encode/decode/restore, and is stale without its difficulty", () => {
+    const topicId = bank.topics[0]?.id ?? "";
+    const created = createQuiz(
+      bank,
+      { kind: "topic", topicId },
+      2_024,
+      5,
+      "hard",
+    );
+    if (!created.ok) throw new Error(created.error);
+    expect(created.quiz.questions.every((q) => q.difficulty === "hard")).toBe(
+      true,
+    );
+    const session = playAll(startSession(created.quiz), true);
+    const saved = toSavedSession(session, AT);
+    const decoded = decodeSession(encodeSession(saved));
+    if (!decoded.ok) throw new Error(decoded.reason);
+    expect(decoded.value).toEqual(saved);
+    expect(restoreQuiz(bank, decoded.value)).toEqual({
+      ok: true,
+      session,
+      contentChanged: false,
+    });
+    const { difficulty, ...unfiltered } = decoded.value;
+    expect(difficulty).toBe("hard");
+    expect(restoreQuiz(bank, unfiltered)).toEqual({
+      ok: false,
+      reason: "stale",
     });
   });
 

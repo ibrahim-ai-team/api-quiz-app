@@ -58,7 +58,12 @@ function randomSession(rng: Rng): QuizSession {
     { kind: "topic", topicId: "a" } as const,
     { kind: "topic", topicId: "b" } as const,
   ]);
-  const created = createQuiz(bank, scope, seed, 2 + int(rng, 8));
+  // US-11 (T-48): some quizzes are filtered to the easy (single-choice)
+  // questions. Not medium: those are only true/false questions with one fixed
+  // option order, so the order mutations below would not change them.
+  // `bank` has no hard question.
+  const difficulty = pick(rng, [undefined, "easy"] as const);
+  const created = createQuiz(bank, scope, seed, 2 + int(rng, 8), difficulty);
   if (!created.ok) throw new Error(created.error);
   let quiz = created.quiz;
   if (rng.next() < 0.3) {
@@ -168,7 +173,13 @@ const mutations: Record<string, Mutation> = {
     return enc({ ...s, [key]: pick(rng, wrong[key] ?? [null]) });
   },
   missingField: (s, rng) => {
-    const drop = pick(rng, Object.keys(s));
+    // `difficulty` is optional (US-11): dropping it is covered by the
+    // `difficulty` mutation and the restore tests, not here, because a short
+    // filtered draw can coincide with the unfiltered draw for the same seed.
+    const drop = pick(
+      rng,
+      Object.keys(s).filter((k) => k !== "difficulty"),
+    );
     return enc(
       Object.fromEntries(Object.entries(s).filter(([k]) => k !== drop)),
     );
@@ -247,6 +258,20 @@ const mutations: Record<string, Mutation> = {
       '"answers":[]',
       `"answers":[{"__proto__":{"q":"${s.questionIds[0] ?? ""}","o":"a"}}]`,
     ),
+  // US-11 (T-48): an invalid `difficulty` is corrupt. A valid one that does
+  // not match how a normal quiz was built ("hard": the bank has none) is
+  // stale. A retry-missed order does not depend on the difficulty, so it only
+  // gets invalid values.
+  difficulty: (s, rng) => {
+    const invalid = ["all", "extreme", "Hard", "", 1, null, [], {}];
+    return enc({
+      ...s,
+      difficulty: pick(
+        rng,
+        s.mode === "normal" ? [...invalid, "hard", "hard"] : invalid,
+      ),
+    });
+  },
   topicGone: (s) =>
     encodeSession({ ...s, scope: { kind: "topic", topicId: "zz" } }),
   contentChangedAndOptionSetDiffers: (s, rng) => {
@@ -321,6 +346,8 @@ describe("V-6 codec fuzz", () => {
     expect(seen.get("oversized:too-large")).toBeGreaterThan(0);
     expect(seen.get("unknownVersion:unknown-version")).toBeGreaterThan(0);
     expect(seen.get("staleQuestionId:stale")).toBeGreaterThan(0);
+    expect(seen.get("difficulty:corrupt")).toBeGreaterThan(0);
+    expect(seen.get("difficulty:stale")).toBeGreaterThan(0);
   });
 
   it("restores every unmutated random session exactly", () => {
@@ -349,6 +376,7 @@ describe("V-6 codec fuzz", () => {
             "questionIds",
             "scope",
             "index",
+            "difficulty",
           ])]: junk,
         }),
       ];

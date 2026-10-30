@@ -7,6 +7,7 @@ export {
   type Rng,
 } from "./rng";
 export {
+  availableCount,
   createQuiz,
   DEFAULT_QUIZ_LENGTH,
   eligibleTopics,
@@ -34,6 +35,7 @@ export {
   bestFor,
   bestKeyFor,
   countsTowardBest,
+  isFullQuiz,
   MIXED_BEST_KEY,
   updateBest,
 } from "./best";

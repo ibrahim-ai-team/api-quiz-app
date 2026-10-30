@@ -4,6 +4,8 @@
  * codec (`src/storage/codec/best.ts`) re-exports `MIXED_BEST_KEY` from here,
  * so the domain never imports storage.
  */
+import type { Bank } from "../content/types";
+import { availableCount, DEFAULT_QUIZ_LENGTH } from "./createQuiz";
 import type { Score } from "./score";
 import type { BestScore, Quiz, QuizScope, SavedBest } from "./types";
 
@@ -38,6 +40,21 @@ export function countsTowardBest(
   bankContentVersion: string,
 ): boolean {
   return quiz.mode === "normal" && quiz.contentVersion === bankContentVersion;
+}
+
+/**
+ * Whether `quiz` is unfiltered and full length (US-11 F5; views.md §10.1):
+ * no difficulty filter, and at least as many questions as a default quiz of
+ * its scope would have, min(DEFAULT_QUIZ_LENGTH, questions in the scope).
+ * The caller combines it with `countsTowardBest` before updating the best
+ * score.
+ */
+export function isFullQuiz(quiz: Quiz, bank: Bank): boolean {
+  return (
+    quiz.difficulty === undefined &&
+    quiz.questions.length >=
+      Math.min(DEFAULT_QUIZ_LENGTH, availableCount(bank, quiz.scope))
+  );
 }
 
 /**

@@ -10,7 +10,12 @@
  * topic, IDs are unique). A production bank holds only `reviewed` questions,
  * so every question in it is eligible.
  */
-import type { Bank, BankOption, BankQuestion } from "../content/types";
+import type {
+  Bank,
+  BankOption,
+  BankQuestion,
+  Difficulty,
+} from "../content/types";
 import { createSeededRng, shuffle, type Rng } from "./rng";
 import type {
   CreateQuizResult,
@@ -86,7 +91,7 @@ export function toQuizQuestion(question: BankQuestion, rng: Rng): QuizQuestion {
 
 /**
  * Mixed draw of `n` distinct questions spanning at least
- * min(MIXED_MIN_TOPICS, shown topics, n) topics: one random question from
+ * min(MIXED_MIN_TOPICS, topicIds, n) topics: one random question from
  * each of k randomly chosen topics, then the rest from the remaining pool.
  * The caller shuffles the final list.
  *
@@ -108,7 +113,8 @@ function drawMixed(
   for (const topicId of spreadTopics) {
     const inTopic = questions.filter((q) => q.topic === topicId);
     const [choice] = shuffle(inTopic, rng);
-    // Every shown topic has >= 1 question, so `choice` is always defined.
+    // Every topic in `topicIds` has >= 1 question in `questions`, so
+    // `choice` is always defined.
     if (choice !== undefined) {
       picked.push(choice);
       pickedIds.add(choice.id);
@@ -121,34 +127,70 @@ function drawMixed(
   return [...picked, ...rest];
 }
 
+/**
+ * The questions a quiz may draw from: those of shown topics (every bank
+ * question, for a bank that passed `isBank`), in bank order, keeping only
+ * `difficulty` when it is set (US-11). With no difficulty the pool is
+ * unchanged, so existing seeds and saves reproduce exactly.
+ */
+function quizPool(bank: Bank, difficulty: Difficulty | undefined) {
+  const shown = eligibleTopics(bank);
+  const shownIds = new Set(shown.map((topic) => topic.id));
+  const pool = bank.questions.filter(
+    (q) =>
+      shownIds.has(q.topic) &&
+      (difficulty === undefined || q.difficulty === difficulty),
+  );
+  return { shown, pool };
+}
+
+/**
+ * Number of questions a quiz of `scope` (and `difficulty`, when set) can
+ * draw from (US-11.1, US-11.2; views.md §10). 0 for an unknown topic.
+ * `createQuiz` gives min(length, this) questions when it succeeds.
+ */
+export function availableCount(
+  bank: Bank,
+  scope: QuizScope,
+  difficulty?: Difficulty,
+): number {
+  const { pool } = quizPool(bank, difficulty);
+  if (scope.kind === "mixed") return pool.length;
+  return pool.filter((q) => q.topic === scope.topicId).length;
+}
+
 function normaliseLength(length: number): number {
   return Number.isInteger(length) && length > 0 ? length : DEFAULT_QUIZ_LENGTH;
 }
 
 /**
- * Creates a quiz for `scope`.
+ * Creates a quiz for `scope`, optionally only with questions of
+ * `difficulty` (US-11; absent means All).
  *
- * - Topic: N = min(length, topic count) distinct questions from that topic.
- * - Mixed: N = min(length, total count) distinct questions from at least
- *   min(3, shown topics) topics when N allows it (otherwise N topics).
+ * - Topic: N = min(length, matching topic count) distinct questions from
+ *   that topic; 0 matches gives `empty-topic`.
+ * - Mixed: N = min(length, matching total) distinct questions from at least
+ *   min(3, topics with a matching question) topics when N allows it
+ *   (otherwise N topics); 0 matches gives `empty-bank`.
  *
  * Question order and single-choice option order come from a seeded `Rng`
  * built with `createSeededRng(seed)` and are fixed in the returned quiz.
  * `quiz.seed` is the normalised (unsigned 32-bit) seed, so
- * `createQuiz(bank, scope, quiz.seed, length)` reproduces the quiz. A `length` that is not a positive integer falls
- * back to `DEFAULT_QUIZ_LENGTH`.
+ * `createQuiz(bank, scope, quiz.seed, length, quiz.difficulty)` reproduces the
+ * quiz. A `length` that is not a positive integer falls back to
+ * `DEFAULT_QUIZ_LENGTH`. `quiz.difficulty` is set only when `difficulty` is,
+ * so an unfiltered quiz is deep-equal to one built before US-11.
  */
 export function createQuiz(
   bank: Bank,
   scope: QuizScope,
   seed: number,
   length: number = DEFAULT_QUIZ_LENGTH,
+  difficulty?: Difficulty,
 ): CreateQuizResult {
   const rng = createSeededRng(seed);
   const cap = normaliseLength(length);
-  const shown = eligibleTopics(bank);
-  const shownIds = new Set(shown.map((topic) => topic.id));
-  const pool = bank.questions.filter((q) => shownIds.has(q.topic));
+  const { shown, pool } = quizPool(bank, difficulty);
 
   let drawn: BankQuestion[];
   if (scope.kind === "topic") {
@@ -161,15 +203,13 @@ export function createQuiz(
   } else {
     if (pool.length === 0) return { ok: false, error: "empty-bank" };
     const n = Math.min(cap, pool.length);
-    drawn = shuffle(
-      drawMixed(
-        pool,
-        shown.map((topic) => topic.id),
-        n,
-        rng,
-      ),
-      rng,
-    );
+    // Spread only over topics with a matching question. With no difficulty
+    // every shown topic qualifies, so the list (and the RNG use) is unchanged.
+    const poolTopics = new Set(pool.map((q) => q.topic));
+    const spreadTopicIds = shown
+      .map((topic) => topic.id)
+      .filter((id) => poolTopics.has(id));
+    drawn = shuffle(drawMixed(pool, spreadTopicIds, n, rng), rng);
   }
 
   return {
@@ -183,6 +223,7 @@ export function createQuiz(
       contentVersion: bank.contentVersion,
       seed: rng.seed,
       questions: drawn.map((question) => toQuizQuestion(question, rng)),
+      ...(difficulty === undefined ? {} : { difficulty }),
     },
   };
 }
