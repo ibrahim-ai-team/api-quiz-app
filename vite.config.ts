@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
@@ -89,9 +91,87 @@ function bootFallbackCssPlugin(): Plugin {
   };
 }
 
+/**
+ * Local draft guard (issue #63 M1(b), T-33a). A production `vite build` must
+ * never ship draft questions. `npm run build` regenerates the bank in
+ * production mode first, but a bare `vite build` after
+ * `npm run content:build:dev` would bundle the dev bank, drafts included.
+ * This build-only hook reads the generated bank and refuses to build when it
+ * is missing, unparsable or contains any question whose `reviewStatus` is not
+ * "reviewed". CI is additionally covered by `content:check-dist`. Kept
+ * self-contained on purpose: no imports from `scripts/` or Zod.
+ */
+export const GENERATED_BANK_PATH = "src/content/generated/bank.json";
+
+export function draftGuardPlugin(bankPath?: string): Plugin {
+  let resolvedPath = bankPath ?? path.resolve(GENERATED_BANK_PATH);
+  return {
+    name: "apiquiz-draft-guard",
+    apply: "build",
+    configResolved(config) {
+      if (bankPath === undefined) {
+        resolvedPath = path.resolve(config.root, GENERATED_BANK_PATH);
+      }
+    },
+    async buildStart() {
+      const hint =
+        "Run `npm run build` (or `npm run content:build`) to generate the production bank.";
+      let raw: string;
+      try {
+        raw = await readFile(resolvedPath, "utf8");
+      } catch (error) {
+        throw new Error(
+          `Draft guard: cannot read the generated bank at ${resolvedPath} (${String(error)}). ${hint}`,
+        );
+      }
+      let bank: unknown;
+      try {
+        bank = JSON.parse(raw);
+      } catch (error) {
+        throw new Error(
+          `Draft guard: the generated bank at ${resolvedPath} is not valid JSON (${String(error)}). ${hint}`,
+        );
+      }
+      const questions =
+        typeof bank === "object" && bank !== null
+          ? (bank as { questions?: unknown }).questions
+          : undefined;
+      if (!Array.isArray(questions)) {
+        throw new Error(
+          `Draft guard: the generated bank at ${resolvedPath} has no questions array. ${hint}`,
+        );
+      }
+      const drafts = questions
+        .filter(
+          (q: unknown) =>
+            typeof q !== "object" ||
+            q === null ||
+            (q as { reviewStatus?: unknown }).reviewStatus !== "reviewed",
+        )
+        .map((q: unknown) => {
+          const id =
+            typeof q === "object" && q !== null
+              ? (q as { id?: unknown }).id
+              : undefined;
+          return typeof id === "string" ? id : "<question without id>";
+        });
+      if (drafts.length > 0) {
+        throw new Error(
+          `Draft guard: refusing to build, the generated bank contains ${String(drafts.length)} question(s) that are not reviewed: ${drafts.join(", ")}. ${hint}`,
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: "/api-quiz-app/",
-  plugins: [react(), cspMetaPlugin(), bootFallbackCssPlugin()],
+  plugins: [
+    react(),
+    cspMetaPlugin(),
+    bootFallbackCssPlugin(),
+    draftGuardPlugin(),
+  ],
   build: {
     target: "es2022",
     sourcemap: false,
