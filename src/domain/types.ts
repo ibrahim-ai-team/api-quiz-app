@@ -53,6 +53,12 @@ export interface Quiz {
   /** Unsigned 32-bit seed that reproduces this quiz from the same bank. */
   readonly seed: number;
   readonly questions: readonly QuizQuestion[];
+  /**
+   * Difficulty filter the quiz was built with (US-11). Absent means All; it
+   * is never set to `undefined` explicitly, so an unfiltered quiz is
+   * deep-equal to one built before US-11.
+   */
+  readonly difficulty?: Difficulty;
 }
 
 /** A topic that can be offered on the landing page (US-1.1, US-1.2). */
@@ -166,6 +172,11 @@ export interface SavedSession {
   readonly index: number;
   /** Epoch milliseconds when the session was saved. */
   readonly savedAt: number;
+  /**
+   * Difficulty filter of the saved quiz (US-11). Absent means All, so
+   * sessions saved before US-11 still decode; `schemaVersion` stays 1.
+   */
+  readonly difficulty?: Difficulty;
 }
 
 /** One best score (US-6.1): `percent` is `percentHalfUp(correct, total)`. */

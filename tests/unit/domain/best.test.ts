@@ -7,9 +7,13 @@ import {
   bestFor,
   bestKeyFor,
   countsTowardBest,
+  isFullQuiz,
   MIXED_BEST_KEY,
   updateBest,
 } from "../../../src/domain/best.ts";
+import { createQuiz } from "../../../src/domain/createQuiz.ts";
+import type { Difficulty } from "../../../src/content/types.ts";
+import { makeBank } from "./helpers.ts";
 import * as domain from "../../../src/domain/index.ts";
 import {
   bandFor,
@@ -131,5 +135,59 @@ describe("countsTowardBest (US-5.5, SEC-R13)", () => {
     expect(countsTowardBest(quiz("retry-missed", "v2"), "v2")).toBe(false);
     expect(countsTowardBest(quiz("normal", "v1"), "v2")).toBe(false);
     expect(countsTowardBest(quiz("retry-missed", "v1"), "v2")).toBe(false);
+  });
+});
+
+describe("isFullQuiz (T-48; US-11 F5)", () => {
+  // Topic "eight" has 8 questions, all easy (makeBank); the bank has 26.
+  const bank = makeBank({ eight: 8, big: 12, other: 6 });
+  const EIGHT: QuizScope = { kind: "topic", topicId: "eight" };
+
+  function built(
+    scope: QuizScope,
+    length: number,
+    difficulty?: Difficulty,
+  ): Quiz {
+    const result = createQuiz(bank, scope, 7, length, difficulty);
+    if (!result.ok) throw new Error(result.error);
+    return result.quiz;
+  }
+
+  it.each<[string, QuizScope, number, Difficulty | undefined, boolean]>([
+    ["8-question topic, All, length 10", EIGHT, 10, undefined, true],
+    ["8-question topic, All, length 20", EIGHT, 20, undefined, true],
+    ["8-question topic, All, length 5", EIGHT, 5, undefined, false],
+    ["8-question topic, Easy, length 10", EIGHT, 10, "easy", false],
+    ["Mixed, All, length 20", MIXED, 20, undefined, true],
+    ["Mixed, All, length 10", MIXED, 10, undefined, true],
+    ["Mixed, All, length 5", MIXED, 5, undefined, false],
+    ["Mixed, Easy, length 20", MIXED, 20, "easy", false],
+  ])("%s: %s", (_name, scope, length, difficulty, expected) => {
+    expect(isFullQuiz(built(scope, length, difficulty), bank)).toBe(expected);
+  });
+
+  it("is false for any difficulty filter, even at full length", () => {
+    const full = built(EIGHT, 10);
+    for (const difficulty of ["easy", "medium", "hard"] as const) {
+      expect(isFullQuiz({ ...full, difficulty }, bank)).toBe(false);
+    }
+  });
+
+  it("compares with min(10, questions in the scope) of the given bank", () => {
+    const nine = built({ kind: "topic", topicId: "big" }, 9);
+    expect(isFullQuiz(nine, bank)).toBe(false);
+    expect(isFullQuiz(built({ kind: "topic", topicId: "big" }, 10), bank)).toBe(
+      true,
+    );
+    // An unknown topic has 0 available questions.
+    expect(isFullQuiz(quiz("normal", "test"), bank)).toBe(true);
+  });
+
+  it("is exported from the domain API, and countsTowardBest ignores difficulty", () => {
+    expect(domain.isFullQuiz).toBe(isFullQuiz);
+    expect(domain.availableCount).toBeTypeOf("function");
+    expect(
+      countsTowardBest({ ...quiz("normal", "cv"), difficulty: "hard" }, "cv"),
+    ).toBe(true);
   });
 });

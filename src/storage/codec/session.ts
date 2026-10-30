@@ -5,13 +5,18 @@
  * JSON (field order fixed): `{"schemaVersion":1,"contentVersion":"…",
  * "mode":"normal"|"retry-missed","scope":{"kind":"topic","topicId":"…"}|
  * {"kind":"mixed"},"seed":<uint32>,"questionIds":[…],"optionOrder":[[…]],
- * "answers":[{"q":"…","o":"…"}],"index":<int>,"savedAt":<epoch ms>}`.
- * No text and no `correct` flags are stored.
+ * "answers":[{"q":"…","o":"…"}],"index":<int>,"savedAt":<epoch ms>[,
+ * "difficulty":"easy"|"medium"|"hard"]}`. No text and no `correct` flags are
+ * stored. `difficulty` (US-11) is written only for a filtered quiz; absent
+ * means All, so sessions saved before US-11 still decode and `schemaVersion`
+ * stays 1. Any other `difficulty` value (including `"all"` or `null`) is
+ * `corrupt`.
  *
  * `decodeSession` checks types and bounds, then the bank-independent
  * consistency rules of `isConsistentSavedSession`; whether the session still
  * fits the current bank is decided by `restoreQuiz` in `src/domain`.
  */
+import type { Difficulty } from "../../content/types";
 import {
   isConsistentSavedSession,
   SAVED_SESSION_SCHEMA_VERSION,
@@ -50,6 +55,14 @@ function toScope(value: unknown): QuizScope | undefined {
   const topicId = own(value, "topicId");
   if (kind === "topic" && isId(topicId)) return { kind: "topic", topicId };
   return undefined;
+}
+
+/** `null` = present but invalid; `undefined` = absent (All). */
+function toDifficulty(value: unknown): Difficulty | null | undefined {
+  if (value === undefined) return undefined;
+  return value === "easy" || value === "medium" || value === "hard"
+    ? value
+    : null;
 }
 
 function toIdList(value: unknown, max: number): string[] | undefined {
@@ -107,6 +120,7 @@ export function decodeSession(raw: string | null): DecodeResult<SavedSession> {
   const answers = toAnswers(own(record, "answers"));
   const index = own(record, "index");
   const savedAt = own(record, "savedAt");
+  const difficulty = toDifficulty(own(record, "difficulty"));
   if (
     !isId(contentVersion) ||
     mode === undefined ||
@@ -116,7 +130,8 @@ export function decodeSession(raw: string | null): DecodeResult<SavedSession> {
     optionOrder === undefined ||
     answers === undefined ||
     !isIntIn(index, 0, MAX_SESSION_QUESTIONS) ||
-    !isTimestamp(savedAt)
+    !isTimestamp(savedAt) ||
+    difficulty === null
   ) {
     return failure("corrupt");
   }
@@ -131,6 +146,7 @@ export function decodeSession(raw: string | null): DecodeResult<SavedSession> {
     answers,
     index,
     savedAt,
+    ...(difficulty === undefined ? {} : { difficulty }),
   };
   return isConsistentSavedSession(value)
     ? { ok: true, value }
@@ -153,5 +169,6 @@ export function encodeSession(saved: SavedSession): string {
     answers: saved.answers.map((a) => ({ q: a.q, o: a.o })),
     index: saved.index,
     savedAt: saved.savedAt,
+    ...(saved.difficulty === undefined ? {} : { difficulty: saved.difficulty }),
   });
 }

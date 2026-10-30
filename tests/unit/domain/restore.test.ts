@@ -432,3 +432,83 @@ describe("restoreQuiz after a contentVersion change (decision A4)", () => {
     expect(restoreQuiz(removed, saved)).toEqual({ ok: false, reason: "stale" });
   });
 });
+
+describe("restoreQuiz with a difficulty filter (T-48, US-11)", () => {
+  // In `bank`, single-choice questions are easy and true/false ones medium.
+  it("restores a literal pre-US-11 save (no difficulty) as an unfiltered quiz", () => {
+    const quiz = quizOf(createQuiz(bank, TOPIC_T, 7, 3));
+    const literal: SavedSession = {
+      schemaVersion: 1,
+      contentVersion: "cv-1",
+      mode: "normal",
+      scope: { kind: "topic", topicId: "t" },
+      seed: quiz.seed,
+      questionIds: quiz.questions.map((q) => q.id),
+      optionOrder: quiz.questions.map((q) => q.options.map((o) => o.id)),
+      answers: [],
+      index: 0,
+      savedAt: SAVED_AT,
+    };
+    const session = restored(restoreQuiz(bank, literal));
+    expect(session.quiz).toStrictEqual(quiz);
+    expect(Object.hasOwn(session.quiz, "difficulty")).toBe(false);
+  });
+
+  it("an unfiltered session saves with no difficulty key", () => {
+    const quiz = quizOf(createQuiz(bank, MIXED, 3, 4));
+    const saved = toSavedSession(startSession(quiz), SAVED_AT);
+    expect(Object.hasOwn(saved, "difficulty")).toBe(false);
+  });
+
+  it("round-trips filtered sessions exactly, keeping the difficulty", () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const [scope, difficulty] of [
+        [TOPIC_T, "easy"],
+        [MIXED, "easy"],
+        [MIXED, "medium"],
+      ] as const) {
+        const quiz = quizOf(createQuiz(bank, scope, seed, 3, difficulty));
+        const session = play(quiz, 1, seed, true);
+        const saved = toSavedSession(session, SAVED_AT);
+        expect(saved.difficulty).toBe(difficulty);
+        expect(restoreQuiz(bank, saved)).toEqual({
+          ok: true,
+          session,
+          contentChanged: false,
+        });
+        expect(restored(restoreQuiz(bank, saved)).quiz.difficulty).toBe(
+          difficulty,
+        );
+      }
+    }
+  });
+
+  it("is stale when the difficulty is removed from or changed in a filtered save", () => {
+    for (const seed of SEEDS.slice(0, 40)) {
+      const quiz = quizOf(createQuiz(bank, MIXED, seed, 4, "easy"));
+      const { difficulty, ...unfiltered } = toSavedSession(
+        startSession(quiz),
+        SAVED_AT,
+      );
+      expect(difficulty).toBe("easy");
+      expect(restoreQuiz(bank, unfiltered)).toEqual({
+        ok: false,
+        reason: "stale",
+      });
+      expect(
+        restoreQuiz(bank, { ...unfiltered, difficulty: "medium" }),
+      ).toEqual({ ok: false, reason: "stale" });
+    }
+  });
+
+  it("keeps the difficulty after a contentVersion change", () => {
+    const quiz = quizOf(createQuiz(bank, TOPIC_T, 9, 3, "easy"));
+    const session = play(quiz, 1, 9);
+    const result = restoreQuiz(
+      { ...bank, contentVersion: "cv-2" },
+      toSavedSession(session, SAVED_AT),
+    );
+    expect(result).toEqual({ ok: true, session, contentChanged: true });
+    expect(restored(result).quiz.difficulty).toBe("easy");
+  });
+});

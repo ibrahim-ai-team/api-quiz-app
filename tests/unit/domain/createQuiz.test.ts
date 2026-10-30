@@ -4,8 +4,14 @@
  * spread), T-US1-5 (exact seeded order), T-US2-2 (option shuffle rules).
  */
 import { describe, expect, it } from "vitest";
-import { isBank, type Bank } from "../../../src/content/types.ts";
 import {
+  isBank,
+  type Bank,
+  type BankQuestion,
+  type Difficulty,
+} from "../../../src/content/types.ts";
+import {
+  availableCount,
   createQuiz,
   DEFAULT_QUIZ_LENGTH,
   eligibleTopics,
@@ -397,3 +403,245 @@ const EXPECTED_MIXED_SEED_1 = [
   "c-1",
   "a-5",
 ];
+
+/*
+ * Difficulty filter (T-48; US-11.1, US-11.2; views.md §10.4). Bank with
+ * mixed difficulties: topic t (index 0..3) has 6 + t questions, question n
+ * has DIFFICULTIES[(n + t) % 3].
+ */
+const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
+
+function difficultyBank(): Bank {
+  const topics = ["a", "b", "c", "d"].map((id) => ({ id, name: id }));
+  const questions: BankQuestion[] = [];
+  for (const [t, { id }] of topics.entries()) {
+    for (let n = 1; n <= 6 + t; n += 1) {
+      questions.push({
+        ...singleChoice(`${id}-${String(n)}`, id),
+        difficulty: DIFFICULTIES[(n + t) % 3] ?? "easy",
+      });
+    }
+  }
+  return { schemaVersion: 1, contentVersion: "test", topics, questions };
+}
+
+function fingerprint(quiz: Quiz): string {
+  return quiz.questions
+    .map((q) => `${q.id}:${q.options.map((o) => o.id).join("")}`)
+    .join(",");
+}
+
+/** `n` questions of `difficulty` in topic `id`, then `rest` easy ones. */
+function withDifficulty(
+  id: string,
+  difficulty: Difficulty,
+  n: number,
+  rest = 0,
+): BankQuestion[] {
+  return Array.from({ length: n + rest }, (_, i) => ({
+    ...singleChoice(`${id}-${String(i + 1)}`, id),
+    difficulty: i < n ? difficulty : "easy",
+  }));
+}
+
+describe("createQuiz: difficulty filter (T-48, US-11)", () => {
+  const bank = difficultyBank();
+
+  it("without a difficulty, output is identical to before US-11 (golden, captured on main)", () => {
+    for (const seed of [1, 42, 7919, 123456789]) {
+      for (const [name, scope] of [
+        ["mixed", MIXED],
+        ["b", topic("b")],
+      ] as const) {
+        for (const length of [5, 10, 20]) {
+          const quiz = create(bank, scope, seed, length);
+          expect(fingerprint(quiz)).toBe(
+            EXPECTED_UNFILTERED[`${name}|${String(seed)}|${String(length)}`],
+          );
+          expect(Object.hasOwn(quiz, "difficulty")).toBe(false);
+          expect(
+            createQuiz(bank, scope, seed, length, undefined),
+          ).toStrictEqual(createQuiz(bank, scope, seed, length));
+        }
+      }
+    }
+  });
+
+  it("Topic + Hard + 5 gives only hard questions, min(5, matches) of them", () => {
+    for (const t of ["a", "b", "c", "d"]) {
+      const matches = bank.questions.filter(
+        (q) => q.topic === t && q.difficulty === "hard",
+      ).length;
+      for (const seed of SEEDS.slice(0, 30)) {
+        const result = createQuiz(bank, topic(t), seed, 5, "hard");
+        const quiz = quizOf(result);
+        expect(quiz.questions).toHaveLength(Math.min(5, matches));
+        expect(quiz.difficulty).toBe("hard");
+        expect(
+          quiz.questions.every(
+            (q) => q.difficulty === "hard" && q.topicId === t,
+          ),
+        ).toBe(true);
+      }
+    }
+    const big: Bank = {
+      ...bank,
+      topics: [{ id: "x", name: "X" }],
+      questions: withDifficulty("x", "hard", 7, 3),
+    };
+    expect(create(big, topic("x"), 1, 5)).not.toHaveProperty("difficulty");
+    expect(
+      quizOf(createQuiz(big, topic("x"), 1, 5, "hard")).questions,
+    ).toHaveLength(5);
+  });
+
+  it("a filtered quiz is deterministic and reproduces from quiz.seed", () => {
+    for (const seed of SEEDS.slice(0, 30)) {
+      const quiz = quizOf(createQuiz(bank, MIXED, seed, 10, "medium"));
+      expect(createQuiz(bank, MIXED, quiz.seed, 10, quiz.difficulty)).toEqual({
+        ok: true,
+        quiz,
+      });
+    }
+  });
+
+  it("Mixed + difficulty spreads over min(3, topics with a match, N) topics and never over a topic without a match", () => {
+    // Topic "none" has no hard question but sorts first; "one" has a single
+    // hard question.
+    const spreadBank: Bank = {
+      schemaVersion: 1,
+      contentVersion: "test",
+      topics: [
+        { id: "none", name: "None" },
+        { id: "one", name: "One" },
+        { id: "many", name: "Many" },
+      ],
+      questions: [
+        ...withDifficulty("none", "easy", 6),
+        ...withDifficulty("one", "hard", 1, 5),
+        ...withDifficulty("many", "hard", 8, 2),
+      ],
+    };
+    for (const seed of SEEDS) {
+      for (const length of [1, 2, 5, 20]) {
+        const quiz = quizOf(
+          createQuiz(spreadBank, MIXED, seed, length, "hard"),
+        );
+        const n = Math.min(length, 9);
+        expect(quiz.questions).toHaveLength(n);
+        expect(quiz.questions.every((q) => q.difficulty === "hard")).toBe(true);
+        expect(quiz.questions.some((q) => q.topicId === "none")).toBe(false);
+        expect(distinctTopics(quiz)).toBeGreaterThanOrEqual(Math.min(3, 2, n));
+      }
+    }
+    for (const seed of SEEDS.slice(0, 50)) {
+      for (const difficulty of DIFFICULTIES) {
+        const quiz = quizOf(createQuiz(bank, MIXED, seed, 5, difficulty));
+        expect(distinctTopics(quiz)).toBeGreaterThanOrEqual(3);
+        expect(quiz.questions.every((q) => q.difficulty === difficulty)).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it("0 matches gives empty-topic or empty-bank and never throws", () => {
+    const easyOnly = makeBank({ a: 4, b: 3 });
+    expect(createQuiz(easyOnly, topic("a"), 1, 5, "hard")).toEqual({
+      ok: false,
+      error: "empty-topic",
+    });
+    expect(createQuiz(easyOnly, MIXED, 1, 5, "medium")).toEqual({
+      ok: false,
+      error: "empty-bank",
+    });
+    expect(createQuiz(easyOnly, topic("missing"), 1, 5, "hard")).toEqual({
+      ok: false,
+      error: "unknown-topic",
+    });
+    expect(createQuiz(makeBank({}), MIXED, 1, 5, "easy")).toEqual({
+      ok: false,
+      error: "empty-bank",
+    });
+  });
+});
+
+describe("availableCount (T-48, US-11)", () => {
+  const bank = difficultyBank();
+
+  it("counts the scope's questions, filtered by difficulty when set", () => {
+    expect(availableCount(bank, topic("b"))).toBe(7);
+    expect(availableCount(bank, MIXED)).toBe(bank.questions.length);
+    for (const difficulty of DIFFICULTIES) {
+      expect(availableCount(bank, topic("c"), difficulty)).toBe(
+        bank.questions.filter(
+          (q) => q.topic === "c" && q.difficulty === difficulty,
+        ).length,
+      );
+      expect(availableCount(bank, MIXED, difficulty)).toBe(
+        bank.questions.filter((q) => q.difficulty === difficulty).length,
+      );
+    }
+  });
+
+  it("is 0 for an unknown topic and for no match", () => {
+    expect(availableCount(bank, topic("missing"))).toBe(0);
+    expect(availableCount(bank, topic("missing"), "hard")).toBe(0);
+    expect(availableCount(makeBank({ a: 3 }), topic("a"), "hard")).toBe(0);
+  });
+
+  it("matches the length createQuiz gives", () => {
+    for (const difficulty of [undefined, ...DIFFICULTIES]) {
+      for (const scope of [MIXED, topic("a"), topic("d")]) {
+        for (const length of [5, 10, 20]) {
+          const result = createQuiz(bank, scope, 7, length, difficulty);
+          expect(quizOf(result).questions).toHaveLength(
+            Math.min(length, availableCount(bank, scope, difficulty)),
+          );
+        }
+      }
+    }
+  });
+});
+
+/**
+ * Fingerprints of `createQuiz(difficultyBank(), scope, seed, length)`
+ * captured on main (34933be) before US-11: `<scope>|<seed>|<length>` to
+ * `<id>:<option order>,...`.
+ */
+const EXPECTED_UNFILTERED: Readonly<Record<string, string>> = {
+  "mixed|1|5": "a-5:dabc,b-2:abdc,d-5:abdc,b-1:bcad,d-4:cbad",
+  "mixed|1|10":
+    "d-5:abcd,d-4:bacd,b-5:bdca,d-3:acbd,a-5:dbac,b-1:cbad,c-5:cdba,b-2:cdab,a-3:dabc,a-1:bacd",
+  "mixed|1|20":
+    "a-5:abdc,b-2:dbca,d-9:bdca,d-4:dcab,b-5:acdb,d-5:dbac,a-3:bcad,c-5:dacb,c-2:dcba,b-6:dcab,d-6:cbda,c-7:dbac,d-3:dbac,d-8:adcb,a-1:bcad,c-8:bdca,b-4:badc,b-1:adcb,d-2:bcad,c-6:dcba",
+  "b|1|5": "b-2:badc,b-6:cabd,b-7:cdba,b-4:cdba,b-3:dacb",
+  "b|1|10": "b-2:badc,b-6:cabd,b-7:cdba,b-4:cdba,b-3:dacb,b-1:bcda,b-5:badc",
+  "b|1|20": "b-2:badc,b-6:cabd,b-7:cdba,b-4:cdba,b-3:dacb,b-1:bcda,b-5:badc",
+  "mixed|42|5": "b-6:abdc,c-6:bdca,a-4:bcad,d-2:cdba,d-3:badc",
+  "mixed|42|10":
+    "b-7:dacb,d-3:bcda,c-8:acdb,b-3:dbca,c-6:dacb,c-4:badc,d-2:acbd,a-4:cadb,d-6:dbac,b-6:acdb",
+  "mixed|42|20":
+    "b-7:badc,c-4:dbac,c-6:cbad,d-4:badc,c-2:adbc,b-6:dacb,c-8:adcb,a-4:bacd,c-3:bdac,d-6:dbac,d-2:bcad,d-7:cbad,d-5:dbca,b-1:cdba,d-1:dabc,b-5:badc,a-3:cabd,d-3:cabd,b-4:adbc,b-3:cbad",
+  "b|42|5": "b-4:acdb,b-2:cdab,b-1:bdac,b-6:abdc,b-7:dcba",
+  "b|42|10": "b-4:acdb,b-2:cdab,b-1:bdac,b-6:abdc,b-7:dcba,b-3:cdba,b-5:dcab",
+  "b|42|20": "b-4:acdb,b-2:cdab,b-1:bdac,b-6:abdc,b-7:dcba,b-3:cdba,b-5:dcab",
+  "mixed|7919|5": "b-3:badc,d-9:dacb,a-6:bcda,d-4:cdba,b-5:badc",
+  "mixed|7919|10":
+    "c-6:dcab,d-9:cbda,d-3:dcba,a-6:bdca,d-6:dbca,d-4:dcba,a-1:bacd,b-3:bcad,c-1:cdab,b-5:cbad",
+  "mixed|7919|20":
+    "b-1:bcad,a-5:bacd,a-3:abdc,d-9:cbad,b-7:bcda,d-4:acdb,a-1:dacb,c-1:dcab,b-5:bdac,d-5:cbda,b-3:dacb,b-6:bdac,d-6:bacd,d-3:cadb,c-5:bdca,c-3:adcb,c-6:dacb,b-2:cdab,c-4:acbd,a-6:abcd",
+  "b|7919|5": "b-3:dcba,b-6:bcad,b-1:cadb,b-4:bdac,b-2:cdab",
+  "b|7919|10": "b-3:dcba,b-6:bcad,b-1:cadb,b-4:bdac,b-2:cdab,b-7:dabc,b-5:acbd",
+  "b|7919|20": "b-3:dcba,b-6:bcad,b-1:cadb,b-4:bdac,b-2:cdab,b-7:dabc,b-5:acbd",
+  "mixed|123456789|5": "d-4:cadb,a-5:bdac,c-4:cbad,d-7:cabd,c-7:cbda",
+  "mixed|123456789|10":
+    "d-7:dacb,a-5:badc,c-7:dcab,b-3:abcd,d-5:dabc,d-4:cadb,c-4:abdc,b-6:bdac,a-2:cabd,d-6:cbda",
+  "mixed|123456789|20":
+    "d-8:abcd,a-2:dabc,c-7:dbac,a-5:abcd,c-3:dcba,c-6:cadb,a-3:dbca,b-3:bacd,d-4:abdc,b-5:cdba,d-9:bdca,c-4:dcba,d-6:abcd,d-2:adcb,b-6:bcda,d-7:cbad,d-5:cbda,a-4:dbac,a-1:abcd,c-5:bdac",
+  "b|123456789|5": "b-3:bcad,b-7:cdba,b-5:bdac,b-1:cabd,b-4:bacd",
+  "b|123456789|10":
+    "b-3:bcad,b-7:cdba,b-5:bdac,b-1:cabd,b-4:bacd,b-6:dacb,b-2:dacb",
+  "b|123456789|20":
+    "b-3:bcad,b-7:cdba,b-5:bdac,b-1:cabd,b-4:bacd,b-6:dacb,b-2:dacb",
+};
