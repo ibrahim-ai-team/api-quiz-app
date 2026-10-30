@@ -13,6 +13,13 @@ updates:
       - dependencies
     commit-message:
       prefix: "chore(deps)"
+    # TypeScript majors stay manual: typescript-eslint does not support TS 7
+    # yet (typescript-eslint/typescript-eslint#10940), so #120 was closed by
+    # the sponsor on 2026-10-30. Remove once typescript-eslint supports it.
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       dev-dependencies:
         dependency-type: development
