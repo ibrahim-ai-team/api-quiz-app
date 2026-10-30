@@ -35,6 +35,7 @@ import {
   answerByMouse,
   button,
   currentQuestion,
+  expectBankStatus,
   h1,
   nextButton,
   openLanding,
@@ -520,18 +521,23 @@ test.describe("T-16 offline and deep links", () => {
   }) => {
     // Start on "#/" so the run ends on the same URL (Choose another topic).
     await openLanding(page, "#/");
-    await goOfflineAfterLoad(page, context, async (p) => {
-      await startQuizByMouse(p, /^Fixture topic B/, 5);
-      await playQuizByMouse(p, 5, (k) => k <= 2);
-      await expect(p.locator("main")).toContainText(
-        strings.results.score(2, 5),
-      );
-      await button(p, strings.results.tryAgain).click();
-      await expect(h1(p, strings.question.heading(1, 5))).toBeFocused();
-      await playQuizByMouse(p, 5, () => true);
-      await button(p, strings.results.chooseAnother).click();
-      await expect(h1(p, strings.landing.heading)).toBeFocused();
-    });
+    await goOfflineAfterLoad(
+      page,
+      context,
+      (p) => expectBankStatus(p, "ready"),
+      async (p) => {
+        await startQuizByMouse(p, /^Fixture topic B/, 5);
+        await playQuizByMouse(p, 5, (k) => k <= 2);
+        await expect(p.locator("main")).toContainText(
+          strings.results.score(2, 5),
+        );
+        await button(p, strings.results.tryAgain).click();
+        await expect(h1(p, strings.question.heading(1, 5))).toBeFocused();
+        await playQuizByMouse(p, 5, () => true);
+        await button(p, strings.results.chooseAnother).click();
+        await expect(h1(p, strings.landing.heading)).toBeFocused();
+      },
+    );
     await expect(page).toHaveURL(/#\/$/);
   });
 

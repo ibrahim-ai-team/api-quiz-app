@@ -42,16 +42,23 @@ export function expectAllSameOrigin(log: RequestLog, baseURL: string): void {
 }
 
 /**
- * Offline after load (SC-6, NFR-7, V-4). Waits until the loaded page is idle,
- * calls `context.setOffline(true)`, runs a reload-free `interact` step and
- * asserts that 0 network requests were made after the offline point.
+ * Offline after load (SC-6, NFR-7, V-4). Awaits the caller's explicit `ready`
+ * step, calls `context.setOffline(true)`, runs a reload-free `interact` step
+ * and asserts that 0 network requests were made after the offline point.
+ *
+ * `ready` must resolve only once the app has fetched everything it needs
+ * (normally `expectBankStatus(page, "ready")` from helpers/quiz.ts, i.e.
+ * `data-bank-status="ready"` on <main>); it runs while still online. This
+ * replaces the network-idle load-state wait (#63 L3), which is timing-based
+ * and discouraged by Playwright.
  */
 export async function goOfflineAfterLoad(
   page: Page,
   context: BrowserContext,
+  ready: (page: Page) => Promise<void>,
   interact: (page: Page) => Promise<void>,
 ): Promise<void> {
-  await page.waitForLoadState("networkidle");
+  await ready(page);
   const urlBefore = page.url();
 
   const afterOffline: string[] = [];

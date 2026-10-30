@@ -15,6 +15,7 @@ import { expectNoCspViolations, trackCspViolations } from "./helpers/csp.ts";
 import { FIXTURES_DIR, useFixtureBank } from "./helpers/fixture-bank.ts";
 import { expectNoHorizontalScroll } from "./helpers/layout.ts";
 import { goOfflineAfterLoad, trackRequests } from "./helpers/network.ts";
+import { expectBankStatus } from "./helpers/quiz.ts";
 
 interface FixtureBank {
   contentVersion: string;
@@ -404,10 +405,15 @@ test.describe("T-12 Question view", () => {
     context,
   }) => {
     await startQuiz(page, /^Fixture topic B/, 5);
-    await goOfflineAfterLoad(page, context, async (p) => {
-      await answerAndNext(p);
-      await answerAndNext(p);
-    });
+    await goOfflineAfterLoad(
+      page,
+      context,
+      (p) => expectBankStatus(p, "ready"),
+      async (p) => {
+        await answerAndNext(p);
+        await answerAndNext(p);
+      },
+    );
     await expect(h1(page, strings.question.heading(3, 5))).toBeFocused();
   });
 });
