@@ -2,8 +2,8 @@
 
 - **Last reconciled:** 2026-10-30 (S4-CLOSE-S5-PLAN-D01). Sources: `gh` reads of issues, PRs, Actions runs and the Pages site; `main` at `baee626`. Previous reconciliation: 2026-10-30 00:20 UTC at `32aa0fe`.
 - **Coordinator:** top-level Claude Code session following ai-software-team `workflows/orchestration-contract.md` and `workflows/sprint-governance.md`.
-- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 closed early on 2026-10-30 at the sponsor's request (planned end 2026-11-06; `docs/sprints/S4.md`): 12 of 12 committed points merged, goal met. Sprint 5 active 2026-10-31 to 2026-11-13 (`docs/sprints/S5.md`): 5 points committed (#109, #110, #55, #60) plus the US-5, US-6 and US-12 acceptances. Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
-- **Current sprint (S5) goal:** US-12 is complete on main: the US-12.1 landing tests (#109) and the CSP-safe US-12.5 static fallback (#110) are merged with CI green on main, so US-12 (#17) can be accepted. The lint and content-validator hardening T-31 (#55) and T-32 (#60) is merged, and `check_governance.py --release` still passes with no deploy override.
+- **Current phase:** `DELIVERY`. Sprint 3 closed 2026-10-23 (`docs/sprints/S3.md`). Sprint 4 closed early on 2026-10-30 at the sponsor's request (planned end 2026-11-06; `docs/sprints/S4.md`): 12 of 12 committed points merged, goal met. Sprint 5 active 2026-10-31 to 2026-11-13 (`docs/sprints/S5.md`): the full open backlog is committed (SD-SPRINT-06), 16 points (10 provisional), plus story acceptances #9 to #17, epic closure #2 to #5 and the manual passes. Sprint 2 was closed retroactively (`docs/sprints/S2.md`).
+- **Current sprint (S5) goal:** finish the app. All remaining backlog work is delivered and merged with CI green on main, `check_governance.py --release` passes with no deploy override, and every open story (#9 to #18) is ready for sponsor acceptance.
 - The sections below the release criteria are kept as of 2026-10-21 for history, except Decisions, Workspace and Next actions, which were updated on 2026-10-30. The sprint records under `docs/sprints/` are the current source for sprint scope and status.
 
 ## Product goal and approved MVP scope
@@ -39,6 +39,7 @@ Check with ai-software-team `python scripts/check_governance.py --state docs/pro
 - SD-REL-02 (sponsor 2026-10-23): keep the question bank and release thresholds 60/8/5/20%.
 - SD-REL-03 (sponsor 2026-10-28): thresholds stay at 60/8/5/20% (SD-REL-02); no deploy-time override. Issue #117 (24/3 proposal) closed as not planned.
 - SD-SPRINT-05 (sponsor 2026-10-30): #109 and #110 go back to the backlog instead of a scope change over S4 capacity; close Sprint 4 and prepare and start Sprint 5.
+- SD-SPRINT-06 (sponsor 2026-10-30: "in this sprint i wana work on all backlog i wana finish this app in this sprint"): Sprint 5 takes the full open backlog; its capacity is raised to the committed total (16 points), since 13 was an assumption and the limit is sponsor review time, not agent capacity. Provisional estimates are updated after refinement inside the sprint.
 - SD-DEPLOY-01 (sponsor 2026-10-22): publish the partial bank with one manual deploy per sprint, with the override until US-8.1 was met. Superseded for the override part: #122 removed the input and SD-REL-03 forbids an override.
 - SD-DEPLOY (sponsor 2026-10-29, SEC-R14 mitigation): the three override deploy runs 39847942745, 39916746207 and 39922278097 were deleted (each returns 404 on read-back 2026-10-30); the `github-pages` environment is limited to branch `main`.
 - DQ-US6-1 to 7 (sponsor 2026-10-29, comment on #12): proposed US-6 UX defaults accepted.
@@ -133,16 +134,15 @@ SD-1 accept US-1/US-2; SD-2 confirm T-12-D01 / DQ-1; SD-3 DQ-5; SD-4 designer co
 
 ## Next actions
 
-As of 2026-10-30 (Sprint 5, starts 2026-10-31):
+As of 2026-10-30 (Sprint 5, starts 2026-10-31; full backlog per SD-SPRINT-06):
 
-1. agile-orchestrator: dispatch the tech-lead and code-review-security reviews of PR #133 (T-46, #109) (its CI is green).
-2. frontend-developer: T-47 (#110) static fallback, with the CSP and CLS checks.
-3. tech-lead: confirm the remaining scope of T-32 (#60; M2 appears done on main); then devops-platform T-31 (#55) and backend-developer T-32.
-4. Sponsor: hand check of the deploy per the runbook §3, then close #39; run the manual private-mode pass (`docs/qa/manual-pass-checklist.md` §F) on the live site, which now includes US-6.
-5. Sponsor or product-owner: accept US-5 (#11) and US-6 (#12); US-12 (#17) after #109 and #110 merge. Earlier acceptances still open: US-3 (#9), US-4 (#10), US-9 (#14), US-10 (#15).
-6. Sponsor: decide the Dependabot PRs #118 to #120 (#119 and #120 are major bumps).
-7. ui-ux-designer and tech-lead: refine US-11 (#16) and size T-33 (#63) so they can be planned.
-8. project-manager: `/sprint-review` for S5 on or before 2026-11-13.
+1. agile-orchestrator: confirm main CI run 41041141091 on `7f5a677` (#133, T-46); finish the reviews of PR #134 (T-47) and dispatch the T-47-TL01 docs follow-up.
+2. Refinement first: ui-ux-designer US-11 (#16) spec; tech-lead breakdown of #63 and the remainder of #60; qa-automation assessment of US-13 (#18) against its acceptance criteria. Then update the provisional points in `docs/sprints/S5.md` and create the US-11 task issues through the issue creation gate.
+3. devops-platform: T-31 (#55), then tech-lead assessment of Dependabot #119 (eslint 10) after #55 merges; tech-lead assessment of #118 and #120 (TypeScript 7 risk).
+4. Implementation of #60, #63, #16 and #18 by their owners after refinement, each with tech-lead and code-review-security reviews.
+5. Sponsor: #39 hand check (runbook §3); manual passes: screen reader US-10.3, iOS US-9.6, private mode (`docs/qa/manual-pass-checklist.md` §F).
+6. Sponsor or product-owner: accept US-3 to US-6, US-8 to US-10 and US-12 (#9 to #15, #17), and US-11 and US-13 when delivered; then close the epics #2 to #5.
+7. project-manager: `/sprint-review` for S5 on or before 2026-11-13.
 
 Earlier next actions (2026-10-21, history):
 
@@ -160,3 +160,4 @@ Earlier next actions (2026-10-21, history):
 | 2026-10-23 | DELIVERY (Sprint 3) | DELIVERY (Sprint 4) | Sprint 2 and Sprint 3 closed with records; Sprint 4 planned at the sponsor's request; release criteria SD-REL-02 recorded | `docs/sprints/S2.md`, `S3.md`, `S4.md` |
 | 2026-10-30 | DELIVERY (Sprint 4) | DELIVERY (Sprint 4, mid-sprint) | Mid-sprint reconciliation: T-39, US-6 spec, T-42 to T-44 and the T-20 override removal merged; SD-REL-03; first deploy with no override | `docs/sprints/S4.md`, PRs #121 to #128, run 40839486152 |
 | 2026-10-30 | DELIVERY (Sprint 4) | DELIVERY (Sprint 5) | Sprint 4 closed early at the sponsor's request with all 12 points merged and the goal met; #109 and #110 returned to the backlog and committed in Sprint 5 (SD-SPRINT-05) | `docs/sprints/S4.md`, `docs/sprints/S5.md`, PRs #130 to #132, run 41038449377 |
+| 2026-10-30 | DELIVERY (Sprint 5) | DELIVERY (Sprint 5, full backlog) | SD-SPRINT-06: the sponsor put the whole open backlog in Sprint 5; capacity raised to 16 points (10 provisional) | `docs/sprints/S5.md` |
