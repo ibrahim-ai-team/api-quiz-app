@@ -30,7 +30,7 @@ const fixtureContentVersion = (
 ).contentVersion;
 
 /**
- * Explicit readiness (replaces `networkidle`): the shell sets
+ * Explicit readiness (replaces the network-idle wait): the shell sets
  * `data-bank-status` on <main> once the startup bank request has settled
  * (T-06). It is a non-visual, CSP-safe signal, kept by T-08 (decision T-33
  * L6) next to the visible loading, error and Retry states (shell.spec.ts). "ready" also proves the asset was fetched and
@@ -130,7 +130,7 @@ test.describe("T-03 shell smoke", () => {
   }) => {
     await page.goto("./");
     await expectBankReady(page);
-    await goOfflineAfterLoad(page, context, async (p) => {
+    await goOfflineAfterLoad(page, context, expectBankReady, async (p) => {
       // Reload-free interaction: keyboard focus movement and a click.
       await p.keyboard.press("Tab");
       await p.locator("main").click();

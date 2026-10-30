@@ -12,6 +12,7 @@ import { expectNoCspViolations, trackCspViolations } from "./helpers/csp.ts";
 import { FIXTURES_DIR, useFixtureBank } from "./helpers/fixture-bank.ts";
 import { expectNoHorizontalScroll } from "./helpers/layout.ts";
 import { expectAllSameOrigin, goOfflineAfterLoad } from "./helpers/network.ts";
+import { expectBankStatus } from "./helpers/quiz.ts";
 
 test.describe("T-03 harness self-test: helpers detect injected defects", () => {
   test.beforeEach(async ({ page }) => {
@@ -93,11 +94,16 @@ test.describe("T-03 harness self-test: helpers detect injected defects", () => {
     context,
   }) => {
     await expect(
-      goOfflineAfterLoad(page, context, async (p) => {
-        await p.evaluate(() => {
-          void fetch("./selftest-offline.json").catch(() => undefined);
-        });
-      }),
+      goOfflineAfterLoad(
+        page,
+        context,
+        (p) => expectBankStatus(p, "ready"),
+        async (p) => {
+          await p.evaluate(() => {
+            void fetch("./selftest-offline.json").catch(() => undefined);
+          });
+        },
+      ),
     ).rejects.toThrow(/requests made after setOffline/);
   });
 });
