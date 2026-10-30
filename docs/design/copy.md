@@ -83,7 +83,7 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | `results.retryNone` *fn* | The question you missed is no longer available, so there is nothing to retry. / The questions you missed are no longer available, so there is nothing to retry. | US-5.6; singular when 1 missed; replaces the button |
 | `results.retryHeading` | Retry results | h1 of a retry quiz's results, focus target |
 | `results.retryNote` | This was a retry of your missed questions, so it does not count toward your best score. | US-5.5; directly under the h1; rendered only when storage is persistent (views.md §9.1 U2) |
-| `results.startFull` | Start a full quiz | Primary on retry results: fresh draw of the original scope |
+| `results.startFull` | Start a full quiz | Primary on retry results: fresh draw of the original scope with the default settings (All, 10; views.md §10.5) |
 | `landing.bestScore` *fn* | Best score: {pct}% | US-6.1, views.md §9.3; own line in the topic row; appended to the row's accessible name after a comma; not rendered when there is no best score |
 | `landing.replaceMessage` | This will discard your unfinished quiz. | US-6.4, §9.6; focused when the confirmation opens under Start |
 | `landing.replaceConfirm` | Start new quiz | Primary confirm button of the replace confirmation |
@@ -108,16 +108,15 @@ English only (A12). `{name}` = parameter. Keys marked *fn* become functions in `
 | `landing.difficulty.easy` | Easy | Radio label |
 | `landing.difficulty.medium` | Medium | Radio label |
 | `landing.difficulty.hard` | Hard | Radio label |
-| `landing.difficultyWord.easy` | easy | Lower-case form used inside sentences (`landing.shortHint`, `landing.noneHint`, `resume.summaryDifficulty`) |
+| `landing.difficultyWord.easy` | easy | Lower-case form used inside sentences (`landing.shortHint`, `landing.noneHint`) |
 | `landing.difficultyWord.medium` | medium | As above |
 | `landing.difficultyWord.hard` | hard | As above |
 | `landing.lengthLegend` | Number of questions | Legend of the length radio group; the radio labels are the numerals 5, 10, 20 (no key) |
 | `landing.shortHint` *fn* | Only 1 {difficulty} question is available, so this quiz will have 1. / Only {n} {difficulty} questions are available, so this quiz will have {n}. | US-11.1, §10.4; plural by n; `{difficulty}` = `landing.difficultyWord.*`, omitted with All ("Only 8 questions are available, so this quiz will have 8."); Start's `aria-describedby`; not shown with default settings |
 | `landing.noneHint` *fn* | There are no {difficulty} questions for this choice. Choose another difficulty or topic. | US-11.2, §10.4; Start is `aria-disabled`; `{difficulty}` = `landing.difficultyWord.*` (never All: every shown scope has at least 1 question) |
-| `resume.summaryDifficulty` *fn* | {scope} quiz, {difficulty} questions: {answered} of 1 question answered. / {scope} quiz, {difficulty} questions: {answered} of {n} questions answered. | §10.5; replaces `resume.summary` for a saved normal quiz with a difficulty filter; plural by n |
-| `results.filteredNote` | This quiz used a difficulty filter or fewer than 10 questions, so it does not count toward your best score. | §10.6, DQ-US11-1; directly under the h1, like `results.retryNote`; rendered only when storage is persistent |
-| `boot.heading` | ApiQuiz could not start | views.md §6.1; **hard-coded in `index.html`, not in `strings.ts`** (the script did not run); h1 |
-| `boot.body` | Part of the app did not load. Check your connection, then retry. | §6.1; hard-coded in `index.html` |
-| `boot.retry` | Retry | §6.1; hard-coded in `index.html`; link with `href=""` (full reload without the hash, lands on Home) |
+| `results.filteredNote` | This quiz used a difficulty filter or fewer than 10 questions, so it does not count toward your best score. | §10.6, DQ-US11-1; normal quiz that is not full (All and at least min(10, available) questions); directly under the h1, like `results.retryNote`; rendered only when storage is persistent |
+| `boot.heading` | ApiQuiz could not start | views.md §6.1; **static markup in `index.html`, not in `strings.ts`** (the script did not run); h1 |
+| `boot.body` | Part of the app did not load. Check your connection, then retry. | §6.1; static markup in `index.html` |
+| `boot.retry` | Retry | §6.1; static markup in `index.html`; link with `href=""` (full reload without the hash, lands on Home) |
 
 Style: sentence case, no exclamation marks, no promises about interview outcomes. Use "..." (three dots), not a typographic ellipsis, so the source file stays plain ASCII; either reads the same to a screen reader.
